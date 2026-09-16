@@ -131,7 +131,7 @@ asserting `1.0 nanometer`. No in-tree consumer reads that unit back, and
 
 ### Tests
 
-Added: 16 cases / 82 assertions covering local and remote valid metadata, missing
+Added: 19 cases / 107 assertions covering local and remote valid metadata, missing
 metadata, zero, negative and non-finite values, an explicit size with unit
 conversion (nm/µm/mm/m), an unknown unit, native and reduced resolution, all six
 `voxelsize` aliases, tier priority, and the unusable-vs-absent distinction.
@@ -152,13 +152,44 @@ TEST_CASE("DEFECT: the deployed reader cannot read a modern published store") {
 Upstream's `core/test/test_voxel_size_metadata.cpp` passes unmodified as the
 control.
 
-**Not yet done, and stated plainly:** the patched binary has not been compiled or
-run, because this was developed without the Qt/OpenCV/Ceres/CGAL dependency
-closure. Before this is merged I intend to build
-`cmake --preset windows-msvc` (or the CI container) and add the artifact-level
-assertions — a real `.zattrs` showing `unit: micrometer` and `scale: [1, 8.64,
-8.64]`, a real TIFF `XResolution`, and a byte-identical-pixels regression check
-against `PHerc0172`.
+### Verified by execution
+
+The patch has now been **compiled and run**, on a GitHub-hosted Linux runner, from
+the pinned revision, with the baseline built from the same tree and the applied
+diff checked byte-identical to the patch. Full record in `CI_VALIDATION.md`.
+
+Against `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr`, and
+with `PHerc0172` as the control:
+
+| | baseline | patched |
+|---|---|---|
+| log line | `Voxel size: 1.0 (no metadata found…)` | `Voxel size (remote volume metadata): 8.64 micrometer` |
+| `.zattrs` unit | `nanometer` | `micrometer` |
+| `.zattrs` scale (level 0) | `[1, 1, 1]` | `[8.64, 8.64, 8.64]` |
+| TIFF `XResolution` | absent | `2939.814697265625` px/inch |
+| decoded pixels | — | **byte-identical** to the baseline |
+
+**And a caveat that belongs in this PR rather than in a footnote:** the version of
+this patch first submitted to CI **did not compile**. The new resolution block had
+been placed ~60 lines before the declarations it reads, producing
+
+```
+error: 'hasExplicitVoxelSize' was not declared in this scope
+```
+
+That is fixed, and the harness now asserts that every name the block reads is
+declared above its call site — but the fact that a change this small could be
+"logic-verified" and not build is worth a maintainer knowing.
+
+### Still open
+
+* The GUI path (`SegmentationCommandHandler.cpp:2076-2078`) is deliberately not
+  touched here; see commit 3 above and `FEASIBILITY.md` §8.
+* The "no usable voxel size anywhere" branch — warning emitted, no physical scale
+  written — is logic-verified in the harness but not driven end to end, because the
+  volume used finds its value in the volume it opened. That is the fix working, not
+  a gap in the test, but it means the branch is covered by unit tests only.
+* Two volumes and one crop each. This is a demonstration, not a survey.
 
 ### Relationship to other work
 

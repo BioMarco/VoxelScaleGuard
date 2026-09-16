@@ -173,7 +173,7 @@ and the pixels are unchanged.
 One file, one commit's worth of change:
 
 ```
-volume-cartographer/apps/src/vc_render_tifxyz.cpp      +177 / -65
+volume-cartographer/apps/src/vc_render_tifxyz.cpp      +176 / -63
 ```
 
 * adds `#include "vc/core/util/VoxelSizeMetadata.hpp"`

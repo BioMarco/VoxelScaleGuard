@@ -42,14 +42,28 @@ If you add a claim, tag it. If you cannot tag it, say "unverified" in the same
 sentence. Do not upgrade a **[read]** to an **[exec]**, and do not describe a
 derived consequence as a measurement.
 
-Concretely, the following are **currently unverified** and must not be described
-otherwise:
+Concretely, the following **are currently unverified** and must not be described
+otherwise. This list is deliberately short now: it was four items, and three were
+closed by execution on 2026-09-16 (`DOCS/CI_VALIDATION.md`). Do not add anything
+back to it by implication — if you cannot tag a claim, say "unverified" in the same
+sentence.
 
-* the patched `vc_render_tifxyz` has **never been compiled or run**;
-* no `.zattrs` file and no TIFF tag dump has ever been produced;
-* no render on a real volume has ever been run;
-* the surface growth, timing and rendered pixels of the patched binary are
-  entirely unmeasured.
+* the GUI path: `vc_render_tifxyz`'s fix is **not reachable from VC3D**, because
+  the enable predicate is deliberately unchanged;
+* coverage: **two volumes, one crop, one slice each**. That demonstrates the
+  correction; it is not a survey, and no claim about other volumes is supported;
+* the "no usable voxel size anywhere" branch is covered by **unit tests only** —
+  it is not driven end to end;
+* the `.zattrs`/TIFF artifacts come from a **single build configuration**
+  (`QuickBuild`, gcc 13.3, Linux) with `--scale 1`. Other presets, compilers and
+  scales are unmeasured.
+
+**And one thing this file got wrong, kept because it is instructive.** Until
+2026-09-16 this section asserted that "the patched `vc_render_tifxyz` has never
+been compiled or run". True at the time — and the first compile then **failed**.
+The patch as originally committed could never have built (used variables declared
+~60 lines below their use; `DOCS/RESULTS.md` §9.1). Treating "unverified" as a box
+to tick is not the same as treating it as a thing to find out.
 
 ## 3. Scope discipline
 

@@ -1,29 +1,28 @@
 # CI_VALIDATION — building and running the real renderer, before and after
 
-**Status: this document records a workflow that has been written, committed and
-dispatched, and is currently being iterated on. Read the "Current state" table in
-§1 before quoting anything below it as a result.**
+**Status: done.** Both binaries were compiled from the pinned revision on a
+GitHub-hosted runner, and both were run against real public catalog data with
+identical inputs. This document is the record: environment, exact commits,
+commands, and results.
 
-This is the file that closes `RESULTS.md` §7.1–7.3, or records why it could not be
-closed. It exists because those sections required something the development
-machine cannot provide: an execution of the patched binary.
+Run: **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520>**
+(edge-case run: <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35138497154>)
+
+It closes `RESULTS.md` §7.1–7.3. §7.4 and §7.5 remain open.
 
 ---
 
-## 1. Current state
+## 1. Answers, up front
 
 | Question | Answer |
 |---|---|
-| Original renderer compiled? | *see §5 — filled in from the run* |
-| Patched renderer compiled? | *see §5* |
-| Render executed on public data? | *see §6* |
-| `.zattrs` unit and scale corrected? | *see §7* |
-| TIFF resolution tag present and right? | *see §7* |
-| Pixels unchanged (regression)? | *see §7* |
-| Error/edge cases exercised? | *see §8* |
-
-Nothing in this file is a projection. Each row is filled from a captured command's
-output, and the run URL is given so it can be checked.
+| Original renderer compiled? | **Yes** — `build/baseline/bin/vc_render_tifxyz` |
+| Patched renderer compiled? | **Yes** — but it did **not** before this session; see §5 |
+| Render executed on public data? | **Yes** — `PHerc0009B` and `PHerc0172`, four runs |
+| `.zattrs` unit and scale corrected? | **Yes** — `micrometer` / `[8.64, 8.64, 8.64]` vs `nanometer` / `[1, 1, 1]` |
+| TIFF resolution present and right? | **Yes** — `2939.81…` px/inch where the baseline wrote none |
+| Pixels unchanged (regression)? | **Yes** — decoded-pixel SHA-256 identical on both volumes |
+| Error/edge cases exercised? | **Yes** — see §8 |
 
 ---
 
@@ -49,9 +48,10 @@ Established by execution on the development machine, recorded in `RESULTS.md`
   with the runner's `${{ github.token }}`; that does not transfer to another
   repository.
 
-The route taken instead uses only publicly available packages: the same apt
-dependency list upstream's own `scripts/install_build_deps.sh` installs from the
-Ubuntu archive. No private registry, no credentials beyond the automatic
+The route taken instead uses only publicly available packages: the same package
+list upstream's own `scripts/install_build_deps.sh` installs from the Ubuntu
+archive, applied group by group so a single unavailable package is visible rather
+than fatal. No private registry, no credentials beyond the automatic
 `GITHUB_TOKEN`, no paid runners.
 
 ---
@@ -59,55 +59,75 @@ Ubuntu archive. No private registry, no credentials beyond the automatic
 ## 3. Environment and identification
 
 * Workflow: `.github/workflows/renderer-validation.yml`
-* Runner: `ubuntu-24.04` (GitHub-hosted, free tier)
+* Runner: `ubuntu-24.04` (GitHub-hosted, free tier), 4 vCPU
 * Trigger: `workflow_dispatch`, plus push to `ci/renderer-validation`
-* villa revision: `757f70c0140a4cfbbbd44975ef09558444b96980`, checked out detached
-  by the workflow, and asserted by the workflow itself
+* villa revision: `757f70c0140a4cfbbbd44975ef09558444b96980`, fetched with
+  `git fetch --depth 1`, checked out detached, HEAD asserted equal to the input,
+  and the worktree asserted clean before patching
 * Build configuration, identical for both binaries:
   `-DCMAKE_BUILD_TYPE=QuickBuild -DVC_QUICKBUILD_OPT_LEVEL=0 -DVC_TESTING=OFF
   -DVC_BUILD_APPS=ON -DVC_BUILD_FLATBOI=OFF -G Ninja`
+* Toolchain in the run: **gcc 13.3.0**, **cmake 3.31.6**, **ninja 1.13.2**
 * Target: `vc_render_tifxyz` only (not `vc_cli_all`, not `VC3D`)
-
-Toolchain and package versions are captured by the run itself into
-`ci-out/toolchain.txt` and `ci-out/verify-deps.txt`.
 
 ---
 
 ## 4. How the two binaries are produced from one revision
 
-The requirement is that the original and the modified renderer derive from the
-same commit, with the patch as the only difference.
-
-1. `git clone` of `ScrollPrize/villa`, `git checkout --detach <pinned>`, then
-   `test "$(cat ci-out/villa-HEAD.txt)" = "${VILLA_COMMIT}"`.
-2. Configure and build → `ci-out/vc_render_tifxyz.baseline`.
+1. Fetch and check out the pinned commit; assert `HEAD == VILLA_COMMIT` and that
+   `git status --porcelain` is empty.
+2. Configure and build → `build/baseline/bin/vc_render_tifxyz`.
 3. `git apply --check` then `git apply patch/vc_render_tifxyz.patch` on that same
    detached tree. The patch is applied by `git apply`; **no villa source is edited
-   by hand**, so the applied change is exactly the committed artefact. The
-   workflow additionally compares the resulting `git diff` against
-   `patch/vc_render_tifxyz.patch` byte-for-byte and records
-   `PATCH_IDENTICAL=yes|no`.
-4. Configure and build → `ci-out/vc_render_tifxyz.patched`.
+   by hand.** The resulting `git diff` is compared byte-for-byte with the
+   committed patch: `PATCH_IDENTICAL=yes`.
+4. Configure and build → `build/patched/bin/vc_render_tifxyz`.
 
-Both binaries are archived as artefacts so their identity can be re-checked
-without rerunning the build.
+The binaries are **not** copied out of their build trees. Upstream links the `vc_*`
+libraries as shared objects with an `$ORIGIN/../lib` rpath, so a copied executable
+fails to load (`error while loading shared libraries: libvc_flattening.so`); every
+invocation runs them in place.
 
 ---
 
-## 5. Build results
+## 5. Build results — and the defect the build found
 
-*Filled in from the run. Build logs: `ci-out/build-baseline.log`,
-`ci-out/build-patched.log` (they contain the full `cmake --build` output and
-`/usr/bin/time -v` resource figures).*
+| Step | Result |
+|---|---|
+| Baseline build | **OK** (62 s) |
+| Patch applies to the pinned tree | **OK**, `PATCH_IDENTICAL=yes` |
+| Patched build | **OK** (62 s) |
+| `--help` identical between the binaries | **Yes** (`HELP_IDENTICAL=yes`) |
+
+**The first compile of the patch failed.** On run 35134946141:
+
+```
+vc_render_tifxyz.cpp:1449:43: error: 'hasExplicitVoxelSize' was not declared in this scope
+vc_render_tifxyz.cpp:1450:13: error: 'voxel_unit' was not declared in this scope
+```
+
+and the same for `explicitVoxelSize`, `base_voxel_size`, `zarr_voxel_unit` and
+`render_level_voxel_size`. The new resolution block had been inserted ~60 lines
+before the declarations it reads. The patch as committed could not have built.
+
+It was fixed by moving the block to immediately after the declarations, with no
+logic change. Diffstat moved from +177/−65 to **+176/−63**; `git apply --check
+--reverse` exits 0 and a reverse-then-forward round trip reproduces the same file
+byte-for-byte.
+
+The harness could not have caught this, and in fact hid it: `harness/setup.ps1`
+was copying the file from `villa/`'s working tree, which is patched in place, so
+the "pristine" copy was the patched file. It now takes the file from
+`git show <commit>:<path>`. Two tests were added, described in `RESULTS.md` §9.2.
 
 ---
 
 ## 6. Rendering experiment
 
-One invocation per binary per volume, with identical inputs and parameters. The
-only difference is the executable.
+One invocation per binary per volume, identical inputs and parameters. Only the
+executable differs.
 
-Public inputs (all read anonymously from `vesuvius-challenge-open-data`):
+Public inputs, read anonymously from `vesuvius-challenge-open-data`:
 
 | Role | Object |
 |---|---|
@@ -116,78 +136,131 @@ Public inputs (all read anonymously from `vesuvius-challenge-open-data`):
 | Control volume | `PHerc0172/volumes/20241024131838-7.910um-53keV-masked.zarr` |
 | Control mesh | `PHerc0172/segments/20250917143559-w062…/mesh/20250917143559-on-20241024131838-7.91um.tifxyz` |
 
-The PHerc0172 pair is the control required by `RESULTS.md` §5: it is the one
-legacy-shaped volume the shipped reader already resolved, and the volume the
-repository's only live-S3 test pins.
+Arguments, identical for both binaries:
 
-`--volume` names a local **cache directory**, not a Zarr store; chunks are fetched
-from S3 and persisted there, so only what the segment touches is downloaded. Both
-binaries share one cache directory, and each run writes to its own output paths so
-no run can skip work by finding existing output.
+```
+-g 0 --scale 1 -n 1 --cache-gb 4 --crop-x 3145 --crop-y 3412
+--crop-width 128 --crop-height 128
+```
+
+`--volume` names a local **cache directory**, not a Zarr store; chunks stream from
+S3 and persist there, so only what the segment touches is downloaded. Both binaries
+share one cache directory, and each writes to its own output paths so no run can
+skip work by finding existing output.
 
 The cache directory deliberately contains **no** `meta.json` or `metadata.json`.
-That is the experiment: with no store document on the local filesystem, the
-shipped reader resolves nothing (the defect) while the patched renderer falls back
-to the volume it has already opened (the fix). Copying the store document into the
-cache would make the *baseline* resolve the value too, and would compare nothing.
+That is the experiment: with no store document on the local filesystem, the shipped
+reader resolves nothing while the patched renderer falls back to the volume it has
+already opened. Copying the store document in would make the *baseline* resolve the
+value too and would compare nothing. The consequence is that both baseline rows
+below are the "unresolved" case — including PHerc0172, which the deployed reader
+*does* handle when its `meta.json` is present, and which the standalone probe does
+resolve as the control (`RESULTS.md` §2).
 
 ---
 
 ## 7. Measurements
 
-*Filled in from `ci-out/comparison.txt` and `ci-out/tiffinfo.txt`.*
+### 7.1 The log line, from the real binaries
 
-The three questions kept separate on purpose:
+| Run | Line | Exit |
+|---|---|---|
+| 0009B baseline | `Voxel size: 1.0 (no metadata found; override with --voxel-size)` | 0 |
+| 0009B patched | `Voxel size (remote volume metadata): 8.64 micrometer` | 0 |
+| 0172 baseline | `Voxel size: 1.0 (no metadata found; override with --voxel-size)` | 0 |
+| 0172 patched | `Voxel size (remote volume metadata): 7.91 micrometer` | 0 |
 
-1. **Did both run and produce output?** exit codes and artefact lists.
-2. **Did the declared physical scale change, and is the patched value right?**
-   the `Voxel size` log line, every emitted `.zattrs`, TIFF `XResolution`.
-3. **Are the rendered pixels unchanged?** a SHA-256 of the **decoded pixel
-   arrays**, not of the files.
+### 7.2 OME-Zarr `.zattrs`
 
-On (3): the patch deliberately changes the TIFF resolution tag, so the *file*
-bytes differ even when every pixel is identical. Comparing file digests — or file
-sizes, which is the mistake `RESULTS.md` §5 warns about — would report a
-regression that is really the fix. `ci/compare_render_outputs.py` therefore
-reports decoded-pixel digests as the verdict and file-byte digests only as
-context, and `ci/selftest_compare.py` exercises that distinction against synthetic
-fixtures so the reporter itself cannot silently invert the answer.
+Per-level scale, group `-g 0`:
+
+| Run | unit | level 0 | level 5 |
+|---|---|---|---|
+| 0009B baseline | `nanometer` | `[1, 1, 1]` | `[1, 32, 32]` |
+| 0009B patched | `micrometer` | `[8.64, 8.64, 8.64]` | `[8.64, 276.48, 276.48]` |
+| 0172 baseline | `nanometer` | `[1, 1, 1]` | `[1, 32, 32]` |
+| 0172 patched | `micrometer` | `[7.91, 7.91, 7.91]` | `[7.91, 253.12, 253.12]` |
+
+Declared physical voxel size at level 0: baseline `0.001 µm` (wrong by ×8640 and
+×7910 respectively), patched `8.64 µm` and `7.91 µm` (correct).
+
+### 7.3 TIFF tags
+
+| Run | XResolution | YResolution | ResolutionUnit |
+|---|---|---|---|
+| 0009B baseline | **absent** | absent | absent |
+| 0009B patched | `2939.814697265625` | same | 2 (inch) |
+| 0172 baseline | **absent** | absent | absent |
+| 0172 patched | `3211.125244140625` | same | 2 (inch) |
+
+`25400/8.64 = 2939.8148…` and `25400/7.91 = 3211.1252…`: the emitted resolution is
+the correct physical scale to six significant figures. The baseline wrote no
+resolution tag at all on this path.
+
+### 7.4 Are the pixels unchanged?
+
+| Volume | Decoded-pixel SHA-256 | File bytes |
+|---|---|---|
+| 0009B | `7d92aec89d3638940fd45e62a0269ae99404391451bdc5dde267e4b2aec65a9b` on **both** sides | 14244 → 14296 |
+| 0172 | `4fe7b59af6de3b665b67788cc2f99892ab827efae3a467342b3bb4e3bc8e5bfe` on **both** sides | 806 → 858 |
+
+**Verdict: decoded pixels identical, file bytes differ** — which is the expected
+outcome, because the patched TIFF carries the resolution tag the baseline omitted.
+
+The distinction matters and is the reason the check is on decoded pixels: the user
+brief for this work explicitly warns against treating two images as identical on
+the basis of file size. Here file size and file digest both *differ* while the
+image is unchanged, so the opposite error was the live risk. `ci/selftest_compare.py`
+exercises both directions against synthetic fixtures, including the case where
+pixels really do differ.
 
 ---
 
 ## 8. Error and edge cases
 
-Tracked separately from the before/after experiment, because a metadata-correctness
-fix must not be able to *invent* a physical scale. The intended behaviours, all of
-which are logic-verified in the harness and are the subject of `RESULTS.md` §7.4's
-follow-up:
+Driven through the patched binary's real CLI, exit codes and emitted `.zattrs`
+recorded. Every case behaved as intended.
 
-| Case | Intended behaviour |
-|---|---|
-| No usable metadata anywhere | no physical scale written; warning on stderr; no silent `1.0` |
-| `{"voxelsize": 0}` | treated as unusable, not as a measurement |
-| `{"voxelsize": -3}` | treated as unusable, not as a measurement |
-| Non-numeric / non-finite | resolves nothing |
-| `--voxel-size` given explicitly | wins, and its unit is converted to µm |
-| Unknown `--voxel-unit` | hard error, exit non-zero |
-| Different-resolution volume | uses that volume's own value |
-| Remote path | value comes from the opened volume, no extra request |
+| Case | Invocation | Exit | Output |
+|---|---|---|---|
+| Zero size | `--voxel-size 0` | **1** | `Error: --voxel-size must be a positive finite number`; no `.zattrs` |
+| Negative size | `--voxel-size -3` | **1** | same error; no `.zattrs` |
+| Non-finite | `--voxel-size nan` | **1** | same error; no `.zattrs` |
+| Unknown unit | `--voxel-size 7.91 --voxel-unit furlong` | **1** | `Error: unsupported --voxel-unit: furlong`; no `.zattrs` |
+| Explicit, sub-unit | `--voxel-size 8640 --voxel-unit nanometer` | 0 | `Voxel size (from command line): 8.64 nanometer`; zarr scale `[8.64, …]` in nm |
+| Explicit, base unit | `--voxel-size 8.64 --voxel-unit micrometer` | 0 | `Voxel size (from command line): 8.64 micrometer`; zarr scale `[8.64, …]` in µm |
+| Baseline, zero size | `--voxel-size 0` | **1** | same error as the patched binary |
 
-*Filled in from the run where the workflow exercises them; otherwise recorded as
-still open.*
+The last row is the control for the claim that this patch introduces no regression
+in input validation: both binaries reject a non-positive `--voxel-size`, because
+that check predates the patch. What the patch changes is not validation of what the
+user supplies, but whether a value is found at all when the user supplies none.
+
+Note on the two explicit-unit rows: the two invocations express the same physical
+size and produce the same numeric scale, but the declared *unit* differs because
+`--voxel-unit` describes what the user meant. That is the patched behaviour by
+design — the CLI value is converted to micrometres for the TIFF resolution, and the
+caller's stated unit is preserved in `.zattrs`.
+
+**Not exercised:** the "no usable voxel size anywhere" path, i.e. the branch that
+emits the warning and writes no physical scale. With this volume the patched binary
+finds the value in the volume it has already opened, which is the fix, so the
+branch is unreachable without severing the volume from its own metadata. It is
+logic-verified in the harness (`RESULTS.md` §3) and remains the one path this
+workflow does not drive end to end. Stated here rather than omitted.
 
 ---
 
 ## 9. Problems still open
 
-*Filled in from the run.*
-
-Known and independent of the build:
-
-* The GUI predicate (`SegmentationCommandHandler.cpp:2076-2078`) is deliberately
-  **not** part of this patch, so the CLI fix stays unreachable from the route most
-  users take. Documented as a separate follow-up per `RESUME.md` §6.
-* No pull request has been opened against `ScrollPrize/villa` and nothing has been
+* **The GUI path.** `SegmentationCommandHandler.cpp:2076-2078` still suppresses
+  `--voxel-size` for a native-resolution remote volume, so the CLI fix is not
+  reachable from the route most users take. Deliberately not part of this patch
+  (`RESUME.md` §6); documented as a separate follow-up in `FEASIBILITY.md` §8.
+* **The "no metadata" warning branch**, as described in §8.
+* **Only two volumes and one crop per volume were rendered.** The public catalog
+  has 46 scrolls; this is a demonstration that the fix works, not a survey.
+* No pull request has been opened against `ScrollPrize/villa`, and nothing has been
   submitted for a prize.
 
 ---
@@ -198,11 +271,16 @@ Known and independent of the build:
 # locally: syntax/behaviour pre-flight for the workflow and its reporter
 python ci/preflight_workflow.py     # YAML, bash -n per step, patch round-trip
 python ci/selftest_compare.py       # reporter self-test on synthetic fixtures
+python ci/summarize_zattrs.py <path>  # one-line .zattrs summary
 
 # remotely: dispatch the workflow (needs Actions: write on the repository)
 #   GitHub UI -> Actions -> "Renderer validation (baseline vs patched)" -> Run workflow
 ```
 
-Artefacts retained for 30 days: `ci-out/` (logs, toolchain, patch diff, comparison
-report) and `out/` (the rendered `.zarr` attributes and TIFFs). Sizes are bounded
-by the 128×128 crop and the single-slice render.
+Artefacts retained for 30 days: `ci-out/` (toolchain, dependency presence, build
+logs with `/usr/bin/time -v`, the patch diff, `comparison.txt`, `edge-cases.txt`,
+`tiffinfo.txt`, per-run render logs and exit codes) and `out/` (the rendered
+`.zattrs` and TIFFs). Size is bounded by the 128×128 crop and single-slice render.
+Downloading them needs authentication; the job log itself is readable and contains
+the same comparison report.
+

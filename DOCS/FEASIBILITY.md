@@ -141,13 +141,38 @@ four real published documents and prints the declared physical scale each would
 produce. Three of four diverge; the fourth is a control that confirms the
 pre-patch reader was not simply broken everywhere. Transcript in `RESULTS.md`.
 
-**[exec]** 16 test cases / 82 assertions covering every case the brief lists:
+**[exec]** 19 test cases / 107 assertions covering every case the brief lists:
 local valid, remote valid, missing metadata, zero, negative, non-finite, explicit
 size, native resolution, downsampled resolution, a surface genuinely below
 threshold (via the unchanged `min_area_cm` path, untouched by this patch),
 rendering with a verified scale, rendering with metadata unavailable.
 
-**Not demonstrated:** an actual render, an actual `.zattrs`, actual TIFF tags.
+**[exec] Demonstrated on 2026-09-16: an actual render, actual `.zattrs`, actual
+TIFF tags.** Both binaries were compiled in CI from the pinned revision and run
+against `PHerc0009B` (and `PHerc0172` as control). The patched renderer declared
+`micrometer` / `[8.64, 8.64, 8.64]` where the baseline declared `nanometer` /
+`[1, 1, 1]`, wrote `XResolution = 2939.8147` px/inch where the baseline wrote no
+resolution tag, and produced **byte-identical decoded pixels**. Full record in
+`CI_VALIDATION.md`.
+
+**Also established, and it is the more useful result:** the patch as first
+committed **did not compile**. See `RESULTS.md` §9.1.
+
+**Still not demonstrated:** broader coverage — two volumes, one crop each, one
+slice. This is a demonstration, not a survey, and the "no usable voxel size
+anywhere" branch is covered by unit tests only (driving it end to end would mean
+severing a volume from its own metadata).
+
+## 6b. What changed about the environment story
+
+`§5` above describes the local machine, and is still accurate. What changed is
+that the fix no longer depends on it: the validation runs on GitHub-hosted
+runners, using the package list upstream's own `install_build_deps.sh` draws from
+the public Ubuntu archive and nothing private. Neither of upstream's prebuilt
+dependency bundles could be used — an anonymous `ghcr.io` token request for
+`scrollprize/vc3d-deps` returns **HTTP 403** for both the Windows and Linux tags —
+so the workflow installs dependencies itself rather than relying on a registry
+this project has no access to.
 
 ## 7. Difference from existing contributions
 
@@ -161,7 +186,8 @@ rendering with a verified scale, rendering with metadata unavailable.
 | Invalid local value (`0`, `-3`) | noted in review, unfixed | fixed; origin tracked |
 | Unit mismatch between number and declared unit | not addressed | fixed (value-source-derived unit) |
 | GUI enable predicate (`baseScaleLevel() > 0 \|\| …`) | not addressed | diagnosed; not applied (§8) |
-| Tests | none added | 16 cases, 82 assertions, plus upstream's suite as a control |
+| Tests | none added | 19 cases, 107 assertions, plus upstream's suite as a control |
+| Binary-verified | no | **yes** — compiled and run on real published volumes (`CI_VALIDATION.md`) |
 
 The distinction that matters is not line count. #1417 fetched the metadata a
 second time and so inherited a hazard the reviewer had to flag. This patch
@@ -197,7 +223,7 @@ plus the verification that the two lapsed alternatives left open.
 
 ## 9. Decision
 
-**GO.**
+**GO — and the condition has been met.**
 
 The problem is present, the cause is established at file-and-line resolution, the
 fix is small and reuses an existing shared abstraction, the improvement is
@@ -205,8 +231,13 @@ demonstrated on real published data with a working control, and the two lapsed
 alternatives are weaker in a specific, checkable way (an extra network fetch that
 can disagree with the volume, and a fragment hazard it must defend against).
 
-**Conditional on one item**, which is a resource rather than a doubt: compiling
-and running the patched `vc_render_tifxyz` requires the vcpkg dependency closure.
-Until that is authorised and built, the patch should be described as
-"logic-verified, not binary-verified" and must not be presented as ready for
-submission on its own.
+**The one condition — compiling and running the patched `vc_render_tifxyz` — was
+met on 2026-09-16**, on GitHub-hosted runners rather than through the vcpkg closure
+this section originally anticipated. The patch is therefore **compiled and
+executed**, and the earlier instruction to describe it as "logic-verified, not
+binary-verified" no longer applies. See `CI_VALIDATION.md`.
+
+What it is *not* is finished: the GUI path is still unchanged, coverage is two
+volumes and one crop, and the patch as first committed did not compile at all
+(`RESULTS.md` §9.1). "GO" here means the contribution is real and demonstrable, not
+that it is complete.

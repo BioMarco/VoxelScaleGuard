@@ -28,7 +28,7 @@ node harness/fetch_deps.mjs
 pwsh -File harness/build.ps1 -Configuration Release
 cd harness\build\Release
 .\test_upstream_voxel_size_metadata.exe            # expect: 13 cases / 54 assertions, all pass
-.\test_render_voxel_size.exe                       # expect: 16 cases / 82 assertions, all pass
+.\test_render_voxel_size.exe                       # expect: 19 cases / 107 assertions, all pass
 .\probe_render_voxel_size.exe                      # expect: 3 divergences out of 4 volumes
 cd ..\..\..
 
@@ -53,7 +53,7 @@ source volume remotely and is holding the correct value**. For three of four
 published volumes probed, it therefore falls back to a scale of `1.0` declared as
 **nanometres**, making the declared physical voxel size wrong by **×2400, ×8640 or
 ×45532**. The rendered pixels are correct; every physical number attached to them
-is not. The fix is one file, +177/−65, and is written but **has never been
+is not. The fix is one file, +176/−63, and is written but **has never been
 compiled or run**.
 
 ## 3. Read these, in this order
@@ -85,17 +85,31 @@ boundaries, environment traps.
   `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980`.
 * **The harness**, which compiles the pinned revision's real
   `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte, plus a
-  verbatim copy of the pre-patch reader, plus tests: 16 cases / 82 assertions, with
+  verbatim copy of the pre-patch reader, plus tests: 19 cases / 107 assertions, with
   upstream's own 13-case suite compiled unmodified as the control.
 * **The before/after demonstration on four real published volumes**, with a
   deliberate control (the one legacy-shaped volume that already worked, and which
   is the volume upstream's only live-S3 test pins).
 * **Eleven documents** and a public repository.
 
-## 5. The next step — and the news that makes it cheaper
+## 5. The next step — **this section is history; the gap it describes is closed**
 
-**The blocking gap is that the patched binary has never been compiled or run.**
-Continue there.
+> **Closed 2026-09-16.** The patched binary now compiles and runs, and the
+> before/after was captured from two real binaries on real published volumes. The
+> route was **not** the vcpkg closure and **not** the prebuilt Windows package
+> described below: it was a GitHub Actions workflow on a free `ubuntu-24.04` runner
+> using the public apt package list. Full record in `CI_VALIDATION.md` and
+> `RESULTS.md` §9.
+>
+> The text below is kept because it documents what was believed and why, and
+> because one of its assumptions turned out badly wrong: the patch it describes as
+> ready to build **did not compile**. See `RESULTS.md` §9.1.
+>
+> What genuinely remains is the **GUI path** (§7.4) and broader coverage. Neither
+> needs the vcpkg closure.
+
+**The blocking gap was that the patched binary had never been compiled or run.**
+That is now closed.
 
 The full build needs the vcpkg closure (Qt, OpenCV, Ceres, CGAL), which is
 unauthorised and multi-GB. But reconnaissance found a way to get most of the
@@ -311,22 +325,29 @@ DOCS/ARCHITECTURE.md, DOCS/TEST_PLAN.md, DOCS/INDEX.md.
 
 Prima di qualunque cosa, esegui le verifiche di DOCS/RESUME.md §1 (sono read-only)
 e riportami l'esito: repository pulito e allineato, i due binari di test che
-passano (13/13 e 16/16), il probe che mostra 3 divergenze su 4 volumi, e la patch
+passano (13/13 e 19/19), il probe che mostra 3 divergenze su 4 volumi, e la patch
 che fa round-trip con `git apply --check --reverse`.
 
-Stato: diagnosi verificata ed eseguita su dati reali; patch scritta (un file,
-+177/-65) ma MAI compilata né eseguita. Non descriverla come funzionante.
+Stato al 2026-09-16 (seconda sessione): diagnosi verificata; **la patch è stata
+compilata ed eseguita** su runner GitHub Actions, dal commit fissato, contro volumi
+pubblicati reali. La scala fisica dichiarata diventa corretta (8.64 micrometri dove
+il binario distribuito dichiarava 1 nanometro) e i pixel renderizzati sono
+byte-identici. Vedi DOCS/CI_VALIDATION.md e DOCS/RESULTS.md §9.
 
-Obiettivo di questa sessione: chiudere il gap principale di DOCS/RESULTS.md §7,
-cioè dimostrare il prima/dopo su un volume reale.
+ATTENZIONE — il dato più importante: la patch **come era stata committata non
+compilava**. Il primo tentativo di compilazione è fallito su un errore di uso prima
+della dichiarazione (RESULTS.md §9.1). È corretta, e l'harness ora ha un test per
+quella classe di difetto. Non presentare la storia come se fosse andata liscia.
 
-Notizia utile già raccolta: esiste un pacchetto Windows precompilato costruito
-esattamente sul commit fissato (757f70c), che include gli eseguibili CLI vc_*.
-Questo permette di ottenere il "prima" dal binario realmente distribuito senza
-compilare nulla. Dettagli e procedura in DOCS/RESUME.md §5.
+Obiettivo di una prossima sessione: il percorso GUI (RESULTS.md §7.4) e copertura
+più ampia (due volumi, un crop, una slice finora). Nessuno dei due richiede la
+closure vcpkg.
+
+Non serve più scaricare il pacchetto Windows precompilato per ottenere il "prima":
+il baseline compilato dallo stesso commit lo fornisce già.
 
 Chiedimi l'autorizzazione prima di:
-  - scaricare quel pacchetto (~148 MB) o qualunque cosa pesante;
+  - scaricare il pacchetto Windows (~148 MB) o qualunque cosa pesante;
   - installare MSYS2 o la closure vcpkg/Qt/OpenCV (multi-GB);
   - aprire una PR o pubblicare qualunque cosa.
 
@@ -347,8 +368,11 @@ Alla fine riporta solo risultati effettivamente ottenuti, e cosa resta bloccato.
 ## 12. Why this file exists
 
 A handoff that only says "read the docs" loses the things that were expensive to
-find and cheap to forget: that the shipped Windows binary matches the pinned
-commit, that pushes need an escalation, that cmake cannot spawn subprocesses here,
-which alternative designs were already rejected and on what grounds. Those are in
-§5–§7. `DOCS/RESULTS.md` §7 remains the authoritative list of what is unverified;
-if the two ever disagree, `RESULTS.md` wins.
+find and cheap to forget: that pushes work from this machine but `cmake` cannot
+spawn subprocesses here, that neither of upstream's prebuilt dependency bundles is
+anonymously readable, which alternative designs were already rejected and on what
+grounds, and — now — that the patch this project spent two sessions describing as
+"logic-verified" turned out not to compile the first time anything tried it. Those
+are in §5–§7 and in `RESULTS.md` §9. `DOCS/RESULTS.md` §7 remains the authoritative
+list of what is unverified, though most of it is now closed; if the two ever
+disagree, `RESULTS.md` wins.

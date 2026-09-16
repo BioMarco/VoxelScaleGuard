@@ -52,7 +52,7 @@ happens to pin — which is why the defect has survived.
 1. **A verified diagnosis**, at file-and-line resolution, of five interacting
    defects, including the finding that the error is the *product* of two
    independent bugs (an unresolved number, and a unit that does not match it).
-2. **A contained fix** — one file, +177/−65 — that routes resolution through an
+2. **A contained fix** — one file, +176/−63 — that routes resolution through an
    abstraction `core` already provides and that other tools already use, and that
    resolves the value *after* the volume is open so the already-fetched remote
    value is reused. No public interface change, no new dependency, no new
@@ -116,59 +116,56 @@ Stated plainly, because this is what the review team will check first.
 * The pre-patch reader returns `0.0` and `-3.0` as if they were measurements.
 * The URL-fragment hazard from #1417's review is real in `joinRemoteUrlPath`, and
   reachable via the GUI's `remoteVolumeLocator()` for rebased volumes.
-* The fixed decision procedure behaves as specified, across 16 cases.
+* The fixed decision procedure behaves as specified, across 19 cases.
 * The patch applies to the pinned revision exactly (`git apply --check --reverse`
   succeeds on the patched tree).
+* **The patched binary compiles and runs.** Both the baseline and the patched
+  renderer were built in CI from the pinned revision and run against real published
+  volumes: the declared physical scale becomes `micrometer` / `[8.64, 8.64, 8.64]`
+  where the shipped binary declared `nanometer` / `[1, 1, 1]`, the TIFF gains
+  `XResolution = 2939.8147` px/inch, and the decoded pixels are **byte-identical**.
+  See `CI_VALIDATION.md`.
+* Unusable inputs are refused rather than guessed: `--voxel-size 0`, `-3`, `nan`,
+  and an unknown `--voxel-unit` each exit non-zero and write no physical scale.
 
-**Not verified — the honest gaps**
+**Honest gaps, stated rather than omitted**
 
-* **The patched binary has never been compiled or run.** Two independent causes,
-  both measured on 2026-09-16 and recorded in `RESULTS.md` §8.4: the compile-time
-  closure (OpenCV, libtiff, Boost `program_options`, curl, blosc, zstd, lz4,
-  `vc_delta3d`) is not installed, and neither CMake nor Ninja can execute a
-  compiler in this environment — CMake's child-process probe of Ninja returns
-  `Accesso negato`, and Ninja hangs when a build rule spawns a process. A newer
-  CMake (upstream needs ≥ 3.28; 3.24 is present) would close only the version half.
-  The patch is **logic-verified, not binary-verified**.
-* **No render was produced**, so there is no `.zattrs` file, no TIFF tag dump, and
-  no before/after image pair. The physical-scale consequence is derived from
-  reading `writeZarrAttrs` and `Tiff.cpp`, plus the live documents.
-* **The GUI path stays broken** without the separate
-  `SegmentationCommandHandler` change, so the fix is not yet reachable from the
-  route most users take.
-* **The `before` transcript is available but has not been captured.** A prebuilt
-  Windows package built from exactly the pinned commit
-  (`VC3D-757f70c-2026-09-15-win64.zip`, 148.4 MB, `latest` release) was
-  re-confirmed to exist [live] — but it has not been downloaded, at the standing
-  instruction to obtain authorisation first. It yields the *before* side only; the
-  *after* side still requires a build.
+* **The patch as first committed did not compile.** The new resolution block used
+  variables declared ~60 lines below it. This is recorded here because it is the
+  most instructive result in the project: the change was small, reviewed, and
+  "logic-verified", and it still could not build. It is fixed, and the harness now
+  tests for that class of defect — but a reader should know the first compile is
+  what found it, not a human.
+* **The GUI path stays broken** without the separate `SegmentationCommandHandler`
+  change, so the fix is not yet reachable from the route most users take.
+* **Coverage is two volumes and one crop each**, one slice. That is enough to
+  demonstrate the correction and the absence of a pixel regression; it is not a
+  survey of the catalog.
+* **The "no usable voxel size anywhere" branch** — warning emitted, no physical
+  scale written — is covered by unit tests, not end to end. Driving it would mean
+  severing a volume from its own metadata; with a real volume the patched binary
+  finds the value, which is the fix working.
 
-Because of the first two, **this is not ready to submit as a working fix.** It is
-a verified diagnosis with a logic-verified patch, and the remaining work is
-enumerated with what it needs.
+This is now a working, binary-verified fix for the renderer, with the GUI
+follow-up and broader coverage outstanding.
 
 ## Suggested next steps, in order
 
-1. **Capture the `before` transcript** from the prebuilt Windows package built from
-   the pinned commit (148.4 MB, `latest` release; existence re-confirmed [live]
-   2026-09-16). This needs no build and no authorisation beyond the download. It
-   answers a question currently only [read]: that the `vc_*` CLI tools really do
-   ship in the bundle, and what the shipped renderer actually prints.
-2. Authorise a build of the patched `vc_render_tifxyz`. On the current machine this
-   is not a matter of choosing a preset: `RESULTS.md` §8.4 records that neither
-   CMake nor Ninja can execute a compiler here, and that the dependency closure is
-   absent. A build therefore needs a different environment — a machine with a
-   working CMake ≥ 3.28 + Ninja + Docker/WSL, or a full `cl.exe` manifest — and the
-   decision is the user's, not the agent's.
-3. Render a small segment against
-   `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr` and check
-   `.zattrs` (`unit: micrometer`, `scale: [1, 8.64, 8.64]` at `-g 0 --scale 1`) and
-   the TIFF `XResolution` (≈2939.8 px/inch). Capture the before/after logs and the
-   images the rubric asks for.
-4. Confirm the pixels are unchanged on a legacy volume (`PHerc0172`) as the
-   regression check.
-5. Take the VC3D predicate change as a reviewed follow-up.
-6. Open the PR, then submit.
+1. ~~Authorise a build of the patched `vc_render_tifxyz`.~~ **Done 2026-09-16** on
+   GitHub-hosted runners; both binaries built from the pinned revision. The local
+   machine remains unable to build it (`RESULTS.md` §8.4), which is why the
+   workflow exists.
+2. ~~Render a small segment against PHerc0009B and check `.zattrs` and the TIFF
+   `XResolution`.~~ **Done**: `micrometer` / `[8.64, 8.64, 8.64]` and
+   `XResolution = 2939.8147`. See `CI_VALIDATION.md` §7.
+3. ~~Confirm the pixels are unchanged on a legacy volume (`PHerc0172`).~~ **Done**:
+   decoded-pixel hashes identical on both volumes.
+4. Optionally add a rendered image pair to the assets below, for the rubric's
+   "before/after screenshots" — the tags and logs are already captured.
+5. Take the VC3D predicate change (`SegmentationCommandHandler.cpp:2076-2078`) as a
+   reviewed follow-up. It is the remaining gap for real users.
+6. **Decide whether to open the PR.** Not done; see the note at the top of this
+   file.
 
 ## Attribution
 
@@ -181,7 +178,12 @@ verifies what the earlier attempts left open.
 
 ## Assets to attach
 
-* `RESULTS.md` §2 — the before/after transcript on four real volumes.
+* `CI_VALIDATION.md` — the build and the before/after run, with the run URL, the
+  exact revision, the build configuration and the raw comparison report.
+* `RESULTS.md` §2 — the before/after transcript on four real volumes' metadata.
+* `RESULTS.md` §9 — including §9.1, that the patch did not compile as first
+  committed and why that is worth reporting.
 * `harness/` — the reproducer, buildable in minutes with a local MSVC toolchain.
 * `patch/vc_render_tifxyz.patch` — the fix, one file, reviewable in a sitting.
-* *(pending)* rendered `.zattrs`, TIFF tag dump, and before/after images.
+* *(optional)* rendered before/after images; the `.zattrs` and TIFF tag dumps are
+  already captured in `CI_VALIDATION.md` §7.

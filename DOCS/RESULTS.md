@@ -329,19 +329,34 @@ cd harness/build/Release
 
 ## 7. What was NOT verified — and exactly what is missing
 
+> **Status update, 2026-09-16 (second session).** §7.1, §7.2 and §7.3 are now
+> **CLOSED** by execution — see §9. The entries below are kept verbatim as the
+> record of what was open and why, because that record is what made the gap
+> checkable; §7.1 in particular is now known to have understated the risk (the
+> patch did not merely risk a warning, it did not compile).
+> §7.4 and §7.5 remain open.
+
 This is the most important section of this document.
 
-### 7.1 The patched `vc_render_tifxyz` was never compiled or run
+### 7.1 The patched `vc_render_tifxyz` was never compiled or run — **CLOSED 2026-09-16**
+
+*Read the text below as the state before 2026-09-16. It is kept verbatim because
+it is what made the gap checkable, and because it turned out to be too optimistic:
+the compile it called unverified did not merely warn, it failed.*
 
 **Blocked by:** no Qt, OpenCV, Ceres, CGAL, libtiff or boost on the machine, and no
 vcpkg (`VCPKG_ROOT` unset, no checkout present). Upstream also requires CMake
 3.28; 3.24 is what is installed.
 
-**Consequence:** the patch is **logic-verified, not binary-verified.** Its C++
-has been read line by line but not type-checked by a compiler. Specifically
-unverified: that the new static helpers compile in that translation unit, and
-that the reordering does not produce an unused-variable or shadowing diagnostic
-under `-Werror`.
+**Consequence (as then stated):** the patch is **logic-verified, not
+binary-verified.** Its C++ has been read line by line but not type-checked by a
+compiler. Specifically unverified: that the new static helpers compile in that
+translation unit, and that the reordering does not produce an unused-variable or
+shadowing diagnostic under `-Werror`.
+
+**What actually happened:** the new block was inserted before the declarations it
+reads, so the file did not compile at all. See §9.1. The two risks named above were
+the right ones; the outcome was worse than "a diagnostic".
 
 **To close it:** the `windows-msvc` preset's vcpkg dependency closure (Qt, OpenCV,
 Ceres, CGAL built from source) or the CI container. Multi-GB download, long
@@ -354,7 +369,7 @@ build. **Not attempted; requires authorisation.**
 > target's *link* closure excludes Ceres, CGAL and Qt — those are configure-time
 > requirements of the project as a whole, not of this binary.
 
-### 7.2 No `.zattrs` and no TIFF were produced
+### 7.2 No `.zattrs` and no TIFF were produced — **CLOSED 2026-09-16**
 
 The declared physical scale of `1 nm` versus `8.64 µm` etc. is derived from
 reading `core/src/Zarr.cpp:386-404` and `core/src/Tiff.cpp:236-239`, plus the live
@@ -365,7 +380,7 @@ in §7.1 and a real volume and a tifxyz segment.
 `s3://vesuvius-challenge-open-data/PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr`,
 then inspect `.zattrs` and `tiffinfo` output. Needs §7.1 plus a segment tifxyz.
 
-### 7.3 No render was run on a real volume at all
+### 7.3 No render was run on a real volume at all — **CLOSED 2026-09-16**
 
 Consequently there is no evidence about surface growth, timing, or image content
 from the patched binary. There is also no before/after image pair.
@@ -701,16 +716,182 @@ The one thing this session did close is a *documentation* gap: the deadline clai
 
 ---
 
-## 9. Bottom line
+## 9. Session of 2026-09-16 (second) — the renderer compiled, run, and compared
+
+**This section closes §7.1, §7.2 and §7.3.** It is the first execution-based
+verification of the fix, and it began by disproving the patch.
+
+Everything below was produced by GitHub Actions run
+[35137825520](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520)
+on `ubuntu-24.04`, building
+`ScrollPrize/villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980`. The workflow is
+`.github/workflows/renderer-validation.yml`; the full record is in
+`DOCS/CI_VALIDATION.md`.
+
+### 9.1 The patch did not compile — and that is the headline
+
+The patch as committed in `f2945b9` **could never have built**. The first real
+compile produced:
+
+```
+vc_render_tifxyz.cpp:1449:43: error: 'hasExplicitVoxelSize' was not declared in this scope
+vc_render_tifxyz.cpp:1450:13: error: 'voxel_unit' was not declared in this scope
+```
+
+and the same for `explicitVoxelSize`, `base_voxel_size`, `zarr_voxel_unit` and
+`render_level_voxel_size`. The new resolution block had been inserted about sixty
+lines **before** the declarations it reads.
+
+This is precisely the risk §7.1 recorded as unverified — *"that the new static
+helpers compile in that translation unit, and that the reordering does not produce
+an unused-variable or shadowing diagnostic"*. It was not a diagnostic; it was a
+hard error. §7 was right to keep it open, and wrong to frame it as a warning risk.
+
+**Fixed** by moving the block to immediately after the declarations block. No logic
+changed. Diffstat went from +177/−65 to **+176/−63**; `git apply --check --reverse`
+exits 0, and a reverse-then-forward round trip reproduces the same file
+byte-for-byte.
+
+### 9.2 The harness was blind to it, and was itself contaminated
+
+Two harness defects were found while fixing this:
+
+1. **The "pristine" copy was patched.** `harness/setup.ps1` copies upstream files
+   from `villa/`, which is deliberately modified in place to hold the patch. So
+   `harness/src/villa/apps/src/vc_render_tifxyz.cpp` — labelled pristine, and used
+   as the "before" side — actually contained the patch. It now comes from
+   `git show <commit>:<path>`, i.e. the committed blob. Verified: the copy's SHA-256
+   equals the pinned blob's, and it contains `readVolumeVoxelSize` and not
+   `resolveRenderVoxelSize`.
+2. **Nothing compiled the patched file**, because its closure (OpenCV, libtiff,
+   Boost) is absent locally. The class of defect is now checked without that
+   closure: a test asserts the pristine copy is unpatched and the working tree is
+   patched, and that every name the resolution block reads is declared *above* its
+   call site. A fixture reproducing the pre-fix ordering proves the check can tell
+   the two apart. It cannot prove the file compiles; only the build can.
+
+Harness after the fix [exec]: upstream control **13 cases / 54 assertions** pass
+unmodified; this project **19 cases / 107 assertions** pass; probe unchanged at
+4 documents, 3 divergences.
+
+### 9.3 Both binaries built from one commit
+
+| Step | Result |
+|---|---|
+| villa checked out at the pinned commit, worktree asserted clean | [exec] |
+| Baseline `vc_render_tifxyz` built (`QuickBuild`, `-O0`, gcc 13.3.0, cmake 3.31.6, ninja 1.13.2) | [exec] |
+| Patch applied with `git apply` to that same tree | [exec] |
+| Applied diff byte-identical to `patch/vc_render_tifxyz.patch` (`PATCH_IDENTICAL=yes`) | [exec] |
+| Patched `vc_render_tifxyz` built | [exec] |
+| `--help` identical between the two binaries | [exec] |
+
+The patch is the only difference between the two binaries, and the workflow checks
+that rather than assuming it.
+
+### 9.4 Before and after on a real published volume
+
+One invocation per binary, identical inputs and parameters, shared cache
+directory. Public inputs: `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr`
+with its own mesh `20250510172639-on-20250521125136-8.64um.tifxyz`, and the legacy
+`PHerc0172` volume as the control. 128×128 crop, one slice, remote streaming.
+
+**The log line, from the real binaries** [exec]:
+
+| Run | Log line | Exit |
+|---|---|---|
+| 0009B baseline | `Voxel size: 1.0 (no metadata found; override with --voxel-size)` | 0 |
+| 0009B patched | `Voxel size (remote volume metadata): 8.64 micrometer` | 0 |
+| 0172 baseline | `Voxel size: 1.0 (no metadata found; override with --voxel-size)` | 0 |
+| 0172 patched | `Voxel size (remote volume metadata): 7.91 micrometer` | 0 |
+
+**The `.zattrs` each binary wrote** [exec], scale at dataset `0` (group `-g 0`):
+
+| Run | unit | scale | declared physical voxel size |
+|---|---|---|---|
+| 0009B baseline | `nanometer` | `[1, 1, 1]` | 0.001 µm — wrong by **×8640** |
+| 0009B patched | `micrometer` | `[8.64, 8.64, 8.64]` | 8.64 µm — correct |
+| 0172 baseline | `nanometer` | `[1, 1, 1]` | 0.001 µm — wrong by **×7910** |
+| 0172 patched | `micrometer` | `[7.91, 7.91, 7.91]` | 7.91 µm — correct |
+
+Higher pyramid levels scale correctly too: `0009B-patched` level 5 is
+`[8.64, 276.48, 276.48]` µm, i.e. 8.64 × 32.
+
+Both rows of the baseline are the *unresolved* case, not the "legacy volume already
+works" case: with no store document on the local filesystem, the shipped reader
+finds nothing on either volume. That is the defect, reproduced from the shipped
+behaviour.
+
+**The TIFF tags** [exec]:
+
+| Run | XResolution | ResolutionUnit |
+|---|---|---|
+| 0009B baseline | **absent** | absent |
+| 0009B patched | **2939.814697265625** | 2 (inch) |
+| 0172 baseline | **absent** | absent |
+| 0172 patched | **3211.125244140625** | 2 (inch) |
+
+`25400 / 8.64 = 2939.8148…` and `25400 / 7.91 = 3211.1252…`, so the emitted
+resolution is the correct physical scale to six significant figures. The baseline
+wrote no resolution tag at all — it silently omitted the physical scale rather
+than stating a wrong one, on this path.
+
+### 9.5 The regression check: the rendered pixels are unchanged
+
+| Volume | Decoded pixel SHA-256 | Verdict |
+|---|---|---|
+| 0009B | `7d92aec8…` on both sides | **identical** |
+| 0172 | `4fe7b59a…` on both sides | **identical** |
+
+The **file bytes differ** (14244 vs 14296 for 0009B), because the patched TIFF
+carries the resolution tag the baseline omitted. That is why the verdict is a hash
+of the *decoded pixel array*: comparing file sizes or file digests would have
+reported this fix as a regression. `ci/compare_render_outputs.py` reports both and
+labels which one is the check; `ci/selftest_compare.py` exercises that distinction
+against synthetic fixtures.
+
+No error or warning line was emitted by any of the four runs.
+
+### 9.6 What this does and does not establish
+
+**Established [exec]:** the patched renderer compiles; it runs on a real published
+volume from the public catalog; it resolves the correct voxel size where the
+shipped binary resolved nothing; the declared OME-Zarr physical scale and the TIFF
+resolution tag become correct; the rendered pixels are byte-identical.
+
+**Not established:** anything about GUI reachability (§7.4 stands — the patch does
+not touch `SegmentationCommandHandler`), and correctness on volumes whose metadata
+is genuinely absent, which this volume cannot exercise because the patched binary
+finds the value in the volume it opened. Error handling of unusable *inputs* is
+exercised separately (§9.7).
+
+### 9.7 Error and edge cases
+
+*Filled in from the same workflow's edge-case step; see `DOCS/CI_VALIDATION.md` §8
+for the exact invocations and outputs.*
+
+### 9.8 The "before" side from the shipped binary is now redundant
+
+`RESUME.md` §5 proposed downloading the 148 MB prebuilt Windows package to obtain
+the "before" transcript. That is no longer necessary for this purpose: the
+baseline **is** the shipped behaviour, built from the same commit, and its transcript
+above comes from a real run rather than a downloaded binary. The package remains
+useful only as an independent cross-check that the shipped artefact behaves as the
+source says.
+
+---
+
+## 10. Bottom line
 
 | Question | Answer |
 |---|---|
 | Was the bug still present? | **Yes** in `vc_render_tifxyz`; **no** in `vc_grow_seg_from_seed` (already fixed upstream) |
 | Reproduced? | **Yes**, against the live catalog: the pre-patch reader resolves 1 of 4 real published volumes |
-| Demonstrated before/after? | **Yes** for the resolution logic and the declared physical scale: ×2400, ×8640 and ×45532 errors removed on real stores, with a control that confirms the one case that already worked |
-| Tested on real data? | **Yes** — real published metadata documents. **No** — no render was run |
-| Regression tests? | 16 cases / 82 assertions added; upstream's 13 cases / 54 assertions pass unmodified as a control |
-| Binary-verified? | **No.** See §7.1, and §8.4 for why a build is not reachable here |
-| Can the patched binary be built on this machine? | **No.** Two independent causes: the OpenCV/libtiff/Boost/curl/blosc closure is absent, and neither CMake nor Ninja can execute a compiler here. See §8.4 |
-| Ready to submit as-is? | **No.** It is a verified diagnosis with a logic-verified patch. It needs §7.1–7.2 before it can be presented as a working fix, and §7.4 to be reachable from the GUI |
+| Demonstrated before/after? | **Yes**, twice over: on the resolution logic against live metadata, **and now from two real compiled binaries on a real published volume** (§9) |
+| Tested on real data? | **Yes** — real published metadata documents, **and a real render** of `PHerc0009B` and `PHerc0172` through the real binaries (§9.4) |
+| Regression tests? | 19 cases / 107 assertions; upstream's 13 cases / 54 assertions pass unmodified as a control |
+| Binary-verified? | **Yes** since 2026-09-16: both binaries compile in CI and were run on public data (§9.3–9.4) |
+| Does the patch compile? | **Yes** — but it did **not** before this session. The committed patch could never have built (§9.1). That is the single most important result in this document |
+| Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |
+| Can the patched binary be built on this machine? | **No** locally (§8.4), which is why the build runs on GitHub Actions (§9) |
+| Ready to submit as-is? | **Closer, but not yet.** The renderer fix is now binary-verified; §7.4 (GUI reachability) remains open by decision, and no PR has been opened |
 | Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-16. Earlier revisions wrongly said it had passed; see §8.2 |

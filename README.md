@@ -4,11 +4,20 @@ A verified diagnosis and a contained fix for a **silently wrong physical voxel
 size** in Vesuvius Challenge [`villa`](https://github.com/ScrollPrize/villa)'s
 renderer, `vc_render_tifxyz`.
 
-> **Status: the diagnosis is verified; the patch is logic-verified but has never
-> been compiled or run.** The application cannot be built on the machine used
-> here (no Qt/OpenCV/Ceres/CGAL/vcpkg). Read
-> [`RESULTS.md` §7](DOCS/RESULTS.md) before relying on anything. No pull request
-> has been opened against `villa`, and nothing has been submitted for a prize.
+> **Status: the diagnosis is verified, and the fix is now binary-verified.** The
+> patched `vc_render_tifxyz` has been compiled and run against real published
+> volumes on a GitHub-hosted runner; the declared physical scale becomes correct
+> (`8.64 µm` where the shipped binary declared `1 nm`) and the rendered pixels are
+> byte-identical. See [`CI_VALIDATION.md`](DOCS/CI_VALIDATION.md).
+>
+> **Read this before trusting the patch's history:** the patch as originally
+> committed *did not compile*. The first real compile failed on a
+> use-before-declaration error, which is the single most useful thing this project
+> has produced — see [`RESULTS.md` §9.1](DOCS/RESULTS.md). It is fixed, and the
+> harness now has a test for that class of defect.
+>
+> No pull request has been opened against `villa`, and nothing has been submitted
+> for a prize.
 
 **Start here:** [`DOCS/INDEX.md`](DOCS/INDEX.md) — reading order and the evidence map.
 **Contributing:** [`AGENTS.md`](AGENTS.md) — verification rules, attribution, and the
@@ -51,9 +60,7 @@ Two claims worth flagging because they contradict common assumptions:
   nanometre default. Fixing discovery alone would turn ×8640 wrong into ×1000
   wrong.
 
-## The evidence
-
-Against four real published volumes, running the pinned revision's reader and the
+## The evidence`r`nAgainst four real published volumes, running the pinned revision's reader and the
 fixed chain side by side:
 
 | Published store | Old reader | Store actually says | Declared scale error |
@@ -66,7 +73,7 @@ fixed chain side by side:
 The last row is the reason the bug survived: it is the only catalog entry the old
 reader handles, and it is the volume `core/test/test_volume_live_s3.cpp` pins.
 
-Tests: **16 cases / 82 assertions** added, plus upstream's own **13 cases / 54
+Tests: **19 cases / 107 assertions** added, plus upstream's own **13 cases / 54
 assertions** compiled unmodified as a control. Transcripts in
 [`RESULTS.md`](DOCS/RESULTS.md).
 
@@ -121,7 +128,7 @@ pwsh -File harness/build.ps1 -Configuration Release
 # 3. tests
 cd harness/build/Release
 ./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: 13/13
-./test_render_voxel_size.exe              # this project's: 16/16
+./test_render_voxel_size.exe              # this project's: 19/19
 
 # 4. the before/after demonstration (uses the documents in research/raw_metadata)
 ./probe_render_voxel_size.exe

@@ -33,12 +33,14 @@ already made, and the environment traps.
 
 | Path | What it is |
 |---|---|
-| `../patch/vc_render_tifxyz.patch` | The proposed fix: one file, +177/−65, against `villa` @ `757f70c` |
+| `../patch/vc_render_tifxyz.patch` | The proposed fix: one file, **+176/−63**, against `villa` @ `757f70c` |
 | `../harness/` | The reproducer. Compiles the pinned revision's real translation units, plus a verbatim copy of the pre-patch reader, plus tests |
-| `../harness/tests/test_render_voxel_size.cpp` | 16 cases / 82 assertions, including five that reproduce the defect |
+| `../harness/tests/test_render_voxel_size.cpp` | **19 cases / 107 assertions**, including five that reproduce the defect and three that check the patch as an artefact |
 | `../harness/tools/probe_render_voxel_size.cpp` | The before/after demonstrator over the real published documents |
 | `../research/fetch_volume_metadata.mjs` | Read-only live catalog probe |
 | `../research/raw_metadata/` | The raw published documents it fetched |
+| `../.github/workflows/renderer-validation.yml` | Builds the baseline and the patched renderer from the pinned revision, runs both on public volumes, compares them |
+| `CI_VALIDATION.md` | The record of that run: environment, revision, commands, and results |
 
 ## The two-minute summary
 
@@ -54,6 +56,12 @@ is not.
 The one volume the old reader gets right is the legacy-shaped one that the
 repository's only live-S3 test happens to pin — which is why this survived.
 
-**The patched binary has never been compiled or run.** That is the single largest
-gap and it is stated in the first line of `RESULTS.md`, in §7 of that document,
-and in `PROJECT_STATUS.md` §6.
+**The fix is now compiled and run**, on GitHub-hosted runners, from the pinned
+revision, against real published volumes: the declared scale becomes `8.64 µm`
+where the shipped binary declared `1 nm`, the TIFF gains the resolution tag it was
+missing, and the rendered pixels are byte-identical. See `CI_VALIDATION.md`.
+
+**And the first compile failed.** The patch as originally committed used variables
+declared ~60 lines below their use and could never have built. That is the most
+instructive result in this project, and it is recorded in `RESULTS.md` §9.1 rather
+than tidied away.

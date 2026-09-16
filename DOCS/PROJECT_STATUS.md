@@ -101,22 +101,28 @@ it — the defect the first real compile exposed (§9).
 
 ## 6. What is NOT done, and why
 
-This is the most important section. The brief asked not to declare the project
-finished because code compiles; it does not even compile yet.
+This is the most important section. Three of the four gaps it listed are now
+closed, and closing them did not go the way this project expected: **the patch did
+not compile.** See `RESULTS.md` §9.
 
-| Gap | Cause | What it needs |
-|---|---|---|
-| **The patched binary was never compiled or run** | No Qt, OpenCV, Ceres, CGAL or vcpkg on the machine; `windows-msvc` builds that closure from source. Upstream also wants CMake ≥ 3.28, and 3.24 is installed | Cheaper than first assumed: the `ci-windows-mingw` preset with MSYS2 UCRT64 plus the **prebuilt** `vc3d-deps` archive that CI restores via `oras pull`, not a from-source vcpkg build. **Requires authorisation; not attempted.** Procedure in `DOCS/RESUME.md` §5 |
-| **No `.zattrs` or TIFF was produced** | Needs the built binary plus a real volume **and a tifxyz segment** — no segment is present locally | Build (above), plus a published segment or one grown with the tools |
-| **No render was run on real data** | (as above) | (as above). Note the **before** half is separately obtainable now, from the published prebuilt package built on the pinned commit |
-| **The GUI path remains broken** | `SegmentationCommandHandler.cpp:2076` change deliberately left as a separate commit, because it changes GUI behaviour and its predicate has a lapsed history (#1228) | A maintainer decision; the exact edit is in `FEASIBILITY.md` §8 |
-| **The `vc_zarr_to_tiff` schema gap** | Same class of defect (local-only, top-level key only), but no remote path and not needed for the reported problem | Documented as a candidate, not developed |
-| **The live-S3 test still pins the legacy volume** | Changing an existing live test's fixture is a maintainer decision | Proposed in `PR_DRAFT.md` |
-| **No submission made** | By instruction; and the artifact-level evidence is missing | Steps above |
+| Gap | Status |
+|---|---|
+| **The patched binary was never compiled or run** | **CLOSED 2026-09-16.** Both binaries compile and run in CI on GitHub-hosted runners, from the pinned revision. `RESULTS.md` §9, `CI_VALIDATION.md`. The local machine still cannot build it (`RESULTS.md` §8.4), which is why a workflow does |
+| **No `.zattrs` or TIFF was produced** | **CLOSED.** Real `.zattrs` with `micrometer` / `[8.64, 8.64, 8.64]`, real TIFF `XResolution = 2939.8147`, from a real render. `CI_VALIDATION.md` §7 |
+| **No render was run on real data** | **CLOSED.** Four runs over `PHerc0009B` and `PHerc0172`; decoded pixels byte-identical. `CI_VALIDATION.md` §6–7 |
+| **The patch as first committed did not compile** | **FOUND AND FIXED.** The new resolution block used variables declared ~60 lines below it. This is the most valuable single result in the project: a small, reviewed, "logic-verified" change that could never have built. The harness now tests for the class of defect (`RESULTS.md` §9.2) |
+| **The `harness` "pristine" copy was actually patched** | **FOUND AND FIXED.** `setup.ps1` copied from the patched working tree, so the before/after comparison compared the patch with itself. It now uses `git show <commit>:<path>` |
+| **The GUI path remains broken** | **Open by decision.** `SegmentationCommandHandler.cpp:2076` is deliberately a separate commit, because it changes GUI behaviour and its predicate has a lapsed history (#1228). Exact edit in `FEASIBILITY.md` §8 |
+| **The "no usable voxel size" branch** | **Unit-tested only.** Driving it end to end would mean severing a volume from its own metadata; with a real volume the patched binary finds the value, which is the fix |
+| **Coverage is two volumes, one crop, one slice** | **Open.** Enough to demonstrate the correction and the absence of a pixel regression; not a survey |
+| **The `vc_zarr_to_tiff` schema gap** | **Open.** Same class of defect (local-only, top-level key only), but no remote path and not needed for the reported problem. Documented as a candidate, not developed |
+| **The live-S3 test still pins the legacy volume** | **Open.** Changing an existing live test's fixture is a maintainer decision. Proposed in `PR_DRAFT.md` |
+| **No submission and no PR** | By instruction. The evidence needed for one now mostly exists |
 
-**Therefore the patch must be described as "logic-verified, not binary-verified",
-and the project is not ready to be presented as a working fix**, let alone as a
-Progress Prize submission.
+**The patch is binary-verified as of 2026-09-16.** It compiles, runs on real
+published volumes, corrects the declared physical scale in both output formats, and
+leaves the rendered pixels byte-identical. What it is *not* yet is reachable from
+the GUI, or verified beyond two volumes.
 
 ## 7. Deliverables
 
@@ -193,7 +199,7 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | All ten required documents written |
 | `AGENTS.md` added: verification rules, attribution, scope boundaries, environment traps |
 | Documentation reorganised into `DOCS/`; `DOCS/INDEX.md` added; links and code comments updated |
-| Tests re-run after the reorganisation: 13/13 and 16/16 still pass |
+| Tests re-run after the reorganisation: 13/13 and 19/19 still pass (count grew again on 2026-09-16; see `RESULTS.md` §9) |
 | `.gitattributes` (`* -text`) added so line-ending normalisation cannot corrupt the patch or the byte-for-byte copies |
 | Repository created and pushed to <https://github.com/BioMarco/VoxelScaleGuard> at the user's request (`4a77205`) |
 | Zero-byte `metadata_probe.json` (an artefact of a failed shell redirect) replaced by a real 3812-byte summary; the probe script now writes its own `--out` file (`6de80df`) |

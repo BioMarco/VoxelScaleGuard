@@ -166,16 +166,23 @@ Honest assessment, including the gaps.
 
 In priority order:
 
-1. **The patched binary has never been built or run** (`RESULTS.md` §7.1). Needs
-   the vcpkg dependency closure: Qt, OpenCV, Ceres, CGAL. Multi-GB, not
-   authorised, not attempted.
-2. **No rendered output was inspected** (`RESULTS.md` §7.2). Needs (1) plus a
-   real volume and a tifxyz segment, to produce an actual `.zattrs` and TIFF tags.
+1. ~~**The patched binary has never been built or run** (`RESULTS.md` §7.1).~~
+   **Closed 2026-09-16:** both binaries compile and run on GitHub-hosted runners,
+   and were run against real published volumes. `CI_VALIDATION.md`.
+2. ~~**No rendered output was inspected** (`RESULTS.md` §7.2).~~ **Closed:** real
+   `.zattrs` (`micrometer`, `[8.64, 8.64, 8.64]`) and real TIFF resolution tags,
+   with decoded pixels byte-identical to the baseline.
 3. **The GUI path stays broken** without the `SegmentationCommandHandler`
    predicate change (`RESULTS.md` §7.4), so the fix would not reach most users.
+   **Still the main blocker for real-world impact.**
 4. ~~**The deadline is unconfirmed** (§1.1).~~ **Closed 2026-09-16:** the deadline
    is confirmed as 11:59pm Pacific, September 30th, 2026 (§1.1). What remains is
    the ordinary work of making a submission, not uncertainty about the date.
+
+Also worth stating before a submission is written: the patch as **first committed
+did not compile** (`RESULTS.md` §9.1). It is fixed, but a submission that presents
+this as a clean, reviewed fix without that detail would not survive the review
+team reproducing it — and the detail is a better story than the omission.
 
 ### 4.2 What a submission would be built on, once those clear
 
