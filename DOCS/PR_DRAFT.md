@@ -191,6 +191,61 @@ declared above its call site — but the fact that a change this small could be
   a gap in the test, but it means the branch is covered by unit tests only.
 * Two volumes and one crop each. This is a demonstration, not a survey.
 
+### A second defect found by running it, and fixed here
+
+Worth a maintainer's attention because it is the same class of bug this PR fixes,
+and it was introduced by the first version of this patch.
+
+`--voxel-size 8640 --voxel-unit nanometer` wrote `.zattrs` with scale `8.64` and
+unit `nanometer` — declaring 8.64 nm where the caller asked for 8640 nm, a silent
+×1000 error, while the TIFF tag was correct. Cause: the CLI pair was converted to
+micrometres and the converted *number* was written under the caller's *unit*.
+`writeZarrAttrs` writes the two independently and never checks that they agree.
+
+It was not pre-existing. `main` writes the caller's raw number under the caller's
+unit (`8640 nanometer`) and uses the converted value only for the TIFF resolution,
+so `.zattrs` and the TIFF both denoted 8640 nm. So `--voxel-unit` has always meant
+"the unit of the number I am giving you", and this PR broke that.
+
+Fixed by computing the number and the unit together, so a mismatch is not
+expressible:
+
+```cpp
+if (const char* unit = zarrVoxelUnit(resolved, voxel_unit)) {
+    zarr_voxel_unit = unit;                                       // caller's unit
+    zarr_voxel_value = zarrVoxelValue(resolved, explicitVoxelSize);  // caller's number
+}
+```
+
+Metadata-sourced sizes are still declared in micrometres, unchanged. No option
+semantics change. The invariant
+`zarrScaleValue() × micrometersPerUnit(zarrUnit()) == micrometerPerVoxel` is now
+asserted for nm/µm/mm/m, and the CI check converts `.zattrs` **and** the TIFF tags
+to micrometres and compares both against what the command line asked for.
+
+### Reproducing the evidence
+
+All of it is reproducible from this repository without the dependency closure:
+
+* `.github/workflows/renderer-validation.yml` — builds `main` and this patch from
+  the same pinned revision on a free `ubuntu-24.04` runner using only public apt
+  packages, runs both on `PHerc0009B` and `PHerc0172`, and compares the outputs.
+* `DOCS/CI_VALIDATION.md` — the run record: revision, configuration, the log lines,
+  the emitted `.zattrs`, the TIFF tags, the pixel regression check, and the
+  edge cases.
+* `harness/` — the reproducer, buildable in minutes with a local MSVC toolchain;
+  upstream's own suite passes unmodified as the control.
+
+Measured on `PHerc0009B` @ `-g 0 --scale 1`, baseline vs patched:
+
+| | baseline | patched |
+|---|---|---|
+| log | `Voxel size: 1.0 (no metadata found…)` | `Voxel size (remote volume metadata): 8.64 micrometer` |
+| `.zattrs` unit | `nanometer` | `micrometer` |
+| `.zattrs` scale (level 0) | `[1, 1, 1]` | `[8.64, 8.64, 8.64]` |
+| TIFF `XResolution` | absent | `2939.8147` px/inch (`25400/8.64`) |
+| decoded pixels | — | **byte-identical** |
+
 ### Relationship to other work
 
 * **#1226 / #1227** fixed the same class of problem in `Volume` construction. This

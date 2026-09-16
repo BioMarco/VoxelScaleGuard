@@ -599,7 +599,10 @@ jobs:
           set -euo pipefail
           python3 ci/compare_render_outputs.py out ci-out | tee ci-out/comparison.txt
           echo
-          echo "=== tiffinfo on the first slice of each run (tool-level cross-check) ==="
+          echo "=== tiffinfo on the first slice of each run (independent tool) ==="
+          # --tif-output names a DIRECTORY; the slices live inside it as NN.tif.
+          # `find <dir> -name '*.tif'` therefore returns the slices, while
+          # `find <dir>` returns the directory and tiffinfo rejects it.
           for t in 0009B-baseline 0009B-patched 0172-baseline 0172-patched; do
             first=$(find "out/${t}.tif" -name '*.tif' 2>/dev/null | sort | head -1 || true)
             echo "--- ${t}: ${first:-<none>}"
