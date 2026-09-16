@@ -481,9 +481,15 @@ jobs:
           OUT="$W/ci-out/edge-cases.txt"
           : > "$OUT"
 
-          # run_case <label> <expected-exit> <bin> <extra args...>
+          # run_case <label> <expected-exit> <expected-um|-> <bin> <extra args...>
+          #
+          # When the run is expected to SUCCEED, <expected-um> is the physical voxel
+          # size in micrometres that the command line asked for. The .zattrs number
+          # and unit and the TIFF resolution are then each converted to micrometres
+          # and checked against it. Exit codes alone cannot see a number/unit
+          # mismatch -- which is exactly the defect this step was extended for.
           run_case() {
-            local label="$1" want="$2" bin="$3"; shift 3
+            local label="$1" want="$2" expect_um="$3" bin="$4"; shift 4
             set +e
             "$bin" -v "$W/vol-cache/0009B" -s "$W/data/seg-0009B-8.64um.tifxyz" \
               -g 0 --scale 1 -n 1 --cache-gb 1 \
@@ -507,10 +513,24 @@ jobs:
                         "$W/out/err/${label}.zarr/.zattrs" 2>/dev/null \
                       || echo "(no .zattrs)")
               printf '    .zattrs   %s\n' "${attrs}"
-              echo
             } >> "$OUT"
+
+            if [ "$expect_um" != "-" ]; then
+              python3 "$W/ci/check_physical_size.py" \
+                --zattrs "$W/out/err/${label}.zarr/.zattrs" \
+                --tiff "$W/out/err/${label}.tif" \
+                --expect-um "$expect_um" --label "$label" \
+                >> "$OUT" 2>&1
+              local phys=$?
+              echo "    physical check exit: ${phys}" >> "$OUT"
+              if [ "$phys" -ne 0 ]; then PHYS_FAILURES=1; fi
+            fi
+            echo >> "$OUT"
           }
 
+          # NB: no trailing arithmetic -- `$((x+1))` returns the new value, and a
+          # value of 0 would trip `set -e`. A plain assignment of 1 is safe.
+          PHYS_FAILURES=0
           echo "voxel-size resolution edge cases" >> "$OUT"
           echo "=================================" >> "$OUT"
           echo >> "$OUT"
@@ -518,19 +538,35 @@ jobs:
           # No usable metadata anywhere is NOT reachable with this volume: the
           # patched binary finds the value in the volume it opened. That is the
           # fix. The remaining cases below force the unusable paths instead.
-          run_case "zero-size"        1 "$BIN" --voxel-size 0
-          run_case "negative-size"    1 "$BIN" --voxel-size -3
-          run_case "nan-size"         1 "$BIN" --voxel-size nan
-          run_case "unknown-unit"     1 "$BIN" --voxel-size 7.91 --voxel-unit furlong
-          run_case "explicit-nm"      0 "$BIN" --voxel-size 8640 --voxel-unit nanometer
-          run_case "explicit-um"      0 "$BIN" --voxel-size 8.64 --voxel-unit micrometer
+          run_case "zero-size"        1 - "$BIN" --voxel-size 0
+          run_case "negative-size"    1 - "$BIN" --voxel-size -3
+          run_case "nan-size"         1 - "$BIN" --voxel-size nan
+          run_case "unknown-unit"     1 - "$BIN" --voxel-size 7.91 --voxel-unit furlong
+
+          # Same physical size, expressed four ways. All four must declare and
+          # resolve to 8.64 um. The nanometer case is the one the first version of
+          # the patch got wrong (it declared 8.64 nm).
+          run_case "explicit-nm"      0 8.64 "$BIN" --voxel-size 8640  --voxel-unit nanometer
+          run_case "explicit-um"      0 8.64 "$BIN" --voxel-size 8.64  --voxel-unit micrometer
+          run_case "explicit-mm"      0 8.64 "$BIN" --voxel-size 0.00864 --voxel-unit millimeter
+          run_case "explicit-m"       0 8.64 "$BIN" --voxel-size 0.00000864 --voxel-unit meter
+          # Physically different size: 7.91 um, to show the check is not just
+          # asserting a constant.
+          run_case "explicit-nm-7910" 0 7.91 "$BIN" --voxel-size 7910 --voxel-unit nanometer
+
           # The baseline, for contrast: it too rejects a non-positive size, so the
           # difference between the binaries is not in input validation but in
           # whether a value is found at all when none is given.
-          run_case "baseline-zero-size" 1 "$BASE" --voxel-size 0
+          run_case "baseline-zero-size" 1 - "$BASE" --voxel-size 0
 
           echo "--- results ---"
           cat "$OUT"
+          echo
+          echo "physical-size failures: ${PHYS_FAILURES}"
+          if [ "$PHYS_FAILURES" -ne 0 ]; then
+            echo "FATAL: a declared physical size did not match what was requested."
+            exit 1
+          fi
           exit 0
 
       - name: Inspect emitted metadata and pixels

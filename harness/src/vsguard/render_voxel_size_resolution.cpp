@@ -196,4 +196,54 @@ std::optional<double> resolveRemoteStoreVoxelSize(
     return std::nullopt;
 }
 
+// --- The .zattrs number/unit pair -------------------------------------------
+
+std::optional<double> micrometersPerUnit(const std::string& unit)
+{
+    // The same spellings --voxel-unit accepts. Kept in one place so the conversion
+    // used to *read* a CLI value and the one used to *check* what was written
+    // cannot drift apart.
+    if (unit == "nanometer" || unit == "nanometre" || unit == "nm")
+        return 0.001;
+    if (unit == "micrometer" || unit == "micrometre" || unit == "um" || unit == "\xC2\xB5m")
+        return 1.0;
+    if (unit == "millimeter" || unit == "millimetre" || unit == "mm")
+        return 1000.0;
+    if (unit == "meter" || unit == "metre" || unit == "m")
+        return 1000000.0;
+    return std::nullopt;
+}
+
+std::string zarrUnit(const ResolvedVoxelSize& resolved,
+                     const std::string& explicitUnit)
+{
+    switch (resolved.source) {
+    case VoxelSizeSource::Cli:
+        // The caller's number and unit are kept as a pair, so the declared unit is
+        // the caller's.
+        return explicitUnit;
+    case VoxelSizeSource::LocalStoreMetadata:
+    case VoxelSizeSource::RemoteVolume:
+    case VoxelSizeSource::RemoteMetadata:
+        // All of these resolve to micrometres by definition.
+        return "micrometer";
+    case VoxelSizeSource::Unspecified:
+        return {};
+    }
+    return {};
+}
+
+double zarrScaleValue(const ResolvedVoxelSize& resolved,
+                      const ExplicitVoxelSize& explicitSize)
+{
+    if (resolved.source != VoxelSizeSource::Cli)
+        return resolved.micrometerPerVoxel;   // micrometres, as declared
+    return explicitSize.value;                // the caller's own number
+}
+
+double voxelSizeToDpi(double micrometersPerPixel)
+{
+    return micrometersPerPixel > 0.0 ? 25400.0 / micrometersPerPixel : 0.0;
+}
+
 } // namespace vsguard

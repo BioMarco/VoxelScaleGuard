@@ -420,6 +420,171 @@ TEST_CASE("--voxel-unit conversion is applied to the CLI value")
 }
 
 // =============================================================================
+// 4b. The .zattrs number/unit pair, in physical terms
+// =============================================================================
+//
+// These assert what a reader of the output would conclude, not what code ran.
+// The defect they exist for: the first version of this patch converted a CLI value
+// to micrometres and then wrote that number under the caller's unit label, so
+// `--voxel-size 8640 --voxel-unit nanometer` declared 8.64 nm instead of 8640 nm --
+// a silent 1000x error, in the very output this project exists to correct.
+
+namespace {
+
+// What a .zattrs reader multiplies: the declared number times the declared unit.
+double physicalMicrometers(const ResolvedVoxelSize& resolved,
+                           const ExplicitVoxelSize& explicitSize)
+{
+    const std::string unit = vsguard::zarrUnit(resolved, explicitSize.unit);
+    if (unit.empty()) return 0.0;
+    const auto perUnit = vsguard::micrometersPerUnit(unit);
+    if (!perUnit) return 0.0;
+    return vsguard::zarrScaleValue(resolved, explicitSize) * *perUnit;
+}
+
+} // namespace
+
+TEST_CASE("a CLI size means the same physical size in every supported unit")
+{
+    // 8640 nm, 8.64 um, 0.00864 mm and 0.00000864 m are the same physical size, so
+    // all four must resolve identically AND declare identical physical scale.
+    struct Case { double value; const char* unit; };
+    const Case cases[] = {
+        {8640.0,        "nanometer"},
+        {8.64,          "micrometer"},
+        {0.00864,       "millimeter"},
+        {0.00000864,    "meter"},
+    };
+
+    for (const Case& c : cases) {
+        const ExplicitVoxelSize explicitSize{true, c.value, c.unit};
+        CAPTURE(c.value);
+        CAPTURE(c.unit);
+
+        // The internal value is micrometres and must agree across all four.
+        const auto um = vsguard::explicitMicrometerPerVoxel(explicitSize);
+        REQUIRE(um.has_value());
+        CHECK(*um == doctest::Approx(8.64));
+
+        const auto resolved = vsguard::resolveVoxelSize(explicitSize, std::nullopt,
+                                                       std::nullopt, std::nullopt);
+        CHECK(resolved.micrometerPerVoxel == doctest::Approx(8.64));
+
+        // And so must what .zattrs declares, once the unit is applied.
+        CHECK(physicalMicrometers(resolved, explicitSize) == doctest::Approx(8.64));
+    }
+}
+
+TEST_CASE("the .zattrs number and its unit always describe the same physical size")
+{
+    // The invariant zarrScaleValue()/zarrUnit() exist to maintain. This is the
+    // assertion that would have failed on `--voxel-size 8640 --voxel-unit
+    // nanometer` before the fix: number 8.64 under unit "nanometer" = 8.64 nm.
+    struct Case { double value; const char* unit; double expectedUm; };
+    const Case cases[] = {
+        {8640.0,     "nanometer",     8.64},
+        {8.64,       "micrometer",    8.64},
+        {0.00864,    "millimeter",    8.64},
+        {0.00000864, "meter",         8.64},
+        {8640.0,     "nm",            8.64},   // accepted short spellings
+        {8.64,       "um",            8.64},
+        {0.00864,    "mm",            8.64},
+        {0.00000864, "m",             8.64},
+        {7.91,       "micrometer",    7.91},
+        {7910.0,     "nanometer",     7.91},
+    };
+
+    for (const Case& c : cases) {
+        const ExplicitVoxelSize explicitSize{true, c.value, c.unit};
+        const auto resolved = vsguard::resolveVoxelSize(explicitSize, std::nullopt,
+                                                       std::nullopt, std::nullopt);
+        CAPTURE(c.value);
+        CAPTURE(c.unit);
+        CAPTURE(c.expectedUm);
+
+        const std::string unit = vsguard::zarrUnit(resolved, explicitSize.unit);
+        REQUIRE_FALSE(unit.empty());
+
+        // The caller's own number is kept, so the pair stays exactly as supplied.
+        CHECK(vsguard::zarrScaleValue(resolved, explicitSize) == doctest::Approx(c.value));
+        CHECK(unit == std::string(c.unit));
+
+        // ...and it denotes the physical size the caller asked for.
+        CHECK(physicalMicrometers(resolved, explicitSize) == doctest::Approx(c.expectedUm));
+    }
+}
+
+TEST_CASE("a size read from metadata is declared in micrometers")
+{
+    // The metadata path resolves micrometres, so both the number and the unit are
+    // micrometres whatever --voxel-unit says: the flag describes a value the caller
+    // supplied, and here they supplied none.
+    const ExplicitVoxelSize none{};
+    for (const char* unit : {"nanometer", "micrometer", "millimeter", "m"}) {
+        const auto resolved = vsguard::resolveVoxelSize(none, /*local*/ 8.64,
+                                                       std::nullopt, std::nullopt);
+        ExplicitVoxelSize withUnit{};
+        withUnit.unit = unit;
+        CAPTURE(unit);
+        // Compare via toString(): doctest cannot stringify a bare scoped enum.
+        CHECK(std::string(vsguard::toString(resolved.source)) ==
+              std::string(vsguard::toString(vsguard::VoxelSizeSource::LocalStoreMetadata)));
+        CHECK(vsguard::zarrUnit(resolved, withUnit.unit) == std::string("micrometer"));
+        CHECK(vsguard::zarrScaleValue(resolved, withUnit) == doctest::Approx(8.64));
+        CHECK(physicalMicrometers(resolved, withUnit) == doctest::Approx(8.64));
+    }
+}
+
+TEST_CASE("the TIFF resolution agrees with the declared .zattrs size")
+{
+    // Both outputs must describe the same physical size. The TIFF tag is derived
+    // from the internal micrometre value; .zattrs from the declared pair. They are
+    // computed from different numbers, so this is worth asserting rather than
+    // assuming -- it is the second half of the same defect.
+    struct Case { double value; const char* unit; };
+    const Case cases[] = {
+        {8640.0,     "nanometer"},
+        {8.64,       "micrometer"},
+        {0.00864,    "millimeter"},
+        {0.00000864, "meter"},
+        {7910.0,     "nanometer"},
+    };
+
+    for (const Case& c : cases) {
+        const ExplicitVoxelSize explicitSize{true, c.value, c.unit};
+        const auto resolved = vsguard::resolveVoxelSize(explicitSize, std::nullopt,
+                                                       std::nullopt, std::nullopt);
+        CAPTURE(c.value);
+        CAPTURE(c.unit);
+
+        // At --scale 1 and ds_scale 1, one output pixel spans exactly one voxel.
+        const double umPerPixel = resolved.micrometerPerVoxel;
+        const double dpi = vsguard::voxelSizeToDpi(umPerPixel);
+        REQUIRE(dpi > 0.0);
+
+        // Recover the physical pixel size from the TIFF tag alone...
+        const double umFromTiff = 25400.0 / dpi;
+        // ...and from .zattrs alone.
+        const double umFromZarr = physicalMicrometers(resolved, explicitSize);
+
+        CAPTURE(umFromTiff);
+        CAPTURE(umFromZarr);
+        CHECK(umFromTiff == doctest::Approx(umFromZarr).epsilon(1e-9));
+        CHECK(umFromTiff == doctest::Approx(resolved.micrometerPerVoxel).epsilon(1e-9));
+    }
+}
+
+TEST_CASE("an unusable size declares nothing, in either output")
+{
+    const ResolvedVoxelSize unresolved{};   // source Unspecified
+    const ExplicitVoxelSize none{};
+    CHECK_FALSE(unresolved.isUsable());
+    CHECK(vsguard::zarrUnit(unresolved, "nanometer").empty());
+    CHECK(vsguard::voxelSizeToDpi(0.0) == doctest::Approx(0.0));
+    CHECK(vsguard::voxelSizeToDpi(-1.0) == doctest::Approx(0.0));
+}
+
+// =============================================================================
 // 5. The committed patch itself, as an artefact
 // =============================================================================
 //

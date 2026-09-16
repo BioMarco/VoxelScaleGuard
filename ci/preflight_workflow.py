@@ -90,6 +90,19 @@ proc = subprocess.run(
 )
 check("patch reverse-applies against villa/", proc.returncode == 0, proc.stderr.strip()[:200])
 
+# 4. The report tools' own self-tests. A broken reporter inside CI wastes a full
+#    dependency install and build, and can invert the answer.
+for name, script in (("compare_render_outputs", "ci/selftest_compare.py"),
+                     ("check_physical_size", "ci/selftest_physical_size.py")):
+    if not (ROOT / script).is_file():
+        check(f"self-test present: {script}", False)
+        continue
+    proc = subprocess.run([sys.executable, str(ROOT / script)],
+                          capture_output=True, text=True, cwd=str(ROOT))
+    ok = proc.returncode == 0 and "SELFTEST OK" in proc.stdout
+    detail = "" if ok else (proc.stdout or proc.stderr).strip().split("\n")[-1][:200]
+    check(f"self-test passes: {name}", ok, detail)
+
 # 4. Report the run/uses set so a reviewer can spot anything unexpected.
 uses = [s["uses"] for j in jobs.values() for s in j.get("steps", []) if "uses" in s]
 print("\nactions used:")

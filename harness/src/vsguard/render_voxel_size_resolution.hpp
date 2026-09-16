@@ -99,6 +99,39 @@ struct StoreVoxelSize {
 // of "usable" shared by every tier above, so the tiers cannot drift apart.
 [[nodiscard]] bool isUsableMicrometerPerVoxel(double value);
 
+// --- The .zattrs number/unit pair -------------------------------------------
+//
+// `writeZarrAttrs` writes `multiscales[0].datasets[L].coordinateTransformations
+// [0].scale` and `multiscales[0].axes[*].unit` INDEPENDENTLY, and nothing checks
+// that they agree. A value in micrometres labelled "nanometer" is therefore a
+// silent 1000x error -- the same class of defect this project exists to remove.
+//
+// The two therefore travel as a pair, computed together by zarrScaleValue() and
+// zarrUnit(), with this invariant:
+//
+//     zarrScaleValue(...) * micrometersPerUnit(zarrUnit(...))
+//         == resolved.micrometerPerVoxel
+//
+// For an explicit --voxel-size, `--voxel-unit` describes the number the caller
+// supplied, so the pair is preserved as given (as the pre-patch renderer did).
+// Otherwise the resolved value is micrometres and so is the unit.
+
+// Micrometres represented by one of `unit`. nullopt for a unit we cannot read.
+[[nodiscard]] std::optional<double> micrometersPerUnit(const std::string& unit);
+
+// The unit `.zattrs` must declare, or an empty string when nothing should be
+// written (the resolved size is a placeholder, not a measurement).
+[[nodiscard]] std::string zarrUnit(const ResolvedVoxelSize& resolved,
+                                   const std::string& explicitUnit);
+
+// The number `.zattrs` must declare, in the unit returned by zarrUnit().
+[[nodiscard]] double zarrScaleValue(const ResolvedVoxelSize& resolved,
+                                    const ExplicitVoxelSize& explicitSize);
+
+// TIFF resolution in dots per inch for a physical pixel size, matching
+// core/include/vc/core/util/Tiff.hpp: 25400 / micrometersPerPixel.
+[[nodiscard]] double voxelSizeToDpi(double micrometersPerPixel);
+
 // Fetch `meta.json`, else `metadata.json`, from a remote zarr store root and
 // resolve it. `sourceUrl` must already be fragment-free: a raw locator such as
 // "...zarr#vc-base-scale=1" makes the child join produce the nonsense path
