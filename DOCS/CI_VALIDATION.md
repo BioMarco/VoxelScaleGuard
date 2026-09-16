@@ -7,9 +7,9 @@ commands, and results.
 
 Runs:
 
-* **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35149794904>** — the
-  current green run, which includes the physical-size checks of §8 and the ×1000
-  fix recorded in §8.1.
+* **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35151048117>** — the
+  current green run: full build, before/after render, physical-size checks of §8,
+  and the ×1000 fix recorded in §8.1.
 * <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520> — the
   first green run, which established §7.
 
@@ -118,9 +118,13 @@ and the same for `explicitVoxelSize`, `base_voxel_size`, `zarr_voxel_unit` and
 before the declarations it reads. The patch as committed could not have built.
 
 It was fixed by moving the block to immediately after the declarations, with no
-logic change. Diffstat moved from +177/−65 to **+176/−63**; `git apply --check
+logic change. Diffstat moved from +177/−65 to +176/−63; `git apply --check
 --reverse` exits 0 and a reverse-then-forward round trip reproduces the same file
 byte-for-byte.
+
+*(§8.1 later changed the same region again, so the patch's current diffstat is
+**+218/−64**. The figures above are the state at the time this defect was fixed and
+are kept as the record.)*
 
 The harness could not have caught this, and in fact hid it: `harness/setup.ps1`
 was copying the file from `villa/`'s working tree, which is patched in place, so
@@ -203,6 +207,20 @@ Declared physical voxel size at level 0: baseline `0.001 µm` (wrong by ×8640 a
 `25400/8.64 = 2939.8148…` and `25400/7.91 = 3211.1252…`: the emitted resolution is
 the correct physical scale to six significant figures. The baseline wrote no
 resolution tag at all on this path.
+
+Confirmed with a second, independent reader — `tiffinfo` from libtiff, not Pillow:
+
+```
+--- 0009B-baseline: out/0009B-baseline.tif/00.tif
+--- 0009B-patched:  out/0009B-patched.tif/00.tif
+  Resolution: 2939.81, 2939.81 pixels/inch
+--- 0172-baseline: out/0172-baseline.tif/00.tif
+--- 0172-patched:  out/0172-patched.tif/00.tif
+  Resolution: 3211.13, 3211.13 pixels/inch
+```
+
+Both baseline runs print no `Resolution` line, which is what "the tag is absent"
+looks like from the outside.
 
 ### 7.4 Are the pixels unchanged?
 

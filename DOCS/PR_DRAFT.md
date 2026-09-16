@@ -246,6 +246,18 @@ Measured on `PHerc0009B` @ `-g 0 --scale 1`, baseline vs patched:
 | TIFF `XResolution` | absent | `2939.8147` px/inch (`25400/8.64`) |
 | decoded pixels | — | **byte-identical** |
 
+### Against upstream `main` today
+
+Checked [live] on 2026-09-16, when `main` was at `5ab585f`:
+
+* `volume-cartographer/apps/src/vc_render_tifxyz.cpp` is **byte-identical** between
+  the pinned `757f70c` and `5ab585f` — the file this PR changes has not moved;
+* the patch still applies cleanly to `5ab585f` (`git apply --check` exits 0);
+* so this does not need rebasing, and the line numbers cited above still hold.
+
+The workflow takes the commit as an input, so it can be pointed at `main`'s tip
+rather than the pin to re-confirm this at any time.
+
 ### Relationship to other work
 
 * **#1226 / #1227** fixed the same class of problem in `Volume` construction. This
