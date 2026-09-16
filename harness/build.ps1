@@ -67,6 +67,13 @@ $includeArgs = @(
     '/I', 'third_party\doctest'
 )
 
+# The repository root, baked in at compile time. The patch-integrity checks need
+# to read patch/vc_render_tifxyz.patch and the pristine copy under
+# harness/src/villa/, and deriving that path from __FILE__ is unreliable because
+# cl stores the path as it was spelled on the command line.
+$repoRoot = (Resolve-Path (Join-Path $here '..')).Path
+$defineArgs = @('/D', ('VSGUARD_REPO_ROOT="' + ($repoRoot -replace '\\', '\\\\') + '"'))
+
 $commonArgs = @(
     '/nologo', '/std:c++20', '/EHsc', '/permissive-', '/utf-8',
     '/W4', '/wd4100'           # unreferenced formal parameter (stub signatures)
@@ -98,7 +105,7 @@ foreach ($target in $targets) {
     foreach ($source in $targetSources) {
         $obj = Join-Path $objDir ((Split-Path -Leaf $source) -replace '\.cpp$', '.obj')
         $objects += $obj
-        & $cl @commonArgs @includeArgs '/c' $source ('/Fo:' + $obj)
+        & $cl @commonArgs @includeArgs @defineArgs '/c' $source ('/Fo:' + $obj)
         if ($LASTEXITCODE -ne 0) { $failed += "$($target.Name):$source"; break }
     }
     if ($failed.Count -gt 0) { continue }

@@ -40,27 +40,51 @@ $pairs = @(
     @('volume-cartographer/core/include/vc/core/util/RemoteUrl.hpp',
       'src/villa/vc/core/util/RemoteUrl.hpp'),
     @('volume-cartographer/core/test/test_voxel_size_metadata.cpp',
-      'src/villa/test_voxel_size_metadata.cpp')
+      'src/villa/test_voxel_size_metadata.cpp'),
+    # =====================================================================
+    # The files the patch modifies MUST come from git at the pinned commit,
+    # never from the working tree.
+    #
+    # The clone under villa/ is deliberately modified in place to hold the
+    # patch (AGENTS.md section 4). Copying from its working tree therefore
+    # yields the PATCHED file while labelling it pristine -- which silently
+    # made the before/after comparison in the harness compare the patch with
+    # itself. tests/test_render_voxel_size.cpp asserts the pristine copy really
+    # is unpatched, which is how this was caught.
+    # =====================================================================
+    @{ Rel = 'volume-cartographer/apps/src/vc_render_tifxyz.cpp'
+       Dest = 'src/villa/apps/src/vc_render_tifxyz.cpp'
+       FromGit = $true }
 )
 
 $haveLocal = Test-Path (Join-Path $villaDir 'volume-cartographer/CMakeLists.txt')
 Write-Host "[setup] source: $(if ($haveLocal) { "local clone at $villaDir" } else { $villaRaw })"
 
 foreach ($pair in $pairs) {
-    $rel = $pair[0]
-    $dest = Join-Path $here $pair[1]
+    $rel = if ($pair -is [hashtable]) { $pair.Rel } else { $pair[0] }
+    $destRel = if ($pair -is [hashtable]) { $pair.Dest } else { $pair[1] }
+    $dest = Join-Path $here $destRel
     $destDir = Split-Path -Parent $dest
     if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Force -Path $destDir | Out-Null }
 
     if ($haveLocal) {
         $src = Join-Path $villaDir ($rel -replace '/', '\')
         if (-not (Test-Path $src)) { throw "missing upstream file: $src" }
+        if ($pair -is [hashtable] -and $pair.FromGit) {
+            # `git show <commit>:<path>` returns the committed blob, so this is
+            # the pinned revision regardless of what the working tree holds. The
+            # redirect writes raw bytes: no newline translation, no BOM.
+            & git -c safe.directory='*' -C $villaDir show "${VillaCommit}:${rel}" > $dest
+            if ($LASTEXITCODE -ne 0) { throw "git show failed for $rel at $VillaCommit" }
+            Write-Host ("  {0,-72} -> {1}   [git @ {2}]" -f $rel, $destRel, $VillaCommit.Substring(0, 7))
+            continue
+        }
         Copy-Item -Force $src $dest
     } else {
         $url = "$villaRaw/$rel"
         Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $dest
     }
-    Write-Host ("  {0,-72} -> {1}" -f $rel, $pair[1])
+    Write-Host ("  {0,-72} -> {1}" -f $rel, $destRel)
 }
 
 # --- 2. Header-only dependencies, fetched at build time ---------------------

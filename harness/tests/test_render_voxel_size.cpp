@@ -28,6 +28,7 @@
 #include "vc/core/util/RemoteUrl.hpp"
 #include "vc/core/util/VoxelSizeMetadata.hpp"
 
+#include "vsguard/patch_integrity.hpp"
 #include "vsguard/render_voxel_size_resolution.hpp"
 #include "vsguard/upstream_read_volume_voxel_size.hpp"
 
@@ -416,4 +417,105 @@ TEST_CASE("--voxel-unit conversion is applied to the CLI value")
         CHECK_FALSE(vsguard::explicitMicrometerPerVoxel(
             {true, std::numeric_limits<double>::quiet_NaN(), "micrometer"}).has_value());
     }
+}
+
+// =============================================================================
+// 5. The committed patch itself, as an artefact
+// =============================================================================
+//
+// Everything above tests the decision procedure. These test the file that is
+// actually shipped for review. They exist because the patch was "logic-verified"
+// and, on first compilation in CI, did not compile: the new block used
+// variables declared sixty lines below it. See patch_integrity.hpp.
+
+TEST_CASE("the pristine copy and the patched tree are the before and after states")
+{
+    const auto root = vsguard_patch::repoRoot();
+    REQUIRE_FALSE(root.empty());
+
+    const auto pristine =
+        vsguard_patch::readWholeFile(vsguard_patch::pristineTargetFile(root));
+    const auto patched =
+        vsguard_patch::readWholeFile(vsguard_patch::patchedTargetFile(root));
+    REQUIRE_FALSE(pristine.empty());
+    REQUIRE_FALSE(patched.empty());
+
+    // The pristine copy must really be the unpatched revision, and the working
+    // tree must really be the patched one. Without both, the ordering check below
+    // would be measuring nothing.
+    CHECK(pristine.find("readVolumeVoxelSize") != std::string::npos);
+    CHECK(pristine.find("resolveRenderVoxelSize") == std::string::npos);
+    CHECK(patched.find("readVolumeVoxelSize") == std::string::npos);
+    CHECK(patched.find("resolveRenderVoxelSize") != std::string::npos);
+}
+
+TEST_CASE("the patched translation unit declares every name it uses before using it")
+{
+    // This is the defect the first CI compile found. It is asserted against the
+    // real patched file, so it cannot silently return.
+    const auto root = vsguard_patch::repoRoot();
+    REQUIRE_FALSE(root.empty());
+
+    const auto patched =
+        vsguard_patch::readWholeFile(vsguard_patch::patchedTargetFile(root));
+    REQUIRE_FALSE(patched.empty());
+    const auto lines = vsguard_patch::splitTextLines(patched);
+
+    // Anchor on the CALL SITE inside main, not on the helper's definition. The
+    // call reads
+    //     const ResolvedVoxelSize resolved = resolveRenderVoxelSize(
+    //         vol_path, remoteVolume.get(), ...
+    // and the definition's signature never mentions vol_path.
+    const std::size_t callUse = vsguard_patch::lineOfCallSite(
+        lines, "resolveRenderVoxelSize(", "vol_path");
+    CAPTURE(callUse);
+    REQUIRE(callUse > 0);
+
+    const char* names[] = {
+        "hasExplicitVoxelSize",
+        "explicitVoxelSize",
+        "base_voxel_size",
+        "render_level_voxel_size",
+        "zarr_voxel_unit",
+    };
+    for (const char* name : names) {
+        const std::size_t decl = vsguard_patch::declarationLineOf(lines, name);
+        CAPTURE(name);
+        CAPTURE(decl);
+        REQUIRE(decl > 0);
+        CHECK(decl < callUse);
+    }
+
+    const std::size_t voxelUnitDecl =
+        vsguard_patch::firstLineContaining(lines, "const std::string voxel_unit =");
+    CAPTURE(voxelUnitDecl);
+    REQUIRE(voxelUnitDecl > 0);
+    CHECK(voxelUnitDecl < callUse);
+}
+
+TEST_CASE("fixture: the pre-fix ordering is rejected by the same check")
+{
+    // Guard the guard. If this logic cannot tell the broken ordering from the
+    // fixed one, it is not testing anything. This fixture is the shape the patch
+    // had when CI rejected it, quoted from the compiler's own error.
+    const std::vector<std::string> broken = {
+        "int main() {",
+        "    {",
+        "        const ResolvedVoxelSize resolved = resolveRenderVoxelSize(",
+        "            vol_path, remoteVolume.get(), hasExplicitVoxelSize, explicitVoxelSize,",
+        "            voxel_unit);",
+        "    }",
+        "    const std::string voxel_unit = parsed[\"voxel-unit\"].as<std::string>();",
+        "    bool hasExplicitVoxelSize = false;",
+        "    double explicitVoxelSize = 0.0;",
+        "    double base_voxel_size = 1.0;",
+        "    double render_level_voxel_size = 1.0;",
+        "    std::string zarr_voxel_unit = voxel_unit;",
+        "}",
+    };
+    const std::size_t use = vsguard_patch::firstLineContaining(broken, "resolveRenderVoxelSize(");
+    const std::size_t decl = vsguard_patch::declarationLineOf(broken, "hasExplicitVoxelSize");
+    REQUIRE(use > 0);
+    REQUIRE(decl > 0);
+    CHECK(decl > use);   // the old ordering violates the property
 }

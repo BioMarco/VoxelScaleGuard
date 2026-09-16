@@ -1,5 +1,5 @@
 diff --git a/volume-cartographer/apps/src/vc_render_tifxyz.cpp b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
-index 9d0c2b8..0ac89c6 100644
+index 9d0c2b8..3f287e5 100644
 --- a/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 +++ b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 @@ -11,6 +11,7 @@
@@ -141,66 +141,15 @@ index 9d0c2b8..0ac89c6 100644
  // ============================================================
  // main
  // ============================================================
-@@ -1352,6 +1440,58 @@ int main(int argc, char *argv[])
+@@ -1352,6 +1440,7 @@ int main(int argc, char *argv[])
          logPrintf(stdout, "zarr dataset size for group %d [%s]\n", group_idx, oss.str().c_str());
      }
  
-+    // --- Resolve the physical voxel size -------------------------------------
-+    // The source volume is open by now, so a streamed volume's own metadata is
-+    // available to reuse. Computing this earlier is what made the renderer miss
-+    // remote resolutions entirely.
-+    {
-+        const ResolvedVoxelSize resolved = resolveRenderVoxelSize(
-+            vol_path, remoteVolume.get(), hasExplicitVoxelSize, explicitVoxelSize,
-+            voxel_unit);
-+
-+        base_voxel_size = resolved.micrometerPerVoxel;
-+
-+        // Emit the unit that matches the number. Passing --voxel-unit through
-+        // unchanged is what let `.zattrs` declare nanometre voxels for
-+        // micrometre data on the metadata path, and a 1000x error on the
-+        // command-line path.
-+        if (const char* unit = kiloMicrometerUnit(resolved))
-+            zarr_voxel_unit = unit;
-+
-+        if (resolved.isUsable()) {
-+            if (resolved.source == VoxelSizeSource::Cli) {
-+                logPrintf(stdout, "Voxel size (from command line): %g %s\n",
-+                          base_voxel_size, voxel_unit.c_str());
-+            } else {
-+                logPrintf(stdout, "Voxel size (%s): %g %s\n",
-+                          voxelSizeSourceName(resolved.source), base_voxel_size,
-+                          zarr_voxel_unit.c_str());
-+            }
-+
-+            const double umPerOutputPixel = (ds_scale > 0 && tgt_scale > 0)
-+                ? base_voxel_size / double(ds_scale) / double(tgt_scale)
-+                : base_voxel_size;
-+            tifDpi = voxelSizeToDpi(umPerOutputPixel);
-+        } else {
-+            // 1.0 is a placeholder, not a measurement. Say so, and leave the
-+            // physical scale out of both outputs rather than asserting one.
-+            logPrintf(stderr,
-+                      "Warning: this volume publishes no usable voxel size, so its "
-+                      "physical scale is unknown; no physical scale will be written. "
-+                      "Pass --voxel-size (um) to supply one.\n");
-+            zarr_voxel_unit.clear();
-+        }
-+
-+        // Physical size of one *level-g* voxel. The output raster is not
-+        // necessarily isotropic in it: in-plane, one output pixel spans
-+        // 1/tgt_scale level-g voxels (--scale), and through-plane, adjacent
-+        // layers sit --slice-step level-g voxels apart (buildOffsetList).
-+        // writeZarrAttrs derives the per-axis .zattrs scale from this base value.
-+        render_level_voxel_size = ds_scale > 0
-+            ? base_voxel_size / double(ds_scale)
-+            : base_voxel_size;
-+    }
 +
      const bool output_is_u16 = (chunk_cache->dtype() == vc::render::ChunkDtype::UInt16);
      logPrintf(stdout, "Source dtype: %s\n", output_is_u16 ? "uint16" : "uint8");
  
-@@ -1370,62 +1510,34 @@ int main(int argc, char *argv[])
+@@ -1370,62 +1459,86 @@ int main(int argc, char *argv[])
      }
  
      // --- Resolve voxel size for OME-Zarr metadata ---
@@ -233,10 +182,14 @@ index 9d0c2b8..0ac89c6 100644
 -            logPrintf(stdout, "Voxel size (from volume metadata): %g %s\n", base_voxel_size, voxel_unit.c_str());
 -        } else {
 -            logPrintf(stderr, "Warning: ignoring invalid metadata voxelsize; using default 1.0\n");
--        }
++        if (!explicitMicrometerPerVoxel(explicitVoxelSize, voxel_unit)) {
++            logPrintf(stderr, "Error: unsupported --voxel-unit: %s\n", voxel_unit.c_str());
++            return EXIT_FAILURE;
+         }
 -    } else {
 -        logPrintf(stdout, "Voxel size: 1.0 (no metadata found; override with --voxel-size)\n");
--    }
++        hasExplicitVoxelSize = true;
+     }
 -    if (hasPhysicalVoxelSize) {
 -        double voxelSizeUm = base_voxel_size;
 -        if (voxelSizeFromCli) {
@@ -251,10 +204,55 @@ index 9d0c2b8..0ac89c6 100644
 -                logPrintf(stderr, "Error: unsupported --voxel-unit for TIFF resolution: %s\n",
 -                          voxel_unit.c_str());
 -                return EXIT_FAILURE;
--            }
-+        if (!explicitMicrometerPerVoxel(explicitVoxelSize, voxel_unit)) {
-+            logPrintf(stderr, "Error: unsupported --voxel-unit: %s\n", voxel_unit.c_str());
-+            return EXIT_FAILURE;
++
++    // Filled in once the source volume is open.
++    double base_voxel_size = 1.0;
++    double render_level_voxel_size = 1.0;
++    // The unit that describes the number actually resolved. A size taken from
++    // store metadata is in micrometres whatever --voxel-unit says; the flag only
++    // describes a --voxel-size given on the command line.
++    std::string zarr_voxel_unit = voxel_unit;
++
++    // --- Resolve the physical voxel size -------------------------------------
++    // The source volume is open by now, so a streamed volume's own metadata is
++    // available to reuse. Computing this earlier is what made the renderer miss
++    // remote resolutions entirely.
++    {
++        const ResolvedVoxelSize resolved = resolveRenderVoxelSize(
++            vol_path, remoteVolume.get(), hasExplicitVoxelSize, explicitVoxelSize,
++            voxel_unit);
++
++        base_voxel_size = resolved.micrometerPerVoxel;
++
++        // Emit the unit that matches the number. Passing --voxel-unit through
++        // unchanged is what let `.zattrs` declare nanometre voxels for
++        // micrometre data on the metadata path, and a 1000x error on the
++        // command-line path.
++        if (const char* unit = kiloMicrometerUnit(resolved))
++            zarr_voxel_unit = unit;
++
++        if (resolved.isUsable()) {
++            if (resolved.source == VoxelSizeSource::Cli) {
++                logPrintf(stdout, "Voxel size (from command line): %g %s\n",
++                          base_voxel_size, voxel_unit.c_str());
++            } else {
++                logPrintf(stdout, "Voxel size (%s): %g %s\n",
++                          voxelSizeSourceName(resolved.source), base_voxel_size,
++                          zarr_voxel_unit.c_str());
+             }
++
++            const double umPerOutputPixel = (ds_scale > 0 && tgt_scale > 0)
++                ? base_voxel_size / double(ds_scale) / double(tgt_scale)
++                : base_voxel_size;
++            tifDpi = voxelSizeToDpi(umPerOutputPixel);
++        } else {
++            // 1.0 is a placeholder, not a measurement. Say so, and leave the
++            // physical scale out of both outputs rather than asserting one.
++            logPrintf(stderr,
++                      "Warning: this volume publishes no usable voxel size, so its "
++                      "physical scale is unknown; no physical scale will be written. "
++                      "Pass --voxel-size (um) to supply one.\n");
++            zarr_voxel_unit.clear();
          }
 -        // TIFF resolution describes output *pixels*: one pixel spans
 -        // 1/tgt_scale level-g voxels (--scale is pixels per level-g voxel).
@@ -262,8 +260,7 @@ index 9d0c2b8..0ac89c6 100644
 -            ? voxelSizeUm / double(ds_scale) / double(tgt_scale)
 -            : voxelSizeUm;
 -        tifDpi = voxelSizeToDpi(umPerOutputPixel);
-+        hasExplicitVoxelSize = true;
-     }
+-    }
  
 -    // Physical size of one *level-g* voxel, in voxel_unit. The output raster
 -    // is not necessarily isotropic in it: in-plane, one output pixel spans
@@ -273,17 +270,19 @@ index 9d0c2b8..0ac89c6 100644
 -    const double render_level_voxel_size = ds_scale > 0
 -        ? base_voxel_size / double(ds_scale)
 -        : base_voxel_size;
-+    // Filled in once the source volume is open.
-+    double base_voxel_size = 1.0;
-+    double render_level_voxel_size = 1.0;
-+    // The unit that describes the number actually resolved. A size taken from
-+    // store metadata is in micrometres whatever --voxel-unit says; the flag only
-+    // describes a --voxel-size given on the command line.
-+    std::string zarr_voxel_unit = voxel_unit;
++        // Physical size of one *level-g* voxel. The output raster is not
++        // necessarily isotropic in it: in-plane, one output pixel spans
++        // 1/tgt_scale level-g voxels (--scale), and through-plane, adjacent
++        // layers sit --slice-step level-g voxels apart (buildOffsetList).
++        // writeZarrAttrs derives the per-axis .zattrs scale from this base value.
++        render_level_voxel_size = ds_scale > 0
++            ? base_voxel_size / double(ds_scale)
++            : base_voxel_size;
++    }
  
      int rotQuadGlobal = -1;
      if (std::abs(rotate_angle) > 1e-6) {
-@@ -1580,7 +1692,7 @@ int main(int argc, char *argv[])
+@@ -1580,7 +1693,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
@@ -292,7 +291,7 @@ index 9d0c2b8..0ac89c6 100644
                  return true;
              } else if (numParts > 1) {
                  if (!std::filesystem::exists(std::filesystem::path(zarrOutputArg) / "0" / ".zarray")) {
-@@ -1788,7 +1900,7 @@ int main(int argc, char *argv[])
+@@ -1788,7 +1901,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
