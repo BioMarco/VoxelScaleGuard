@@ -31,9 +31,17 @@ of Scroll Prize, Inc., and no submission has been made.
 ### 1.1 Deadline
 
 The page states: *"The next deadline is 11:59pm Pacific, September 30th, 2026."*
-That date has passed as of this work. A later monthly deadline was not stated on
-the page as fetched, so **the next applicable deadline is unconfirmed** and must
-be re-checked before any submission.
+
+**Re-checked [live] on 2026-09-16** against <https://scrollprize.org/prizes>: the
+sentence above is still verbatim current, and the deadline is **14 days away, not
+past**. This section previously claimed the date "has passed as of this work" and
+that the next deadline was unconfirmed. **That was a documentation error, not a
+change on the page**: the page has not moved, the reading of it was wrong. It is
+corrected here and recorded in `RESULTS.md` §8.
+
+An earlier entry in this file implied the work was done after 2026-09-30. No such
+date is asserted anywhere now; the date of this correction is **2026-09-16**, and
+every "today"/"now" in this document set means that date unless it says otherwise.
 
 ---
 
@@ -165,7 +173,9 @@ In priority order:
    real volume and a tifxyz segment, to produce an actual `.zattrs` and TIFF tags.
 3. **The GUI path stays broken** without the `SegmentationCommandHandler`
    predicate change (`RESULTS.md` §7.4), so the fix would not reach most users.
-4. **The deadline is unconfirmed** (§1.1).
+4. ~~**The deadline is unconfirmed** (§1.1).~~ **Closed 2026-09-16:** the deadline
+   is confirmed as 11:59pm Pacific, September 30th, 2026 (§1.1). What remains is
+   the ordinary work of making a submission, not uncertainty about the date.
 
 ### 4.2 What a submission would be built on, once those clear
 

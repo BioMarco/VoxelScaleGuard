@@ -145,14 +145,20 @@ i.e. the patch describes it exactly.
 
 ## Preconditions for anything beyond this
 
-1. Build and run the patched `vc_render_tifxyz`. Requires the `windows-msvc`
-   preset's vcpkg dependency closure (Qt, OpenCV, Ceres, CGAL) or the CI
-   container. **Multi-GB; not authorised, not attempted.**
+1. Build and run the patched `vc_render_tifxyz`. **Measured on 2026-09-16 as
+   blocked on two independent things** (`DOCS/RESULTS.md` §8.4): the compile-time
+   closure (OpenCV, libtiff, Boost `program_options`, curl, blosc, …) is absent, and
+   neither CMake nor Ninja can execute a compiler in this environment. Upstream's
+   CMake project also cannot be configured with a reduced closure —
+   `find_package(Ceres REQUIRED)` is unconditional. **Not attempted; the required
+   authorisation has not been given.**
 2. Produce a real `.zattrs` and TIFF from a real volume and a tifxyz segment, and
    check the tags. Needs (1).
 3. Decide the VC3D GUI predicate change (`DOCS/FEASIBILITY.md` §8).
-4. Re-check the Progress Prize deadline: the page stated 11:59pm Pacific,
-   September 30th, 2026, which has passed.
+4. ~~Re-check the Progress Prize deadline.~~ **Re-checked 2026-09-16 [live]:** the
+   next deadline is 11:59pm Pacific, **September 30th, 2026** — 14 days out, not
+   past. An earlier revision of this file wrongly said it had passed; see
+   [`RESULTS.md` §8.2](DOCS/RESULTS.md).
 
 ## Licences
 

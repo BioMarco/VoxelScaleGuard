@@ -347,6 +347,13 @@ under `-Werror`.
 Ceres, CGAL built from source) or the CI container. Multi-GB download, long
 build. **Not attempted; requires authorisation.**
 
+> **Update, 2026-09-16 — the reason above was incomplete; see §8.4.** The closure
+> being absent is one cause. A second, independent cause is that neither CMake nor
+> Ninja can execute a compiler in this environment, so a CMake-driven build is not
+> reachable here even once the dependencies are present. §8.4 also records that the
+> target's *link* closure excludes Ceres, CGAL and Qt — those are configure-time
+> requirements of the project as a whole, not of this binary.
+
 ### 7.2 No `.zattrs` and no TIFF were produced
 
 The declared physical scale of `1 nm` versus `8.64 µm` etc. is derived from
@@ -373,15 +380,328 @@ patch.**
 
 ### 7.5 The sandbox blocked one avenue
 
-CMake and Ninja cannot launch subprocesses here, and native commands cannot have
+CMake and Ninja cannot execute a compiler here, and native commands cannot have
 their output redirected or piped
 (`StandardOutputEncoding is only supported when standard output is redirected`).
 Commands in this document are recorded in the form that works. The harness
 invokes `cl.exe` directly as a result.
 
+> **Update, 2026-09-16 — this entry was accurate but under-specified; see §8.4.**
+> Both tools *do* run and report their versions. What fails is CMake's child-process
+> probe of Ninja (`Accesso negato`) and Ninja's execution of a build rule (it
+> hangs). The distinction matters because it rules out "install a newer CMake" as a
+> fix on its own. §8.4 also records that Node's `spawnSync` fails with `EPERM` for
+> piped stdio regardless of the program — the same trap in a second guise.
+
 ---
 
-## 8. Bottom line
+## 8. Session of 2026-09-16 — inherited-state re-verification, and the build attempt
+
+Added by the continuation session. This section records three things: the
+re-verification of the inherited state, a documentation error that was corrected,
+and the **negative** result of the build reconnaissance. §7 is retained as the
+authoritative list of what is unverified; two of its entries (§7.1 and §7.5) carry
+an update pointer to §8.4 with no claim withdrawn.
+
+### 8.1 Inherited-state checks — all four pass [exec]
+
+Run from the workspace root, exactly as `RESUME.md` §1 prescribes.
+
+| Check | Command | Result |
+|---|---|---|
+| Repository clean | `pwsh -File tools\git.ps1 status --short` | no output — clean |
+| Working tree vs. remote | `pwsh -File tools\git.ps1 rev-parse HEAD origin/main` | both `f2945b97e7e2b2d9e9a91deeb20c998c36c72643` |
+| Control suite | `test_upstream_voxel_size_metadata.exe` | **13 cases / 54 assertions, 0 failed** |
+| Project suite | `test_render_voxel_size.exe` | **16 cases / 82 assertions, 0 failed** |
+| Probe | `probe_render_voxel_size.exe` | `documents examined: 4, divergences: 3` |
+| Patch round-trip | `git -c safe.directory='*' -C villa apply --check --reverse ../patch/vc_render_tifxyz.patch` | exit **0** |
+
+Notes on the two checks where the inherited document was slightly out of date —
+both are benign and neither changes a finding:
+
+* `RESUME.md` §1 predicted the log head `9cfcaf9, 6de80df, 4a77205`. The actual head
+  is `f2945b9`, which is the commit that **added `DOCS/RESUME.md` itself**, on top of
+  the predicted `9cfcaf9`. The tree is clean and in sync with `origin/main`; the
+  prediction was simply written before its own commit landed.
+* `RESUME.md` §1 says the probe should show "3 divergences out of 4 volumes" and the
+  binary prints exactly that.
+
+The patch diffstat was re-derived from the committed artefact rather than quoted:
+**+177 / −65 across one file**
+(`volume-cartographer/apps/src/vc_render_tifxyz.cpp`), which matches `RESUME.md` §2
+and `PROJECT_STATUS.md`.
+
+### 8.2 A documentation error: the Progress Prize deadline had not passed
+
+Four documents (`README.md`, `DOCS/PRIZE_REQUIREMENTS.md` §1.1 and §4.1,
+`DOCS/SUBMISSION_DRAFT.md`, `DOCS/RESUME.md` §9) claimed that the stated Progress
+Prize deadline of **11:59pm Pacific, September 30th, 2026** "has passed".
+
+**That was wrong.** Re-fetched [live] on 2026-09-16 from
+<https://scrollprize.org/prizes>, the page still states verbatim:
+
+> "Submissions are evaluated monthly, and multiple submissions/awards per month are
+> permitted. The next deadline is 11:59pm Pacific, September 30th, 2026!"
+
+The date is **14 days in the future**, not past. The page had not changed; the
+reading of it was wrong, and the error had propagated to four files. All four are
+corrected in place and the correction is recorded here rather than deleted
+(per `AGENTS.md` §11). The surrounding factual content of §1.1 — the Progress Prize
+structure, the amounts, the evaluation cadence — was checked against the same fetch
+and stands.
+
+Also re-verified in the same fetch: the **2027 Grand Prize** and **First Letters**
+deadlines are **June 25th, 2027** [live]. They are irrelevant to this project, which
+is a tooling contribution and not a reading of a scroll, but they were previously
+not stated at all.
+
+### 8.3 Attribution audit on the "segmentation loss" issue
+
+`README.md` and `DOCS/SUBMISSION_DRAFT.md` were checked for any claim that this
+project fixed the `vc_grow_seg_from_seed` segmentation-loss half of issue #1403.
+
+**Result: no such claim exists, and no edit was needed.** Every mention is already
+explicit that the fix is upstream's and not this project's:
+
+* `README.md`: *"The `vc_grow_seg_from_seed` half of issue #1403 is already fixed
+  upstream. … This project did not fix it and does not claim it."*
+* `DOCS/PROJECT_STATUS.md` finding 6, `DOCS/ROOT_CAUSE_ANALYSIS.md` §1 and §2,
+  the bottom-line table in §9 below, `DOCS/PRIZE_REQUIREMENTS.md` §3.
+* The PR draft and `DOCS/RESEARCH.md` §4.1 both record it as a **negative** result,
+  which is the convention `AGENTS.md` §11 asks for.
+
+The attribution table required by `AGENTS.md` §5 (NicolasHuberty #1417; Bullo27
+#1227/#1228 and the maintainers; DarthCeltic #1403) is present and correct in
+`README.md` and `DOCS/SUBMISSION_DRAFT.md`.
+
+### 8.4 The build reconnaissance — negative result, and exactly what blocks it
+
+This session's goal was to close the main gap in §7: compile the patched
+`vc_render_tifxyz` and demonstrate before/after on a real volume. **The compile
+could not be achieved, and it is not a matter of effort.** The evidence:
+
+**Blocker A — CMake cannot launch its own subprocesses here, and Ninja hangs when
+a build rule does.**
+
+An earlier draft of this section claimed that *no* CMake version could be driven
+from this sandbox, on the strength of a probe that had itself been defeated by the
+harness's output-redirection bug (`AGENTS.md` §7.1). That claim was too strong and
+is corrected here; the honest picture is narrower and still blocking.
+
+| Attempt | Result |
+|---|---|
+| `cmake --version` | works — `cmake version 3.24.202208181-MSVC_2`, exit 0 |
+| `ninja --version` | works — `1.11.0`, exit 0 |
+| `cmake -S <dir> -B <dir>\build -G Ninja …` on a project declaring `cmake_minimum_required(VERSION 3.28)` | fails **on the version check**, as documented: `CMake Error at CMakeLists.txt:1 (cmake_minimum_required): CMake 3.28 or higher is required.  You are running version 3.24.202208181-MSVC_2` |
+| the same on a project declaring `VERSION 3.20`, i.e. version-independent | **fails deeper**, exit 1: `CMake Error at CMakeLists.txt:2 (project): Running '<…>\ninja.exe' '--version' failed with: Accesso negato`, then `CMake Error: CMAKE_CXX_COMPILER not set, after EnableLanguage` |
+| `ninja -C <dir>` on a hand-written `build.ninja` whose only rule runs `cmd /c copy` | **hangs**: exit status never arrives; killed at a 30 s bound (earlier hand runs: 120 s and 45 s). The rule's output file **is** produced, so the rule body runs and the hang is in Ninja's process handling. `ninja --version` alone, which executes no rule, returns normally |
+
+The first four data rows come from `node research/recon_compiler_spawn.mjs`, added
+this session. The Ninja row is that script (`ninja --version` returns, a rule
+hangs) plus two manual runs at longer bounds, 120 s and 45 s, which behaved the
+same way.
+
+So both tools start and report their versions, but neither can *execute a compiler
+or a command* in this sandbox: CMake's probe of Ninja is denied, and Ninja's own
+rule execution hangs. This is the behaviour `AGENTS.md` §7.2 records, confirmed
+again, and it is what forces `harness/build.ps1` to drive `cl.exe` in a loop
+directly — which does work, and worked again this session.
+
+**One methodological caveat, because it already produced a wrong answer here.**
+Every command in this probe captures output through **files**, never pipes. This
+sandbox denies piped stdio between processes: Node's `spawnSync` with piped stdio
+fails with `EPERM` for *every* program, including `cl.exe` and `git.exe`, and
+PowerShell fails with `StandardOutputEncoding is only supported when standard output
+is redirected` (`AGENTS.md` §7.1). A probe that pipes therefore reports "blocked"
+for a reason unrelated to the tool it is measuring. An earlier draft of this section
+drew a stronger conclusion than the evidence supported from exactly that mistake;
+it is corrected here.
+
+Two consequences worth separating, because they have different fixes:
+
+* The **CMake version gap is real and is a download**. Upstream requires
+  `cmake_minimum_required(VERSION 3.28 FATAL_ERROR)`
+  ([read] `volume-cartographer/CMakeLists.txt:1`) and every preset is
+  `"generator": "Ninja"` ([read] `volume-cartographer/CMakePresets.json:9`). A
+  portable CMake ≥ 3.28 would close *this* half.
+* It would **not** close the other half. A newer CMake still has to launch Ninja
+  and `cl.exe`, and that is what is denied. So a CMake-driven build is not
+  reachable here even after that download.
+
+**A related correction.** The wider claim first drawn here from that mismeasured
+probe — that this sandbox "refuses to launch executables from Program Files" — is
+**false**, and the harness contradicts it: `harness/build.ps1` invokes `cl.exe` from
+`C:\Program Files\Microsoft Visual Studio\2022\Community\…` on every build,
+including this session's. Two places still carry that wording as an inherited
+comment rather than as a verified finding, and both are recorded here rather than
+quietly edited, per `AGENTS.md` §11:
+
+* `.gitignore:7-9` justifies ignoring `harness/tools/ninja.exe` with "this sandbox
+  refuses to launch executables from Program Files". The file is ignored, but that
+  reason is wrong — and nothing in the repository references
+  `harness/tools/ninja.exe`, so the ignore entry appears vestigial.
+* `harness/build.ps1:9-13` explains that "CMake cannot launch its own subprocesses
+  (\"Accesso negato\" for both ninja.exe and, from inside CMake, any probe)". The
+  file's *conclusion* — invoke `cl.exe` directly — is right and was re-confirmed
+  this session; only the words "and ninja.exe" are imprecise, since Ninja itself
+  runs and instead hangs when executing a rule.
+
+Neither file was changed beyond the `.gitignore` addition below, because both are
+still correct in effect and `harness/build.ps1` is on the verified-harness path.
+`scratch/` was added to `.gitignore` this session to keep throwaway probe trees and
+any downloaded package out of the repository.
+
+**Blocker B — the dependency closure is not present, and it is the binding
+constraint.**
+
+`cl.exe` *can* be driven directly from PowerShell — that is what `harness/build.ps1`
+does. The compile-time closure of the real translation unit, however, is absent.
+From the `#include` directives of `vc_render_tifxyz.cpp` and its direct
+dependencies [read]:
+
+| Needed at compile time | Needed by | Present locally |
+|---|---|---|
+| `<opencv2/imgproc.hpp>`, `<opencv2/core/mat.hpp>` | `vc_render_tifxyz.cpp:25` and `:24` @ `757f70c`; `core/include/vc/core/util/Tiff.hpp:3`; `core/include/vc/core/types/Volume.hpp:15` | **No** |
+| `<tiffio.h>` | `vc_render_tifxyz.cpp:45` @ `757f70c`; `core/include/vc/core/util/Tiff.hpp:8` | **No** |
+| `<boost/program_options.hpp>` | `vc_render_tifxyz.cpp:32` @ `757f70c` | **No** |
+| `<omp.h>` | `vc_render_tifxyz.cpp:46` @ `757f70c` | yes (MSVC ships it) |
+
+*Line numbers for `vc_render_tifxyz.cpp` are the **pre-patch** ones, i.e. the pinned
+revision's, consistent with `AGENTS.md` §11. In the patched working tree they are
+17/16, 35, 23 and 36 respectively — the patch adds 8 lines above them.*
+
+Beyond the translation unit, `core/CMakeLists.txt` builds `vc_core` from **73**
+sources including `Volume.cpp`, `Tiff.cpp`, `Zarr.cpp`, `S3AuthFallback.cpp`,
+`HttpFetch.cpp`, `render/ZarrChunkFetcher.cpp` [read], and `vc_flattening` links
+`vc_core` and `OpenABF` ([read] `core/CMakeLists.txt:152`). None of these artefacts
+exists locally, so merely parsing the file would not produce a runnable renderer
+even if the headers were stubbed.
+
+The closure was audited this session, and one result **narrows** the problem in a
+way that matters for choosing a route [read]. The full audit — every `find_package`,
+`FetchContent`, `add_subdirectory` and `target_link_libraries` traced for this
+target — is preserved at `research/vc_render_tifxyz_build_analysis.md`:
+
+* `apps/CMakeLists.txt:17-18` links `vc_core vc_flattening Boost::program_options
+  TIFF::TIFF`.
+* **Ceres, CGAL and Qt are *not* in the target's link closure at all.** Ceres is
+  linked only by `vc_inpaint`/`vc_lasagna`/`vc_atlas`/`vc_tracer`
+  (`core/CMakeLists.txt:155,189,196,216`), CGAL only by `vc_add_ignore_label`
+  (`apps/CMakeLists.txt:102`), Qt only by VC3D
+  (`apps/VC3D/CMakeLists.txt:365-384`). The CLI reaches no Qt header.
+* But they are **hard configure-time requirements anyway**:
+  `find_package(Ceres REQUIRED)` is unconditional
+  (`volume-cartographer/CMakeLists.txt:529`), CGAL and Qt are gated on
+  `VC_BUILD_APPS` (`:665-667`, `:517-518`), and that option is ON by default
+  (`:158`) with `apps/CMakeLists.txt:8` unconditionally adding the Qt GUI. **There
+  is no switch that builds the CLI tools without the GUI.** So the CMake project
+  cannot be configured with a reduced closure; the earlier framing of this gap as
+  "the `windows-msvc` vcpkg closure (Qt, OpenCV, Ceres, CGAL)" is right about the
+  *configure* cost, and the target's own *link* closure is smaller.
+* What a hand-rolled `cl.exe` build would actually need: compile `vc_core` (its
+  `add_library` block at `core/CMakeLists.txt:3-54` lists **50** source files) plus
+  `utils`, `vc_flattening`, the vendored `c3d`, and the renderer itself; then link
+  OpenCV (core, imgproc, imgcodecs, calib3d, video), libtiff, Boost
+  `program_options`, libcurl, zlib, blosc, zstd, lz4 and a `vc_delta3d` codec.
+  Eigen and nlohmann-json are header-only. Two network fetches are unavoidable even
+  then: `vc-delta3d` v0.1.0 (`CMakeLists.txt:686-697`, genuinely included via
+  `core/include/vc/core/util/CacheCompression.hpp:3`) and libigl (header-only,
+  pulled only because `VC_BUILD_APPS` is ON). **None of it is present.**
+
+**Corollary worth stating: the patch's own new code needs none of it.** The added
+functions use only `<optional>`, `<string>`, `<filesystem>`, `<cmath>` and the
+in-tree `vc::metadata::resolveLocalStoreVoxelSize`
+([read] `patch/vc_render_tifxyz.patch`, added lines 21–139; declaration at
+`core/include/vc/core/util/VoxelSizeMetadata.hpp:42`). This is consistent
+with the fix's design — no new dependency — but it does **not** make the file
+compilable, because the *existing* translation unit already required OpenCV, libtiff
+and Boost.
+
+**Blocker C — the sanctioned prebuilt dependency bundle is not fetchable
+anonymously.** MSYS2 is not installed (`C:\msys64` absent) [exec], `VCPKG_ROOT` is
+unset and no vcpkg checkout exists [exec], and there is no WSL distribution
+(`wsl --status` exits 50; `wsl --list --verbose` exits 1 with usage text) [exec].
+
+The route upstream CI uses is `ci-windows-mingw` driven by `cmake --preset` and
+`ninja` ([read] `.github/workflows/vc3d-windows.yml:87,92`) plus
+`oras pull ghcr.io/scrollprize/vc3d-deps/windows:sha-d84dfa07…` (`:73`). Two
+independent obstacles: it lands on Blocker A, and the bundle itself is **not
+publicly readable**. An anonymous `ghcr.io/token` request for
+`repository:scrollprize/vc3d-deps:pull` returns **HTTP 403** [live], so its size and
+contents cannot even be measured from here, let alone pulled. (The runner supplies
+`${{ github.token }}` at `:72`, which is how CI authenticates.)
+
+By contrast the same probe shows `ghcr.io/scrollprize/villa/volume-cartographer:edge`
+**is** anonymously readable: `linux/amd64`, 41 layers, **2636 MB compressed**
+[live]. That image is a built runtime, but the `edge` tag is built from current
+`main` — not from the pinned commit — so it is neither the `before` nor the `after`
+side of this patch, and running a Linux binary needs Docker or WSL, which are
+absent. The probe is reproducible as `node research/recon_ghcr_bundles.mjs`.
+
+**A route that was considered and rejected on evidence.** One idea was to stub the
+missing third-party headers (`opencv2/...`, `tiffio.h`, `boost/program_options.hpp`)
+so that the *patched regions* could at least be syntax-checked by the compiler. It
+was tested and does not work: MSVC's preprocessor copies macro definitions out of
+included headers without parsing the header body, so a deliberately malformed header
+
+```cpp
+// header.hpp
+#pragma once
+#define BROKEN 1 +
+```
+
+compiles cleanly when the macro is never used, and the syntax error only surfaces
+when it is. (`cl /c b.cpp` where `b.cpp` merely includes `header.hpp` → exit 0.)
+A stub-based "compile" would therefore validate an arbitrary subset of the
+translation unit and could report success on code that does not compile. That is
+precisely the kind of claim `AGENTS.md` §2 forbids, so the route was abandoned
+rather than reported as a partial success.
+
+### 8.5 The "before" side: package re-confirmed, not yet downloaded
+
+The prebuilt Windows package that `RESUME.md` §5 and `PROJECT_STATUS.md` finding 10
+describe was re-verified against the live GitHub releases API [live] — metadata
+only, nothing downloaded:
+
+```
+RELEASE latest | published 2026-09-15T17:56:17Z | name "VC3D Latest"
+   ASSET VC3D-757f70c-2026-09-15-win64.zip    155637402 bytes (148.4 MB)
+   ASSET VC3D-757f70c-2026-09-15-win64.exe    110333029 bytes (105.2 MB)
+   ASSET VC3D-757f70c-2026-09-15-linux-x86_64.AppImage  124905976 bytes (119.1 MB)
+   ASSET VC3D-757f70c-2026-09-15-macos-arm64.zip        117046516 bytes (111.6 MB)
+   body mentions commit: 757f70c0140a4cfbbbd44975ef09558444b96980
+```
+
+So the asset exists, is 148.4 MB, and the release body names the pinned commit
+`757f70c…` exactly. The command is now reproducible as
+`node research/recon_release_assets.mjs` (public REST API, anonymous, read-only,
+metadata only — it downloads no asset).
+
+**This was not downloaded, at the user's standing instruction to ask first.** It
+also does not, by itself, close §7.1: it yields the **before** transcript from a real
+shipped binary, which is genuinely useful, but no `after`, because the after side
+requires the patched binary to exist. For completeness: the Linux `AppImage` is
+119.1 MB and would be the more convenient before-side artefact *if* a Linux
+environment existed, which it does not (§8.4 Blocker C).
+
+### 8.6 §7 items closed, and items still open
+
+Nothing in §7 is closed by this session. Stated explicitly:
+
+| §7 item | Status after 2026-09-16 |
+|---|---|
+| 7.1 patched binary never compiled or run | **Still open.** Two independent causes: the dependency closure is absent (Blocker B), and neither CMake nor Ninja can execute a command here (Blocker A). A newer CMake fixes only the version half |
+| 7.2 no `.zattrs`, no TIFF tag dump | **Still open.** Depends on 7.1 |
+| 7.3 no render on a real volume | **Still open** |
+| 7.4 GUI predicate diagnosed but not applied | **Still open by decision** — `RESUME.md` §6, unchanged |
+| 7.5 sandbox blocked an avenue | **Still open, and now precisely characterised** (§8.4): CMake's child-process probe and Ninja's rule execution are denied; driving `cl.exe` directly is not |
+
+The one thing this session did close is a *documentation* gap: the deadline claim in
+§8.2 was wrong and is now correct.
+
+---
+
+## 9. Bottom line
 
 | Question | Answer |
 |---|---|
@@ -390,5 +710,7 @@ invokes `cl.exe` directly as a result.
 | Demonstrated before/after? | **Yes** for the resolution logic and the declared physical scale: ×2400, ×8640 and ×45532 errors removed on real stores, with a control that confirms the one case that already worked |
 | Tested on real data? | **Yes** — real published metadata documents. **No** — no render was run |
 | Regression tests? | 16 cases / 82 assertions added; upstream's 13 cases / 54 assertions pass unmodified as a control |
-| Binary-verified? | **No.** See §7.1 |
+| Binary-verified? | **No.** See §7.1, and §8.4 for why a build is not reachable here |
+| Can the patched binary be built on this machine? | **No.** Two independent causes: the OpenCV/libtiff/Boost/curl/blosc closure is absent, and neither CMake nor Ninja can execute a compiler here. See §8.4 |
 | Ready to submit as-is? | **No.** It is a verified diagnosis with a logic-verified patch. It needs §7.1–7.2 before it can be presented as a working fix, and §7.4 to be reachable from the GUI |
+| Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-16. Earlier revisions wrongly said it had passed; see §8.2 |

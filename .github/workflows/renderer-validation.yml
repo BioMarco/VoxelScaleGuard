@@ -1,0 +1,339 @@
+name: Renderer validation (baseline vs patched)
+
+# Compiles the REAL vc_render_tifxyz twice from the same pinned villa commit --
+# once unmodified, once with patch/vc_render_tifxyz.patch applied -- and renders
+# both against the same public segment and volume, so the physical-scale metadata
+# they emit can be compared.
+#
+# Why GitHub-hosted runners: the development machine's sandbox cannot start a
+# compiler through CMake or Ninja (see DOCS/RESULTS.md section 8.4), and the
+# prebuilt MSYS2/vcpkg dependency bundles upstream CI uses are not anonymously
+# readable (HTTP 403 from ghcr.io). This workflow therefore installs the
+# dependencies from the same public apt list upstream's own
+# scripts/install_build_deps.sh uses. No private registry and no credentials
+# beyond the automatic GITHUB_TOKEN are needed.
+#
+# Manual or push-triggered only: no schedule, so it cannot loop.
+
+on:
+  workflow_dispatch:
+    inputs:
+      villa_commit:
+        description: 'villa commit to build (default: the commit this project pins)'
+        required: false
+        type: string
+        default: '757f70c0140a4cfbbbd44975ef09558444b96980'
+      full_build:
+        description: 'Build the whole tree instead of just the renderer target'
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [ci/renderer-validation]
+    paths:
+      - '.github/workflows/renderer-validation.yml'
+      - 'patch/vc_render_tifxyz.patch'
+      - 'ci/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  VILLA_COMMIT: ${{ inputs.villa_commit || '757f70c0140a4cfbbbd44975ef09558444b96980' }}
+  # install_build_deps.sh installs AWS CLI v2 to /usr/local/bin; make sure later
+  # steps see it even if PATH is not refreshed between actions.
+  PATH: /usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin
+
+jobs:
+  validate:
+    name: Build + render (baseline vs patched)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout VoxelScaleGuard
+        uses: actions/checkout@v4
+
+      - name: Record toolchain and the pinned revision
+        id: toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p ci-out
+          {
+            echo "runner_image: $(lsb_release -ds 2>/dev/null || head -2 /etc/os-release | tr '\n' ' ')"
+            echo "kernel: $(uname -srm)"
+            echo "cpus: $(nproc)"
+            echo "memory: $(free -h | awk '/^Mem:/{print $2}')"
+            echo "gcc: $(gcc --version | head -1)"
+            echo "cmake: $(cmake --version | head -1)"
+            echo "ninja: $(ninja --version)"
+            echo "villa_commit: ${VILLA_COMMIT}"
+          } | tee ci-out/toolchain.txt
+
+      - name: Clone villa at the pinned commit
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/ScrollPrize/villa.git villa-src
+          git -C villa-src checkout --detach "${VILLA_COMMIT}"
+          git -C villa-src rev-parse HEAD | tee ci-out/villa-HEAD.txt
+          test "$(cat ci-out/villa-HEAD.txt)" = "${VILLA_COMMIT}"
+          git -C villa-src log -1 --format='%H %ad %s' --date=iso | tee ci-out/villa-commit.txt
+
+      - name: Install build dependencies (public apt list)
+        # Uses upstream's own scripts/install_build_deps.sh, unmodified: it is the
+        # dependency list upstream's CI image is built from, and it installs from
+        # the public Ubuntu archive. ubuntu-24.04 lacks flang-21 (used only for
+        # the Fortran flatboi target, which we disable) -- if apt fails on that
+        # one package the step fails loudly rather than silently degrading.
+        run: |
+          set -euo pipefail
+          # The runner image sometimes holds the dpkg lock for unattended upgrades.
+          sudo systemctl stop unattended-upgrades.service 2>/dev/null || true
+          sudo systemctl disable unattended-upgrades.service 2>/dev/null || true
+          sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>/dev/null || true
+
+          if timeout 3000 sudo -E bash villa-src/volume-cartographer/scripts/install_build_deps.sh \
+               2>&1 | tee ci-out/install-deps.log; then
+            echo "install_build_deps.sh: OK" | tee -a ci-out/install-deps.log
+          else
+            echo "install_build_deps.sh reported failure; recording it" | tee -a ci-out/install-deps.log
+            echo "INSTALL_SCRIPT_FAILED=yes" >> ci-out/toolchain.txt
+          fi
+
+          echo "--- installed versions ---" | tee -a ci-out/install-deps.log
+          dpkg-query -W -f='${Package} ${Version}\n' \
+            libopencv-dev libtiff-dev libboost-program-options-dev libceres-dev \
+            libcgal-dev qt6-base-dev libblosc-dev libzstd-dev liblz4-dev \
+            nlohmann-json3-dev libcurl4-openssl-dev zlib1g-dev cmake ninja-build \
+            2>/dev/null | tee -a ci-out/install-deps.log
+
+          # Hard requirements for the renderer target's own closure. These must
+          # be present; anything else missing is reported, not fatal.
+          for pkg in libopencv-dev libtiff-dev libboost-program-options-dev cmake ninja-build; do
+            dpkg-query -W -f='${Status}\n' "$pkg" 2>/dev/null | grep -q "ok installed" \
+              || { echo "MISSING REQUIRED PACKAGE: $pkg"; exit 1; }
+          done
+          echo "required packages present"
+
+      # ---------------------------------------------------------------------
+      # Baseline: the pinned revision, unmodified.
+      # ---------------------------------------------------------------------
+      - name: Configure (baseline)
+        working-directory: villa-src/volume-cartographer
+        run: |
+          set -euo pipefail
+          cmake -S . -B build/baseline -G Ninja \
+            -DCMAKE_BUILD_TYPE=QuickBuild \
+            -DVC_QUICKBUILD_OPT_LEVEL=0 \
+            -DVC_TESTING=OFF \
+            -DVC_BUILD_APPS=ON \
+            -DVC_BUILD_FLATBOI=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            2>&1 | tee ../../ci-out/configure-baseline.log
+
+      - name: Build vc_render_tifxyz (baseline)
+        working-directory: villa-src/volume-cartographer
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v cmake --build build/baseline --target vc_render_tifxyz --parallel "$(nproc)" \
+            2>&1 | tee ../../ci-out/build-baseline.log
+          test -x build/baseline/bin/vc_render_tifxyz
+          cp build/baseline/bin/vc_render_tifxyz ../../ci-out/vc_render_tifxyz.baseline
+          ls -l ../../ci-out/vc_render_tifxyz.baseline | tee -a ../../ci-out/build-baseline.log
+
+      # ---------------------------------------------------------------------
+      # Patched: the same commit with our one-file patch applied by git apply.
+      # The revision is detached and clean, so --check proves the patch applies.
+      # ---------------------------------------------------------------------
+      - name: Apply patch to the pinned revision
+        run: |
+          set -euo pipefail
+          git -C villa-src apply --check --verbose \
+            "$GITHUB_WORKSPACE/patch/vc_render_tifxyz.patch" \
+            2>&1 | tee ci-out/apply-patch.log
+          git -C villa-src apply \
+            "$GITHUB_WORKSPACE/patch/vc_render_tifxyz.patch"
+          git -C villa-src diff --stat | tee -a ci-out/apply-patch.log
+          git -C villa-src diff --output="$GITHUB_WORKSPACE/ci-out/applied.diff"
+          # The applied diff must be byte-identical to the committed artefact.
+          if cmp -s "$GITHUB_WORKSPACE/ci-out/applied.diff" \
+                    "$GITHUB_WORKSPACE/patch/vc_render_tifxyz.patch"; then
+            echo "PATCH_IDENTICAL=yes" | tee -a ci-out/apply-patch.log
+          else
+            echo "PATCH_IDENTICAL=no" | tee -a ci-out/apply-patch.log
+          fi
+
+      - name: Configure (patched)
+        working-directory: villa-src/volume-cartographer
+        run: |
+          set -euo pipefail
+          cmake -S . -B build/patched -G Ninja \
+            -DCMAKE_BUILD_TYPE=QuickBuild \
+            -DVC_QUICKBUILD_OPT_LEVEL=0 \
+            -DVC_TESTING=OFF \
+            -DVC_BUILD_APPS=ON \
+            -DVC_BUILD_FLATBOI=OFF \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            2>&1 | tee ../../ci-out/configure-patched.log
+
+      - name: Build vc_render_tifxyz (patched)
+        working-directory: villa-src/volume-cartographer
+        run: |
+          set -euo pipefail
+          /usr/bin/time -v cmake --build build/patched --target vc_render_tifxyz --parallel "$(nproc)" \
+            2>&1 | tee ../../ci-out/build-patched.log
+          test -x build/patched/bin/vc_render_tifxyz
+          cp build/patched/bin/vc_render_tifxyz ../../ci-out/vc_render_tifxyz.patched
+          ls -l ../../ci-out/vc_render_tifxyz.patched | tee -a ../../ci-out/build-patched.log
+
+      - name: Capture --help from both binaries
+        run: |
+          set -euo pipefail
+          ./ci-out/vc_render_tifxyz.baseline --help > ci-out/help-baseline.txt 2>&1 || true
+          ./ci-out/vc_render_tifxyz.patched  --help > ci-out/help-patched.txt  2>&1 || true
+          diff -u ci-out/help-baseline.txt ci-out/help-patched.txt \
+            > ci-out/help.diff || true
+          echo "--- help diff (expected: none) ---"
+          cat ci-out/help.diff
+          grep -E -- '--voxel-size|--voxel-unit' ci-out/help-patched.txt
+
+      # ---------------------------------------------------------------------
+      # Public inputs: one tifxyz mesh sized for the 8.64 um volume, and a second
+      # on the legacy volume that already worked.
+      # ---------------------------------------------------------------------
+      - name: Fetch public segment meshes
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          BUCKET=s3://vesuvius-challenge-open-data
+          aws s3 cp --no-sign-request --recursive \
+            "$BUCKET/PHerc0009B/segments/20250510172639/mesh/20250510172639-on-20250521125136-8.64um.tifxyz/" \
+            data/seg-0009B-8.64um.tifxyz/ 2>&1 | tail -5
+          aws s3 cp --no-sign-request --recursive \
+            "$BUCKET/PHerc0172/segments/20250917143559-w062_20250917143559205_flatboi/mesh/20250917143559-on-20241024131838-7.91um.tifxyz/" \
+            data/seg-0172-7.91um.tifxyz/ 2>&1 | tail -5
+          find data -type f | sort | tee ci-out/segments.txt
+          cat data/seg-0009B-8.64um.tifxyz/meta.json
+
+      - name: Write local cache-dir markers (deliberately NO store metadata)
+        # The renderer caches remote chunks into --volume. A .remote_source.json
+        # marker lets a run resolve the URL without --remote-url; writing it up
+        # front means both binaries take the identical code path, so the only
+        # variable between them is the patch.
+        #
+        # The cache dir deliberately does NOT contain meta.json or metadata.json.
+        # That is the whole experiment: with no store document on the local
+        # filesystem, the shipped reader finds nothing (the defect) and the
+        # patched one falls back to the volume it has already opened (the fix).
+        # Copying metadata.json in here would make the BASELINE resolve 8.64 as
+        # well and would compare nothing.
+        run: |
+          set -euo pipefail
+          BUCKET=https://vesuvius-challenge-open-data.s3.amazonaws.com
+          mkdir -p vol-cache/0009B vol-cache/0172 data
+
+          write_marker() {
+            printf '{"url": "%s"}\n' "$2" > "$1/.remote_source.json"
+          }
+          write_marker vol-cache/0009B \
+            "$BUCKET/PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr/"
+          write_marker vol-cache/0172 \
+            "$BUCKET/PHerc0172/volumes/20241024131838-7.910um-53keV-masked.zarr/"
+
+          # The store documents are kept OUTSIDE the cache dirs, only so the
+          # report can show what the store actually says.
+          curl -fsS "$BUCKET/PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr/metadata.json" \
+            -o data/store-0009B-metadata.json
+          curl -fsS "$BUCKET/PHerc0172/volumes/20241024131838-7.910um-53keV-masked.zarr/meta.json" \
+            -o data/store-0172-meta.json
+
+          python3 - <<'PY' | tee ci-out/store-voxel-size.txt
+          import json, pathlib
+          for name, path in (("PHerc0009B 8.64um", "data/store-0009B-metadata.json"),
+                             ("PHerc0172 7.91um",  "data/store-0172-meta.json")):
+              doc = json.loads(pathlib.Path(path).read_text())
+              sps = (doc.get("scan", {}).get("tomo", {}).get("acquisition", {})
+                        .get("detector", {}).get("samplePixelSize"))
+              top = doc.get("voxelsize")
+              print(f"{name}: samplePixelSize={sps} mm  top-level voxelsize={top}")
+          PY
+          ls -l vol-cache/*/.remote_source.json
+
+      # ---------------------------------------------------------------------
+      # Render: identical inputs, identical parameters, both binaries.
+      # ---------------------------------------------------------------------
+      - name: Render with both binaries (PHerc0009B, 8.64 um)
+        run: |
+          set -euo pipefail
+          COMMON=(-g 0 --scale 1 -n 1 --cache-gb 4
+                  --crop-x 3145 --crop-y 3412 --crop-width 128 --crop-height 128)
+          run() {
+            local bin="$1" tag="$2"
+            set +e
+            "$bin" -v "vol-cache/0009B" \
+              -s data/seg-0009B-8.64um.tifxyz \
+              "${COMMON[@]}" \
+              --zarr-output "out/${tag}.zarr" \
+              --tif-output "out/${tag}.tif" \
+              > "ci-out/render-${tag}.log" 2>&1
+            echo "$?" > "ci-out/render-${tag}.exit"
+            set -e
+            echo "=== $tag exit $(cat ci-out/render-${tag}.exit) ==="
+            cat "ci-out/render-${tag}.log"
+            echo "=== $tag artefacts ==="
+            find out -maxdepth 2 -name "${tag}*" | sort
+          }
+          mkdir -p out
+          run ./ci-out/vc_render_tifxyz.baseline 0009B-baseline
+          run ./ci-out/vc_render_tifxyz.patched  0009B-patched
+
+      - name: Render with both binaries (PHerc0172, legacy 7.91 um control)
+        run: |
+          set -euo pipefail
+          COMMON=(-g 0 --scale 1 -n 1 --cache-gb 4 --crop-width 128 --crop-height 128)
+          run() {
+            local bin="$1" tag="$2"
+            set +e
+            "$bin" -v "vol-cache/0172" \
+              -s data/seg-0172-7.91um.tifxyz \
+              "${COMMON[@]}" \
+              --zarr-output "out/${tag}.zarr" \
+              --tif-output "out/${tag}.tif" \
+              > "ci-out/render-${tag}.log" 2>&1
+            echo "$?" > "ci-out/render-${tag}.exit"
+            set -e
+            echo "=== $tag exit $(cat ci-out/render-${tag}.exit) ==="
+            cat "ci-out/render-${tag}.log"
+          }
+          run ./ci-out/vc_render_tifxyz.baseline 0172-baseline
+          run ./ci-out/vc_render_tifxyz.patched  0172-patched
+
+      - name: Inspect emitted metadata and pixels
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y --no-install-recommends libtiff-tools >/dev/null 2>&1 || true
+          python3 -m pip install --quiet --disable-pip-version-check Pillow || true
+          python3 ci/compare_render_outputs.py out ci-out | tee ci-out/comparison.txt
+          echo
+          echo "=== tiffinfo on the first slice of each run (tool-level cross-check) ==="
+          for t in 0009B-baseline 0009B-patched 0172-baseline 0172-patched; do
+            first=$(find "out/${t}.tif" -name '*.tif' 2>/dev/null | sort | head -1 || true)
+            echo "--- ${t}: ${first:-<none>}"
+            if [ -n "${first}" ]; then tiffinfo "${first}" 2>&1 | head -20 || true; fi
+          done | tee ci-out/tiffinfo.txt
+
+      - name: Upload validation artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renderer-validation
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            ci-out/
+            out/

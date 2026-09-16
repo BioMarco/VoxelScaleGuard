@@ -17,9 +17,12 @@ scroll.
 
 ## Deadline
 
-The prizes page stated *"The next deadline is 11:59pm Pacific, September 30th,
-2026"*, which has passed at the time of writing. **A later monthly deadline is
-unconfirmed and must be re-checked on the live page before submitting.**
+**Next deadline re-checked [live] 2026-09-16** against <https://scrollprize.org/prizes>:
+*"The next deadline is 11:59pm Pacific, September 30th, 2026."* That is **14 days
+away**, not past. An earlier revision of this draft said the date "has passed at the
+time of writing"; that was a documentation error and is corrected here (see
+`RESULTS.md` §8). Submissions are evaluated monthly, so a missed month costs a
+month rather than the contribution — but the immediate deadline is live.
 
 ---
 
@@ -119,16 +122,26 @@ Stated plainly, because this is what the review team will check first.
 
 **Not verified — the honest gaps**
 
-* **The patched binary has never been compiled or run.** No Qt, OpenCV, Ceres,
-  CGAL or vcpkg on the development machine, and the `windows-msvc` preset builds
-  that closure from source. Multi-GB, not authorised, not attempted. The patch is
-  **logic-verified, not binary-verified**.
+* **The patched binary has never been compiled or run.** Two independent causes,
+  both measured on 2026-09-16 and recorded in `RESULTS.md` §8.4: the compile-time
+  closure (OpenCV, libtiff, Boost `program_options`, curl, blosc, zstd, lz4,
+  `vc_delta3d`) is not installed, and neither CMake nor Ninja can execute a
+  compiler in this environment — CMake's child-process probe of Ninja returns
+  `Accesso negato`, and Ninja hangs when a build rule spawns a process. A newer
+  CMake (upstream needs ≥ 3.28; 3.24 is present) would close only the version half.
+  The patch is **logic-verified, not binary-verified**.
 * **No render was produced**, so there is no `.zattrs` file, no TIFF tag dump, and
   no before/after image pair. The physical-scale consequence is derived from
   reading `writeZarrAttrs` and `Tiff.cpp`, plus the live documents.
 * **The GUI path stays broken** without the separate
   `SegmentationCommandHandler` change, so the fix is not yet reachable from the
   route most users take.
+* **The `before` transcript is available but has not been captured.** A prebuilt
+  Windows package built from exactly the pinned commit
+  (`VC3D-757f70c-2026-09-15-win64.zip`, 148.4 MB, `latest` release) was
+  re-confirmed to exist [live] — but it has not been downloaded, at the standing
+  instruction to obtain authorisation first. It yields the *before* side only; the
+  *after* side still requires a build.
 
 Because of the first two, **this is not ready to submit as a working fix.** It is
 a verified diagnosis with a logic-verified patch, and the remaining work is
@@ -136,17 +149,26 @@ enumerated with what it needs.
 
 ## Suggested next steps, in order
 
-1. Authorise and build the `windows-msvc` dependency closure (or run the CI
-   container); compile the patched `vc_render_tifxyz`.
-2. Render a small segment against
+1. **Capture the `before` transcript** from the prebuilt Windows package built from
+   the pinned commit (148.4 MB, `latest` release; existence re-confirmed [live]
+   2026-09-16). This needs no build and no authorisation beyond the download. It
+   answers a question currently only [read]: that the `vc_*` CLI tools really do
+   ship in the bundle, and what the shipped renderer actually prints.
+2. Authorise a build of the patched `vc_render_tifxyz`. On the current machine this
+   is not a matter of choosing a preset: `RESULTS.md` §8.4 records that neither
+   CMake nor Ninja can execute a compiler here, and that the dependency closure is
+   absent. A build therefore needs a different environment — a machine with a
+   working CMake ≥ 3.28 + Ninja + Docker/WSL, or a full `cl.exe` manifest — and the
+   decision is the user's, not the agent's.
+3. Render a small segment against
    `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr` and check
    `.zattrs` (`unit: micrometer`, `scale: [1, 8.64, 8.64]` at `-g 0 --scale 1`) and
    the TIFF `XResolution` (≈2939.8 px/inch). Capture the before/after logs and the
    images the rubric asks for.
-3. Confirm the pixels are unchanged on a legacy volume (`PHerc0172`) as the
+4. Confirm the pixels are unchanged on a legacy volume (`PHerc0172`) as the
    regression check.
-4. Take the VC3D predicate change as a reviewed follow-up.
-5. Open the PR, then submit.
+5. Take the VC3D predicate change as a reviewed follow-up.
+6. Open the PR, then submit.
 
 ## Attribution
 

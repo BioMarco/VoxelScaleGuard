@@ -163,6 +163,34 @@ present locally. Options: take one from the public Open Data catalog, or grow a
 small one — the latter needs the tools, which is circular. Prefer a published
 segment.
 
+### Measured on 2026-09-16 — read this before spending anything
+
+Reconnaissance in the continuation session changed the picture on both routes.
+Full detail in `DOCS/RESULTS.md` §8.4; the load-bearing points:
+
+* **CMake and Ninja cannot execute a compiler here.** Both run and report their
+  versions (`cmake 3.24.202208181-MSVC_2`, `ninja 1.11.0`), but CMake fails with
+  `Accesso negato` when it probes `ninja.exe`, and `ninja` **hangs** when a build
+  rule spawns a process. So a CMake-driven build — which is what `ci-windows-mingw`
+  is — is not reachable from this sandbox, and **installing a newer CMake does not
+  change that.**
+* **The `vc3d-deps` bundle is not anonymously readable.** An anonymous
+  `ghcr.io/token` request for `repository:scrollprize/vc3d-deps:pull` returns
+  **HTTP 403** [live] (`node research/recon_ghcr_bundles.mjs`). CI authenticates
+  with `${{ github.token }}`. Its size and contents therefore cannot even be
+  measured from here, and obtaining them is a credentials question this project
+  must not answer. **Do not plan around this route without resolving that first.**
+* **The target's link closure is smaller than the project's configure closure.**
+  Ceres, CGAL and Qt are *not* linked by `vc_render_tifxyz`, but
+  `find_package(Ceres REQUIRED)` is unconditional and `VC_BUILD_APPS` (which always
+  adds the Qt GUI) is ON by default, so the project cannot be configured without
+  them. What the binary actually needs is OpenCV, libtiff, Boost `program_options`,
+  curl, zlib, blosc, zstd, lz4, a `vc_delta3d` codec, plus Eigen and
+  nlohmann-json headers. Full audit in `research/vc_render_tifxyz_build_analysis.md`.
+* **What is still cheap and still worth doing:** the *before* side, from the
+  prebuilt Windows package (148.4 MB). Its existence was re-confirmed [live] on
+  2026-09-16 — see below.
+
 ### Acceptance criteria for "the next step is done"
 
 1. The patched `vc_render_tifxyz.cpp` **compiles** with no new warnings, clean
@@ -247,7 +275,7 @@ Full list in `AGENTS.md` §7. The ones that will cost you an hour:
 | VC3D GUI predicate: pass the size whenever it is known, not only when rebased | `DOCS/FEASIBILITY.md` §8, `DOCS/PR_DRAFT.md` (exact edit included) |
 | Point `core/test/test_volume_live_s3.cpp` at a modern `metadata.json` volume as well as `PHerc0172` | `DOCS/TEST_PLAN.md` §4.5 — the test that would have caught this |
 | `vc_zarr_to_tiff.cpp:69-86` has the same schema gap (local-only, top-level key only) | `DOCS/FEASIBILITY.md` §8.3 |
-| Open the PR to `villa`; submit for a Progress Prize | `DOCS/PR_DRAFT.md`, `DOCS/SUBMISSION_DRAFT.md`. **Deadline unconfirmed** — the page stated 30 Sep 2026, which has passed |
+| Open the PR to `villa`; submit for a Progress Prize | `DOCS/PR_DRAFT.md`, `DOCS/SUBMISSION_DRAFT.md`. **Next deadline confirmed [live] 2026-09-16: 11:59pm Pacific, 30 Sep 2026** — 14 days out. Earlier revisions of `RESUME.md`, `README.md`, `PRIZE_REQUIREMENTS.md` and `SUBMISSION_DRAFT.md` wrongly said it had passed; corrected in place and recorded in `DOCS/RESULTS.md` §8 |
 
 ## 10. Conventions
 

@@ -12,6 +12,10 @@ harness/tools/ninja.exe
 # absorbed into this repository. The committed artefact is patch/.
 villa/
 
+# Local scratch — throwaway probe trees and downloads (e.g. the VC3D package).
+# Durable recon helpers belong in research/, not here.
+scratch/
+
 # Local scratch
 *.pdb
 *.obj
