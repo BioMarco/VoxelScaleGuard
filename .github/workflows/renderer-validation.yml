@@ -600,14 +600,18 @@ jobs:
           python3 ci/compare_render_outputs.py out ci-out | tee ci-out/comparison.txt
           echo
           echo "=== tiffinfo on the first slice of each run (independent tool) ==="
-          # --tif-output names a DIRECTORY; the slices live inside it as NN.tif.
-          # `find <dir> -name '*.tif'` therefore returns the slices, while
-          # `find <dir>` returns the directory and tiffinfo rejects it.
+          # --tif-output names a DIRECTORY, and that directory is itself called
+          # "<tag>.tif". So `find <dir> -name '*.tif'` returns the DIRECTORY --
+          # which tiffinfo rejects as "Cannot read TIFF header" -- before it ever
+          # lists the slices inside. `-type f` is what makes this find files.
           for t in 0009B-baseline 0009B-patched 0172-baseline 0172-patched; do
-            first=$(find "out/${t}.tif" -name '*.tif' 2>/dev/null | sort | head -1 || true)
+            first=$(find "out/${t}.tif" -type f -name '*.tif' 2>/dev/null | sort | head -1 || true)
             echo "--- ${t}: ${first:-<none>}"
             if [ -n "${first}" ]; then tiffinfo "${first}" 2>&1 | head -20 || true; fi
           done | tee ci-out/tiffinfo.txt
+          echo
+          echo "=== resolution tags, as read by tiffinfo rather than by Pillow ==="
+          grep -E '^---|Resolution' ci-out/tiffinfo.txt
 
       - name: Upload validation artefacts
         if: always()

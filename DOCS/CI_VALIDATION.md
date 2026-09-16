@@ -5,10 +5,16 @@ GitHub-hosted runner, and both were run against real public catalog data with
 identical inputs. This document is the record: environment, exact commits,
 commands, and results.
 
-Run: **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520>**
-(edge-case run: <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35138497154>)
+Runs:
 
-It closes `RESULTS.md` §7.1–7.3. §7.4 and §7.5 remain open.
+* **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35149794904>** — the
+  current green run, which includes the physical-size checks of §8 and the ×1000
+  fix recorded in §8.1.
+* <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520> — the
+  first green run, which established §7.
+
+It closes `RESULTS.md` §7.1–7.3. `RESULTS.md` §10 records the later unit regression
+and its fix. §7.4 and §7.5 remain open.
 
 ---
 
@@ -22,7 +28,8 @@ It closes `RESULTS.md` §7.1–7.3. §7.4 and §7.5 remain open.
 | `.zattrs` unit and scale corrected? | **Yes** — `micrometer` / `[8.64, 8.64, 8.64]` vs `nanometer` / `[1, 1, 1]` |
 | TIFF resolution present and right? | **Yes** — `2939.81…` px/inch where the baseline wrote none |
 | Pixels unchanged (regression)? | **Yes** — decoded-pixel SHA-256 identical on both volumes |
-| Error/edge cases exercised? | **Yes** — see §8 |
+| Error/edge cases exercised? | **Yes**, with their **physical values** checked, not just exit codes — see §8 |
+| Unit coherence on the explicit-size path? | **Yes** — nm/µm/mm/m each declare a number and unit denoting the same physical size; this caught a ×1000 error introduced by the first version of the patch (§8.1) |
 
 ---
 
