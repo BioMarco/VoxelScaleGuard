@@ -516,12 +516,14 @@ jobs:
             } >> "$OUT"
 
             if [ "$expect_um" != "-" ]; then
+              set +e
               python3 "$W/ci/check_physical_size.py" \
                 --zattrs "$W/out/err/${label}.zarr/.zattrs" \
                 --tiff "$W/out/err/${label}.tif" \
                 --expect-um "$expect_um" --label "$label" \
                 >> "$OUT" 2>&1
               local phys=$?
+              set -e
               echo "    physical check exit: ${phys}" >> "$OUT"
               if [ "$phys" -ne 0 ]; then PHYS_FAILURES=1; fi
             fi
@@ -534,6 +536,12 @@ jobs:
           echo "voxel-size resolution edge cases" >> "$OUT"
           echo "=================================" >> "$OUT"
           echo >> "$OUT"
+
+          # Every case runs even if one fails: `set +e` around this section, because
+          # `set -e` would abort on the first failing check and throw away the
+          # report that says WHICH physical size was wrong. The accumulated flag is
+          # what decides the step's outcome at the end.
+          set +e
 
           # No usable metadata anywhere is NOT reachable with this volume: the
           # patched binary finds the value in the volume it opened. That is the
@@ -558,6 +566,7 @@ jobs:
           # difference between the binaries is not in input validation but in
           # whether a value is found at all when none is given.
           run_case "baseline-zero-size" 1 - "$BASE" --voxel-size 0
+          set -e
 
           echo "--- results ---"
           cat "$OUT"

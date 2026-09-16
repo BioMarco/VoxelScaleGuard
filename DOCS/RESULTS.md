@@ -797,6 +797,12 @@ with its own mesh `20250510172639-on-20250521125136-8.64um.tifxyz`, and the lega
 
 **The log line, from the real binaries** [exec]:
 
+> The patched log format below is from the *first* patched build. §10 changed the
+> message so that it states the size exactly as `.zattrs` declares it, which makes
+> the log checkable against the output. The values are the same; the wording of the
+> patched line now reads `Voxel size (<source>): <number> <unit>`, so the metadata
+> rows read `Voxel size (remote volume metadata): 8.64 micrometer` before and after.
+
 | Run | Log line | Exit |
 |---|---|---|
 | 0009B baseline | `Voxel size: 1.0 (no metadata found; override with --voxel-size)` | 0 |
@@ -880,7 +886,99 @@ source says.
 
 ---
 
-## 10. Bottom line
+## 10. Session of 2026-09-16 (third) — a 1000x unit regression the patch itself introduced
+
+**Reported by the user after reviewing the published run, reproduced here, and
+fixed.** Session §9 found that the patch did not compile. This one found that, once
+compiling, it wrote a *wrong physical number* on the explicit-size path — the same
+class of defect the project exists to correct.
+
+### 10.1 The defect
+
+`--voxel-size 8640 --voxel-unit nanometer` wrote:
+
+| | value |
+|---|---|
+| `.zattrs` scale at level 0 | `8.64` |
+| `.zattrs` axis unit | `nanometer` |
+| **what that denotes** | **8.64 nm** |
+| what the caller asked for | **8640 nm** |
+
+A silent ×1000 error. The TIFF tag was correct at the same time, so the two output
+formats disagreed with each other as well as with the request [exec].
+
+**Cause.** `explicitMicrometerPerVoxel()` converts a CLI pair to micrometres;
+`base_voxel_size` then carried the converted number while `zarr_voxel_unit` kept the
+caller's unit label. `writeZarrAttrs` writes the number and the unit independently —
+`Zarr.cpp:386-404` builds `scale` and `axes[*].unit` from separate arguments — and
+nothing checks that they agree.
+
+**It is a regression introduced by this patch, not a pre-existing bug.** The
+pre-patch renderer wrote the caller's raw number under the caller's unit
+(`8640 nanometer`) and used the converted value only for the TIFF tag, so both
+outputs denoted 8640 nm. `--voxel-unit` has therefore always meant *"the unit of the
+number I am giving you"*, and the patch broke that meaning. Confirmed by reading the
+pre-patch source, `harness/src/villa/apps/src/vc_render_tifxyz.cpp:1397-1418` [read].
+
+### 10.2 The fix
+
+`zarrVoxelUnit()`/`zarrVoxelValue()` replace `kiloMicrometerUnit()` and compute the
+number and the unit **together**, so they cannot disagree:
+
+* explicit `--voxel-size` — the caller's own number and unit are preserved, exactly
+  as before the patch. **No option semantics changed.**
+* store metadata / the open volume — the resolved value is micrometres, so both are
+  micrometres. This is the original fix and it is untouched.
+
+`base_voxel_size` stays in micrometres for the TIFF resolution, so the TIFF tag is
+unchanged. `render_level_voxel_size` is now derived from the declared pair, which is
+what makes every pyramid level's scale agree with its unit.
+
+### 10.3 Tests that check physical values, not exit codes
+
+The previous tests could not have caught this: they checked exit codes, tier
+priority and the resolved micrometre value — all of which were correct. The number
+*and* its unit were each fine; only the pair was wrong.
+
+Five cases, 91 assertions added. The load-bearing one is the invariant
+`zarrScaleValue(...) × micrometersPerUnit(zarrUnit(...)) == micrometerPerVoxel`,
+checked for nanometer, micrometer, millimeter and meter in long and short spellings,
+plus:
+
+* four spellings of one physical size resolving and declaring identically;
+* the TIFF tag and `.zattrs` independently recovering the same physical size;
+* metadata-sourced sizes declared in micrometres whatever `--voxel-unit` says;
+* an unusable size declaring nothing.
+
+**Verified that the tests catch the defect** [exec]: reintroducing it in the model
+fails 3 cases / 21 assertions, reporting values such as `0.00864` where `8.64` was
+expected for the millimetre case — the ×1000 made visible.
+
+### 10.4 CI now checks the physical size end to end
+
+`ci/check_physical_size.py` converts `.zattrs` and the TIFF tags to micrometres and
+compares **both** against what the command line asked for, failing the job if either
+disagrees or if they disagree with each other. It is driven from the edge-case step
+for nanometer, micrometer, millimeter and meter, and for a second physical size
+(7.91 µm) so it does not merely assert a constant. `ci/selftest_physical_size.py`
+covers the checker itself — including that it **rejects** `8.64` labelled
+`nanometer` — and runs inside `ci/preflight_workflow.py` before any push.
+
+### 10.5 What this says about the project's process
+
+Two sessions, two defects, both found only by executing:
+
+1. the patch did not compile (§9.1);
+2. once it compiled, it wrote a wrong physical scale on one path (§10.1).
+
+Both were invisible to reading, to the harness as it then stood, and to a
+"logic-verified" label. The second was found by a human reviewing the published
+output, not by the tooling. The lesson worth keeping: a number and its unit are a
+single physical quantity and have to be tested as one.
+
+---
+
+## 11. Bottom line
 
 | Question | Answer |
 |---|---|
