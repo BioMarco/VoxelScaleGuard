@@ -12,7 +12,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except Exception as exc:  # noqa: BLE001
+    print(f"PyYAML is required: {exc}\n  python -m pip install pyyaml")
+    sys.exit(2)
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "renderer-validation.yml"
@@ -32,11 +36,15 @@ print("workflow pre-flight")
 print("=" * 70)
 
 # 1. YAML parses, and GitHub's required top-level keys are present.
+#    This check has already earned its place: a colon inside an inlined shell
+#    string once made the whole workflow unparseable, and it was pushed before
+#    anyone noticed. Run this before every push.
 try:
     doc = yaml.safe_load(WORKFLOW.read_text())
 except Exception as exc:  # noqa: BLE001
     check("YAML parses", False, str(exc))
-    print("\nCannot continue without a parseable workflow.")
+    print("\nCannot continue without a parseable workflow."
+          "\nDo NOT push this: GitHub will reject the run.")
     sys.exit(1)
 
 check("YAML parses", True)

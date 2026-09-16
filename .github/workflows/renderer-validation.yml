@@ -503,16 +503,10 @@ jobs:
               grep -E "Voxel size|Error|Warning|physical scale" "$W/ci-out/edge-${label}.log" \
                 | sed 's/^/      /' || echo "      (none)"
               local attrs
-              attrs=$(cat "$W/out/err/${label}.zarr/.zattrs" 2>/dev/null \
-                      | python3 -c 'import json,sys
-try:
-    d=json.load(sys.stdin)
-    ms=d.get("multiscales",[{}])[0]
-    print("unit=" + ",".join(str(a.get("unit")) for a in ms.get("axes",[])) +
-          " scale=" + str(ms.get("datasets",[{}])[0].get("coordinateTransformations",[{}])[0].get("scale")))
-except Exception as e:
-    print("(no .zattrs written)")' 2>/dev/null || echo "(no .zattrs)")
-              echo "    .zattrs   : ${attrs}"
+              attrs=$(python3 "$W/ci/summarize_zattrs.py" \
+                        "$W/out/err/${label}.zarr/.zattrs" 2>/dev/null \
+                      || echo "(no .zattrs)")
+              printf '    .zattrs   %s\n' "${attrs}"
               echo
             } >> "$OUT"
           }
