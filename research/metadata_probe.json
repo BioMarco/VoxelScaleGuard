@@ -1,0 +1,110 @@
+[
+  {
+    "volume": "PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr",
+    "documents": {
+      "meta.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr/meta.json",
+        "status": 404,
+        "found": false
+      },
+      "metadata.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr/metadata.json",
+        "status": 200,
+        "found": true,
+        "savedAs": "research\\raw_metadata\\PHerc0009B__volumes__20250521125136-8.640um-1.2m-116keV-masked.zarr.metadata.json",
+        "topLevelKeys": [
+          "scan",
+          "zarr_export"
+        ],
+        "tier1": {},
+        "tier1Resolves": false,
+        "esrfScanWrapped": 0.00864,
+        "esrfRootLevel": null
+      }
+    }
+  },
+  {
+    "volume": "PHercParis4/volumes/20260310173927-45.532um-11.0m-110keV-masked.zarr",
+    "documents": {
+      "meta.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHercParis4/volumes/20260310173927-45.532um-11.0m-110keV-masked.zarr/meta.json",
+        "status": 404,
+        "found": false
+      },
+      "metadata.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHercParis4/volumes/20260310173927-45.532um-11.0m-110keV-masked.zarr/metadata.json",
+        "status": 200,
+        "found": true,
+        "savedAs": "research\\raw_metadata\\PHercParis4__volumes__20260310173927-45.532um-11.0m-110keV-masked.zarr.metadata.json",
+        "topLevelKeys": [
+          "zarr_export",
+          "masking",
+          "scan"
+        ],
+        "tier1": {},
+        "tier1Resolves": false,
+        "esrfScanWrapped": 0.045531999999999996,
+        "esrfRootLevel": null
+      }
+    }
+  },
+  {
+    "volume": "PHercParis4/volumes/20260323153942-2.400um-0.2m-137keV-masked.zarr",
+    "documents": {
+      "meta.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHercParis4/volumes/20260323153942-2.400um-0.2m-137keV-masked.zarr/meta.json",
+        "status": 404,
+        "found": false
+      },
+      "metadata.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHercParis4/volumes/20260323153942-2.400um-0.2m-137keV-masked.zarr/metadata.json",
+        "status": 200,
+        "found": true,
+        "savedAs": "research\\raw_metadata\\PHercParis4__volumes__20260323153942-2.400um-0.2m-137keV-masked.zarr.metadata.json",
+        "topLevelKeys": [
+          "zarr_export",
+          "masking",
+          "scan"
+        ],
+        "tier1": {},
+        "tier1Resolves": false,
+        "esrfScanWrapped": 0.0024,
+        "esrfRootLevel": null
+      }
+    }
+  },
+  {
+    "volume": "PHerc0172/volumes/20241024131838-7.910um-53keV-masked.zarr",
+    "documents": {
+      "meta.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHerc0172/volumes/20241024131838-7.910um-53keV-masked.zarr/meta.json",
+        "status": 200,
+        "found": true,
+        "savedAs": "research\\raw_metadata\\PHerc0172__volumes__20241024131838-7.910um-53keV-masked.zarr.meta.json",
+        "topLevelKeys": [
+          "height",
+          "max",
+          "min",
+          "name",
+          "slices",
+          "type",
+          "uuid",
+          "voxelsize",
+          "width",
+          "format"
+        ],
+        "tier1": {
+          "voxelsize": 7.91
+        },
+        "tier1Resolves": true,
+        "esrfScanWrapped": null,
+        "esrfRootLevel": null
+      },
+      "metadata.json": {
+        "url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHerc0172/volumes/20241024131838-7.910um-53keV-masked.zarr/metadata.json",
+        "status": 404,
+        "found": false
+      }
+    }
+  }
+]

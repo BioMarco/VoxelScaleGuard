@@ -4,7 +4,13 @@
 // which voxel-size fields each volume actually publishes and where they live.
 // Read-only: GET requests against the public anonymous Open Data bucket.
 //
-// Usage: node research/fetch_volume_metadata.mjs [outdir]
+// Usage:
+//   node research/fetch_volume_metadata.mjs [outdir] [--out summary.json]
+//
+// The summary is written to <cwd>/metadata_probe.json by default, or to the path
+// given by --out. It is written by this script rather than by the shell, because
+// the sandbox this project was developed in refuses to redirect the output of a
+// native command.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -29,7 +35,19 @@ const EXPLICIT_KEYS = [
   'pixel_size_um', 'pixelSizeUm', 'resolution_um',
 ];
 
-const outdir = process.argv[2] ?? join('research', 'raw_metadata');
+// Positional argument is the document directory; --out names the summary file.
+const argv = process.argv.slice(2);
+let outPath = 'metadata_probe.json';
+const positional = [];
+for (let i = 0; i < argv.length; i++) {
+  if (argv[i] === '--out') {
+    outPath = argv[++i] ?? outPath;
+  } else {
+    positional.push(argv[i]);
+  }
+}
+
+const outdir = positional[0] ?? join('research', 'raw_metadata');
 await mkdir(outdir, { recursive: true });
 
 const get = async (url) => {
@@ -81,4 +99,7 @@ for (const volume of VOLUMES) {
   summary.push(record);
 }
 
-console.log(JSON.stringify(summary, null, 2));
+const json = JSON.stringify(summary, null, 2);
+await writeFile(outPath, json);
+console.log(json);
+console.log(`\n[probe] summary written to ${outPath}`);
