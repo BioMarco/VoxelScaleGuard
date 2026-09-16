@@ -75,14 +75,21 @@ jobs:
           } | tee ci-out/toolchain.txt
 
       - name: Clone villa at the pinned commit
+        # Fetch just the pinned commit instead of the whole history: the clone
+        # plus detached checkout took 200 s on a hosted runner, which is pure
+        # overhead when the tree and the one commit are all that is needed.
         run: |
           set -euo pipefail
-          git clone --filter=blob:none --no-checkout \
-            https://github.com/ScrollPrize/villa.git villa-src
-          git -C villa-src checkout --detach "${VILLA_COMMIT}"
+          mkdir -p villa-src
+          git -C villa-src init -q
+          git -C villa-src remote add origin https://github.com/ScrollPrize/villa.git
+          git -C villa-src fetch -q --depth 1 origin "${VILLA_COMMIT}"
+          git -C villa-src checkout -q --detach FETCH_HEAD
           git -C villa-src rev-parse HEAD | tee ci-out/villa-HEAD.txt
           test "$(cat ci-out/villa-HEAD.txt)" = "${VILLA_COMMIT}"
           git -C villa-src log -1 --format='%H %ad %s' --date=iso | tee ci-out/villa-commit.txt
+          git -C villa-src status --porcelain | tee ci-out/villa-status-clean.txt
+          test -z "$(cat ci-out/villa-status-clean.txt)"
 
       - name: Enable the universe repository and update package lists
         # apt must genuinely work before anything else is worth attempting. If
@@ -153,28 +160,32 @@ jobs:
           sudo apt-get update -y > ci-out/apt-update-2.log 2>&1
           echo "second apt-get update exit: $?" | tee ci-out/apt-groups.txt
 
+          # Format is "<arbitrary label> <package> <package> ...". The label is
+          # dropped by the first `read`; the rest are the package names. A ':' or
+          # ',' separator would be wrong here -- package names contain neither, so
+          # a wrong separator silently yields the whole string as one bogus name.
           GROUPS=(
-            "toolchain:clang lld llvm mold ccache pkg-config"
-            "cmake:ninja-build"
-            "qt6:qt6-base-dev"
-            "boost:libboost-system-dev libboost-program-options-dev"
-            "ceres:libceres-dev libsuitesparse-dev"
-            "opencv:libopencv-dev libopencv-contrib-dev"
-            "cgal:libcgal-dev libmpfr-dev libgmp-dev"
-            "compression:libblosc-dev libzstd-dev liblz4-dev zlib1g-dev"
-            "network:libcurl4-openssl-dev"
-            "json:nlohmann-json3-dev"
-            "tiff:libtiff-dev"
-            "misc:libavahi-client-dev file bzip2 wget jq"
-            "blas:gfortran libopenblas-dev liblapack-dev liblapacke-dev libomp-dev"
-            "scotch:libscotch-dev libscotchmetis-dev libhwloc-dev"
-            "flang:flang-21 libclang-rt-21-dev"
+            "toolchain clang lld llvm mold ccache pkg-config"
+            "cmake ninja-build"
+            "qt6 qt6-base-dev"
+            "boost libboost-system-dev libboost-program-options-dev"
+            "ceres libceres-dev libsuitesparse-dev"
+            "opencv libopencv-dev libopencv-contrib-dev"
+            "cgal libcgal-dev libmpfr-dev libgmp-dev"
+            "compression libblosc-dev libzstd-dev liblz4-dev zlib1g-dev"
+            "network libcurl4-openssl-dev"
+            "json nlohmann-json3-dev"
+            "tiff libtiff-dev"
+            "misc libavahi-client-dev file bzip2 wget jq"
+            "blas gfortran libopenblas-dev liblapack-dev liblapacke-dev libomp-dev"
+            "scotch libscotch-dev libscotchmetis-dev libhwloc-dev"
+            "flang flang-21 libclang-rt-21-dev"
           )
 
           for group in "${GROUPS[@]}"; do
-            name="${group%%:*}"
-            pkgs="${group#*:}"
+            read -r name pkgs <<< "$group"
             set +e
+            # shellcheck disable=SC2086  # word splitting is the point here
             sudo apt-get install -y --no-install-recommends $pkgs \
               > "ci-out/apt-${name}.log" 2>&1
             rc=$?
@@ -192,7 +203,8 @@ jobs:
           # Written to the artefact so this is inspectable without the job log.
           : > ci-out/package-presence.txt
           for group in "${GROUPS[@]}"; do
-            for pkg in ${group#*:}; do
+            read -r name pkgs <<< "$group"
+            for pkg in $pkgs; do
               if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
                 printf 'present  %s\n' "$pkg" >> ci-out/package-presence.txt
               else
