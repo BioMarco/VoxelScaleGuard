@@ -467,6 +467,78 @@ jobs:
           run build/baseline/bin/vc_render_tifxyz 0172-baseline
           run build/patched/bin/vc_render_tifxyz  0172-patched
 
+      - name: Error and edge cases (patched binary, real CLI)
+        # The user-facing question is not "does the function handle 0" but "can the
+        # program ever quietly assert a physical scale that does not exist". These
+        # drive the real binary and check its exit code and output.
+        working-directory: villa-src/volume-cartographer
+        run: |
+          set -uo pipefail
+          W="$GITHUB_WORKSPACE"
+          BIN=build/patched/bin/vc_render_tifxyz
+          BASE=build/baseline/bin/vc_render_tifxyz
+          mkdir -p "$W/out/err"
+          OUT="$W/ci-out/edge-cases.txt"
+          : > "$OUT"
+
+          # run_case <label> <expected-exit> <bin> <extra args...>
+          run_case() {
+            local label="$1" want="$2" bin="$3"; shift 3
+            set +e
+            "$bin" -v "$W/vol-cache/0009B" -s "$W/data/seg-0009B-8.64um.tifxyz" \
+              -g 0 --scale 1 -n 1 --cache-gb 1 \
+              --crop-x 3145 --crop-y 3412 --crop-width 32 --crop-height 32 \
+              --zarr-output "$W/out/err/${label}.zarr" \
+              --tif-output "$W/out/err/${label}.tif" "$@" \
+              > "$W/ci-out/edge-${label}.log" 2>&1
+            local rc=$?
+            set -e
+            local verdict="UNEXPECTED"
+            [ "$rc" -eq "$want" ] && verdict="as-expected"
+            {
+              echo "### ${label}"
+              echo "    args      : $*"
+              echo "    exit      : ${rc} (wanted ${want}) -- ${verdict}"
+              echo "    log lines :"
+              grep -E "Voxel size|Error|Warning|physical scale" "$W/ci-out/edge-${label}.log" \
+                | sed 's/^/      /' || echo "      (none)"
+              local attrs
+              attrs=$(cat "$W/out/err/${label}.zarr/.zattrs" 2>/dev/null \
+                      | python3 -c 'import json,sys
+try:
+    d=json.load(sys.stdin)
+    ms=d.get("multiscales",[{}])[0]
+    print("unit=" + ",".join(str(a.get("unit")) for a in ms.get("axes",[])) +
+          " scale=" + str(ms.get("datasets",[{}])[0].get("coordinateTransformations",[{}])[0].get("scale")))
+except Exception as e:
+    print("(no .zattrs written)")' 2>/dev/null || echo "(no .zattrs)")
+              echo "    .zattrs   : ${attrs}"
+              echo
+            } >> "$OUT"
+          }
+
+          echo "voxel-size resolution edge cases" >> "$OUT"
+          echo "=================================" >> "$OUT"
+          echo >> "$OUT"
+
+          # No usable metadata anywhere is NOT reachable with this volume: the
+          # patched binary finds the value in the volume it opened. That is the
+          # fix. The remaining cases below force the unusable paths instead.
+          run_case "zero-size"        1 "$BIN" --voxel-size 0
+          run_case "negative-size"    1 "$BIN" --voxel-size -3
+          run_case "nan-size"         1 "$BIN" --voxel-size nan
+          run_case "unknown-unit"     1 "$BIN" --voxel-size 7.91 --voxel-unit furlong
+          run_case "explicit-nm"      0 "$BIN" --voxel-size 8640 --voxel-unit nanometer
+          run_case "explicit-um"      0 "$BIN" --voxel-size 8.64 --voxel-unit micrometer
+          # The baseline, for contrast: it too rejects a non-positive size, so the
+          # difference between the binaries is not in input validation but in
+          # whether a value is found at all when none is given.
+          run_case "baseline-zero-size" 1 "$BASE" --voxel-size 0
+
+          echo "--- results ---"
+          cat "$OUT"
+          exit 0
+
       - name: Inspect emitted metadata and pixels
         run: |
           set -euo pipefail
