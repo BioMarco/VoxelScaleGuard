@@ -334,6 +334,22 @@ jobs:
           test -x build/patched/bin/vc_render_tifxyz
           ls -l build/patched/bin/vc_render_tifxyz | tee -a ../../ci-out/build-patched.log
 
+      - name: Install TIFF and metadata inspection tooling
+        # Must come BEFORE the edge-case step: that step reads TIFF resolution tags,
+        # and without Pillow it reports "the TIFF has no resolution" instead of
+        # "the tool is missing". Both users below are downstream of this step.
+        #
+        # --break-system-packages: ubuntu-24.04 marks its Python as externally
+        # managed (PEP 668), so a plain `pip install` is refused. A venv would be
+        # tidier but this is a throwaway runner.
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y --no-install-recommends libtiff-tools >/dev/null 2>&1 || true
+          python3 -m pip install --quiet --disable-pip-version-check \
+            --break-system-packages Pillow
+          python3 -c "from PIL import Image; print('Pillow', Image.__version__)"
+          command -v tiffinfo >/dev/null && echo "tiffinfo present" || echo "(tiffinfo unavailable)"
+
       - name: Capture --help from both binaries and compare
         working-directory: villa-src/volume-cartographer
         run: |
@@ -577,18 +593,6 @@ jobs:
             exit 1
           fi
           exit 0
-
-      - name: Install TIFF inspection tooling
-        # Pillow reads TIFF tags and decoded pixels; libtiff-tools gives tiffinfo
-        # as an independent cross-check. Installed once, before the steps that use
-        # them: the edge-case step reads TIFF resolution tags, and a missing Pillow
-        # there reads as "TIFF carries no resolution" rather than as a setup gap.
-        run: |
-          set -euo pipefail
-          sudo apt-get install -y --no-install-recommends libtiff-tools >/dev/null 2>&1 || true
-          python3 -m pip install --quiet --disable-pip-version-check Pillow
-          python3 -c "from PIL import Image; print('Pillow', Image.__version__)"
-          command -v tiffinfo && tiffinfo -h 2>&1 | head -2 || echo "(tiffinfo unavailable)"
 
       - name: Inspect emitted metadata and pixels
         run: |

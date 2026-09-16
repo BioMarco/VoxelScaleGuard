@@ -90,7 +90,45 @@ proc = subprocess.run(
 )
 check("patch reverse-applies against villa/", proc.returncode == 0, proc.stderr.strip()[:200])
 
-# 4. The report tools' own self-tests. A broken reporter inside CI wastes a full
+# 4. Step ORDER, for the tools that a later step needs. This has already gone
+#    wrong once: the Pillow install was placed after the edge-case step that reads
+#    TIFF tags, so that step silently reported "no resolution" for every case.
+ORDER_REQUIREMENTS = [
+    # (provider substring, consumer substring)
+    ("--break-system-packages Pillow", "Error and edge cases"),
+    ("--break-system-packages Pillow", "Inspect emitted metadata and pixels"),
+]
+
+
+def step_names(doc):
+    return [s.get("name", "<unnamed>") for j in doc.get("jobs", {}).values()
+            for s in j.get("steps", [])]
+
+
+names = step_names(doc)
+for provider, consumer in ORDER_REQUIREMENTS:
+    pi = next((i for i, n in enumerate(names)
+               if provider.split()[-1].lower() in n.lower()
+               or provider.lower() in n.lower()), None)
+    # Match on the step that actually runs the install command, not its name.
+    pi = None
+    ci = None
+    for i, j in enumerate(doc.get("jobs", {}).values()):
+        for k, s in enumerate(j.get("steps", [])):
+            if provider in (s.get("run") or ""):
+                pi = k
+            if consumer.lower() in (s.get("name") or "").lower():
+                ci = k
+    if pi is None:
+        check(f"install step for {consumer!r} exists", False, f"no step runs {provider!r}")
+        continue
+    if ci is None:
+        check(f"consumer step {consumer!r} exists", False)
+        continue
+    check(f"{provider.split()[-1]} installs before {consumer!r}", pi < ci,
+          f"install at step {pi + 1}, consumer at {ci + 1}")
+
+# 5. The report tools' own self-tests. A broken reporter inside CI wastes a full
 #    dependency install and build, and can invert the answer.
 for name, script in (("compare_render_outputs", "ci/selftest_compare.py"),
                      ("check_physical_size", "ci/selftest_physical_size.py")):

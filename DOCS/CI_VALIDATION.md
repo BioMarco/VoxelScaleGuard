@@ -218,29 +218,44 @@ pixels really do differ.
 
 ## 8. Error and edge cases
 
-Driven through the patched binary's real CLI, exit codes and emitted `.zattrs`
-recorded. Every case behaved as intended.
+Driven through the patched binary's real CLI. Exit codes are recorded, and for every
+successful run the emitted `.zattrs` and TIFF tags are converted to micrometres and
+compared against the physical size the command line asked for
+(`ci/check_physical_size.py`). That second half is not decoration: it is the check a
+number/unit mismatch survives, and it is what caught the defect in §8.1.
 
-| Case | Invocation | Exit | Output |
+| Case | Invocation | Exit | Physical check |
 |---|---|---|---|
-| Zero size | `--voxel-size 0` | **1** | `Error: --voxel-size must be a positive finite number`; no `.zattrs` |
+| Zero size | `--voxel-size 0` | **1** | no `.zattrs`; `Error: --voxel-size must be a positive finite number` |
 | Negative size | `--voxel-size -3` | **1** | same error; no `.zattrs` |
 | Non-finite | `--voxel-size nan` | **1** | same error; no `.zattrs` |
 | Unknown unit | `--voxel-size 7.91 --voxel-unit furlong` | **1** | `Error: unsupported --voxel-unit: furlong`; no `.zattrs` |
-| Explicit, sub-unit | `--voxel-size 8640 --voxel-unit nanometer` | 0 | `Voxel size (from command line): 8.64 nanometer`; zarr scale `[8.64, …]` in nm |
-| Explicit, base unit | `--voxel-size 8.64 --voxel-unit micrometer` | 0 | `Voxel size (from command line): 8.64 micrometer`; zarr scale `[8.64, …]` in µm |
+| Nanometres | `--voxel-size 8640 --voxel-unit nanometer` | 0 | `.zattrs` 8640 nm = **8.64 µm**; TIFF = 8.64 µm |
+| Micrometres | `--voxel-size 8.64 --voxel-unit micrometer` | 0 | `.zattrs` 8.64 µm; TIFF = 8.64 µm |
+| Millimetres | `--voxel-size 0.00864 --voxel-unit millimeter` | 0 | `.zattrs` 0.00864 mm = **8.64 µm**; TIFF = 8.64 µm |
+| Metres | `--voxel-size 0.00000864 --voxel-unit meter` | 0 | `.zattrs` 8.64e-06 m = **8.64 µm**; TIFF = 8.64 µm |
+| A different size | `--voxel-size 7910 --voxel-unit nanometer` | 0 | `.zattrs` = **7.91 µm**; TIFF = 7.91 µm |
 | Baseline, zero size | `--voxel-size 0` | **1** | same error as the patched binary |
 
-The last row is the control for the claim that this patch introduces no regression
-in input validation: both binaries reject a non-positive `--voxel-size`, because
-that check predates the patch. What the patch changes is not validation of what the
-user supplies, but whether a value is found at all when the user supplies none.
+All four spellings of one physical size declare the caller's own number *and* the
+caller's own unit, so the pair denotes the same 8.64 µm in each case; the 7.91 µm case
+shows the check is not asserting a constant.
 
-Note on the two explicit-unit rows: the two invocations express the same physical
-size and produce the same numeric scale, but the declared *unit* differs because
-`--voxel-unit` describes what the user meant. That is the patched behaviour by
-design — the CLI value is converted to micrometres for the TIFF resolution, and the
-caller's stated unit is preserved in `.zattrs`.
+The last row is the control for "this patch introduces no regression in input
+validation": both binaries reject a non-positive `--voxel-size`, because that check
+predates the patch. What the patch changes is not validation of what the user
+supplies, but whether a value is found at all when the user supplies none.
+
+### 8.1 A 1000x unit regression, found here and fixed
+
+*The first version of the patch failed this section.* It wrote `.zattrs` with scale
+`8.64` and unit `nanometer` for `--voxel-size 8640 --voxel-unit nanometer` --
+declaring 8.64 nm where 8640 nm was asked for, a silent x1000 error, while the TIFF
+tag was correct. Cause, fix and tests are in `RESULTS.md` §10.
+
+This is why the physical check exists and why it converts both sides to micrometres.
+An earlier version of this section recorded only exit codes and a raw `.zattrs`
+summary, and read as a pass while the declared value was wrong by 1000x.
 
 **Not exercised:** the "no usable voxel size anywhere" path, i.e. the branch that
 emits the warning and writes no physical scale. With this volume the patched binary
