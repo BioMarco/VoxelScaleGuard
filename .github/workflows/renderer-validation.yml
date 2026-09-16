@@ -164,26 +164,13 @@ jobs:
           # dropped by the first `read`; the rest are the package names. A ':' or
           # ',' separator would be wrong here -- package names contain neither, so
           # a wrong separator silently yields the whole string as one bogus name.
-          GROUPS=(
-            "toolchain clang lld llvm mold ccache pkg-config"
-            "cmake ninja-build"
-            "qt6 qt6-base-dev"
-            "boost libboost-system-dev libboost-program-options-dev"
-            "ceres libceres-dev libsuitesparse-dev"
-            "opencv libopencv-dev libopencv-contrib-dev"
-            "cgal libcgal-dev libmpfr-dev libgmp-dev"
-            "compression libblosc-dev libzstd-dev liblz4-dev zlib1g-dev"
-            "network libcurl4-openssl-dev"
-            "json nlohmann-json3-dev"
-            "tiff libtiff-dev"
-            "misc libavahi-client-dev file bzip2 wget jq"
-            "blas gfortran libopenblas-dev liblapack-dev liblapacke-dev libomp-dev"
-            "scotch libscotch-dev libscotchmetis-dev libhwloc-dev"
-            "flang flang-21 libclang-rt-21-dev"
-          )
-
-          for group in "${GROUPS[@]}"; do
-            read -r name pkgs <<< "$group"
+          # One group per line: "<label> <package> <package> ...". Read with a
+          # here-doc rather than a bash array, because an array element that fails
+          # to expand yields a silently wrong package name, and apt then reports
+          # "unable to locate" for something that was never a package.
+          while read -r name pkgs; do
+            [ -z "$name" ] && continue
+            echo "--- group ${name}: ${pkgs}"
             set +e
             # shellcheck disable=SC2086  # word splitting is the point here
             sudo apt-get install -y --no-install-recommends $pkgs \
@@ -197,13 +184,28 @@ jobs:
               grep -E "^E:" "ci-out/apt-${name}.log" | head -5 | sed 's/^/        /' \
                 | tee -a ci-out/apt-groups.txt
             fi
-          done
+          done <<'GROUPS'
+          toolchain clang lld llvm mold ccache pkg-config
+          cmake ninja-build
+          qt6 qt6-base-dev
+          boost libboost-system-dev libboost-program-options-dev
+          ceres libceres-dev libsuitesparse-dev
+          opencv libopencv-dev libopencv-contrib-dev
+          cgal libcgal-dev libmpfr-dev libgmp-dev
+          compression libblosc-dev libzstd-dev liblz4-dev zlib1g-dev
+          network libcurl4-openssl-dev
+          json nlohmann-json3-dev
+          tiff libtiff-dev
+          misc libavahi-client-dev file bzip2 wget jq
+          blas gfortran libopenblas-dev liblapack-dev liblapacke-dev libomp-dev
+          scotch libscotch-dev libscotchmetis-dev libhwloc-dev
+          flang flang-21 libclang-rt-21-dev
+          GROUPS
 
           # Record, for every package, whether dpkg thinks it is installed.
-          # Written to the artefact so this is inspectable without the job log.
           : > ci-out/package-presence.txt
-          for group in "${GROUPS[@]}"; do
-            read -r name pkgs <<< "$group"
+          while read -r name pkgs; do
+            [ -z "$name" ] && continue
             for pkg in $pkgs; do
               if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
                 printf 'present  %s\n' "$pkg" >> ci-out/package-presence.txt
@@ -211,7 +213,23 @@ jobs:
                 printf 'MISSING  %s\n' "$pkg" >> ci-out/package-presence.txt
               fi
             done
-          done
+          done <<'GROUPS'
+          toolchain clang lld llvm mold ccache pkg-config
+          cmake ninja-build
+          qt6 qt6-base-dev
+          boost libboost-system-dev libboost-program-options-dev
+          ceres libceres-dev libsuitesparse-dev
+          opencv libopencv-dev libopencv-contrib-dev
+          cgal libcgal-dev libmpfr-dev libgmp-dev
+          compression libblosc-dev libzstd-dev liblz4-dev zlib1g-dev
+          network libcurl4-openssl-dev
+          json nlohmann-json3-dev
+          tiff libtiff-dev
+          misc libavahi-client-dev file bzip2 wget jq
+          blas gfortran libopenblas-dev liblapack-dev liblapacke-dev libomp-dev
+          scotch libscotch-dev libscotchmetis-dev libhwloc-dev
+          flang flang-21 libclang-rt-21-dev
+          GROUPS
           echo "--- package presence summary ---"
           sort ci-out/package-presence.txt | tee ci-out/package-presence-sorted.txt
           echo "present: $(grep -c '^present' ci-out/package-presence.txt) / total: $(wc -l < ci-out/package-presence.txt)"
