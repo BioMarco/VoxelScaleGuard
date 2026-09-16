@@ -1,0 +1,12 @@
+{
+    "height": 9100,
+    "max": 65535,
+    "min": 0,
+    "name": "scroll5-masked_raw-zarr",
+    "slices": 21000,
+    "type": "vol",
+    "uuid": "20241024131838-masked_raw-zarr",
+    "voxelsize": 7.91,
+    "width": 6700,
+    "format": "zarr"
+}

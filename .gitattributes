@@ -1,0 +1,10 @@
+# Keep line endings exactly as authored.
+#
+# Two things here break if git rewrites them:
+#   * patch/vc_render_tifxyz.patch — git apply is whitespace- and EOL-sensitive.
+#   * harness/setup.ps1 copies upstream .cpp/.hpp files byte-for-byte; that
+#     guarantee is a documented invariant of the harness (see AGENTS.md §8).
+#
+# So: no automatic text conversion anywhere. Files are stored and checked out
+# verbatim.
+* -text

@@ -1,0 +1,18 @@
+# Build artefacts — not part of the deliverable.
+harness/build/
+
+# Fetched at build time by harness/fetch_deps.mjs, not vendored.
+harness/third_party/
+
+# Copied in by harness/build.ps1 because this sandbox refuses to launch
+# executables from Program Files.
+harness/tools/ninja.exe
+
+# The upstream clone is a read-only working copy with its own .git; it must not be
+# absorbed into this repository. The committed artefact is patch/.
+villa/
+
+# Local scratch
+*.pdb
+*.obj
+*.ilk

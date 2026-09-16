@@ -1,0 +1,307 @@
+{
+  "zarr_export": {
+    "target_window_f32_min": 0.01,
+    "target_window_f32_max": 0.16,
+    "window_u16_min": 9687,
+    "window_u16_max": 51556,
+    "z_crop_start": 0,
+    "z_crop_end": 6624,
+    "workflow_name": "export-2-4um-pherc-paris4-roi1-3cfa48",
+    "workflow_creation": "2026-03-23T15:39:42Z"
+  },
+  "masking": {
+    "method": "SAM2",
+    "sam2_checkpoint": "/recon/models/masking/sam2-checkpoints/sam2.1_hiera_tiny.pt",
+    "sam2_model_cfg": "configs/sam2.1/sam2.1_hiera_t",
+    "finetuned_weights": "/recon/models/masking/sam2-checkpoints/scrollmask_august_t_4000.torch",
+    "dilation_structure": "5",
+    "dilation_iterations": "1",
+    "mask_scale": 16
+  },
+  "scan": {
+    "tomo": {
+      "acquisition": {
+        "scanRadix": "2.4um_137keV_PHerc-Paris4_ROI1",
+        "scanType": "helical",
+        "nb_scans": 5,
+        "start_date": "2026-03-15T06:26:01.084619+01:00",
+        "end_date": "2026-03-15T08:25:29.330739+01:00",
+        "beamline": "bm18",
+        "machineMode": "16 bunch",
+        "machineCurrentStart": 57.350201,
+        "machineCurrentStop": 83.21,
+        "sampleDetectorDistance": 220.0,
+        "sourceSampleDistance": 178000.0,
+        "xray_magnification": 1.001236,
+        "energy": 137.0,
+        "scanRange": 360.0,
+        "rotationMode": "continuous",
+        "half_acquisition": false,
+        "tomo_N": 13000,
+        "ref_N": 401,
+        "dark_N": 400,
+        "z_start": -258.5,
+        "z_end": -238.04,
+        "z_step": 5.115,
+        "detector": {
+          "sensor": "Pco",
+          "sensorPixelSize": 0.0046,
+          "roi_size": "[4416, 2368]",
+          "sensorBinning": 1,
+          "opticsName": "Fixed_X2",
+          "opticsType": "FixedmagOptic",
+          "optical_magnification": 2.0,
+          "samplePixelSize": 0.0024,
+          "scintillator": "GAGG_50um_refl"
+        },
+        "acq_mode": "SINGLE",
+        "expo_time": 0.12,
+        "subframe": 0.12,
+        "latency_time": null,
+        "accumulation": 1,
+        "scan_time": 6885.88893,
+        "scan_time_total": 7168.24612,
+        "comment": "wba11 = Mo 1.30mm, wba12 = Ag 0.20mm, wba13 = Au 0.10mm, wba14 = Ag 0.20mm",
+        "attenuators": {
+          "wba11": {
+            "thickness": 5.0,
+            "type": "sapphire"
+          },
+          "wba12": {
+            "thickness": 0.0,
+            "type": "empty"
+          },
+          "wba13": {
+            "thickness": 0.0,
+            "type": "empty"
+          },
+          "wba14": {
+            "thickness": 0.1,
+            "type": "Au"
+          },
+          "wba15": {
+            "thickness": 0.0,
+            "type": "free pass"
+          },
+          "wba21": {
+            "thickness": 0.0,
+            "type": "empty"
+          },
+          "wba22": {
+            "thickness": 15.0,
+            "type": "sapphire"
+          },
+          "wba23": {
+            "thickness": 0.0,
+            "type": "empty"
+          },
+          "wba24": {
+            "thickness": 0.0,
+            "type": "empty"
+          },
+          "wba25": {
+            "thickness": 0.0,
+            "type": "empty"
+          },
+          "wba31": {
+            "thickness": 0.0,
+            "type": "free pass"
+          },
+          "wba32": {
+            "thickness": 0.0,
+            "type": "free pass"
+          }
+        },
+        "motors": {
+          "att11": 99.5,
+          "att12": 139.5,
+          "att13": 159.5,
+          "att14": 99.5,
+          "att15": 198.0,
+          "att21": 198.1,
+          "att22": 198.0,
+          "att23": 198.0,
+          "att24": 198.1,
+          "att25": 198.0,
+          "att31": 199.5,
+          "att32": 198.1,
+          "att33": "error",
+          "dzfocus": -0.0,
+          "dzmag": 5.77,
+          "dzrotc": 0.23,
+          "dzz": 160.56,
+          "foc1twin": 4.68,
+          "foc2twin": 5.15,
+          "focus10x": 0.0,
+          "focus2": -1.91,
+          "focus3": 0.0,
+          "focus5": -2.21,
+          "focus7": -2.84,
+          "focusrefl": -3.07,
+          "focusx05": -0.06,
+          "focusx2": 0.0,
+          "focusx4": 0.0,
+          "fsd": 0.7,
+          "fshg": 10.9,
+          "fsho": 64.39,
+          "fshut_axis": 0.0,
+          "fsl": -58.94,
+          "fsr": 69.84,
+          "fsu": 5.17,
+          "fsvg": 5.87,
+          "fsvo": 2.24,
+          "fur1": -1.49,
+          "girderx": 139.38,
+          "hzsrot": "error",
+          "kore": "error",
+          "lfddiaph": 0.0,
+          "lfdfocus": 13.64,
+          "lfdrotc": 0.01,
+          "lfdz": -0.0,
+          "lthx1": -0.9,
+          "lthx2": 0.0,
+          "lthy1": 0.0,
+          "lthy2": 0.0,
+          "lz1": -0.0,
+          "lz2": 0.0,
+          "ostwin": -56.0,
+          "psh1": 9.11,
+          "psh2": 1.79,
+          "pshg": 1.79,
+          "psho": 10.0,
+          "psv1": 0.88,
+          "psv2": -1.05,
+          "psvg": 1.15,
+          "psvo": 0.36,
+          "psx": 6.88,
+          "psy": 6.88,
+          "qsh1": -42.5,
+          "qsh2": 85.0,
+          "qshg": 85.0,
+          "qsho": 0.0,
+          "qsv1": 2.82,
+          "qsv2": -4.5,
+          "qsvg": 4.5,
+          "qsvo": 0.0,
+          "rotc10x": -0.0,
+          "rotc2": "error",
+          "rotc3": -0.61,
+          "rotc5": -45.59,
+          "rotc7": 0.03,
+          "rotc9": -1.87,
+          "rotcrefl": 1.4,
+          "rotctwin": -0.04,
+          "rotcx05": 0.0,
+          "rotcx2": 0.0,
+          "rotcx4": 0.0,
+          "srot": 0.0,
+          "ssh1": -42.29,
+          "ssh2": 84.59,
+          "sshg": 84.59,
+          "ssho": -0.0,
+          "ssv1": 2.15,
+          "ssv2": -4.3,
+          "ssvg": 4.5,
+          "ssvo": 0.0,
+          "sx": 6.88,
+          "sy": 6.88,
+          "sz": -258.5,
+          "tsh1": -41.49,
+          "tsh2": 82.97,
+          "tshg": 82.97,
+          "tsho": 0.0,
+          "tsv1": 2.05,
+          "tsv2": -4.1,
+          "tsvg": 4.5,
+          "tsvo": 0.0,
+          "yc12": 67.17,
+          "yc3": 366.82,
+          "yc4": 442.14,
+          "yc5": 362.0,
+          "yc6": 371.0,
+          "yc7": 350.0,
+          "yc8": -1.05,
+          "yc9": -39.42,
+          "ycBT": 358.09,
+          "yrot": 4.8,
+          "zc1": 5.52,
+          "zc2": 4.17,
+          "zc3": 4.55,
+          "zc4": 300.5,
+          "zc5": 300.1,
+          "zc6": 13.82,
+          "zc7": 4.23,
+          "zc8": 299.8,
+          "zc9": 271.84,
+          "zcBT": 119.06,
+          "zfocus": "error",
+          "zmag": "error",
+          "zrotc": "error",
+          "zyscint": "error",
+          "zz": "error"
+        },
+        "motors_dial": {
+          "yrot_dial": 65.34
+        }
+      },
+      "processing": {
+        "general": {
+          "WorkFlowScheme": "nabu",
+          "BlissFirstScan": "/data/visitor/in1215/bm18/20260311/RAW_DATA/2.4um_137keV_PHerc-Paris4_ROI1/2.4um_137keV_PHerc-Paris4_ROI1_0001/2.4um_137keV_PHerc-Paris4_ROI1_0001.h5",
+          "BlissLastScan": "/data/visitor/in1215/bm18/20260311/RAW_DATA/2.4um_137keV_PHerc-Paris4_ROI1/2.4um_137keV_PHerc-Paris4_ROI1_0001/2.4um_137keV_PHerc-Paris4_ROI1_0001.h5",
+          "FlatField": "Standard",
+          "DoubleFlatsScheme": true,
+          "DetectorDistortionCorrection": true,
+          "LutPathScheme": true,
+          "AutoCorrectZTranslations": false
+        },
+        "preprocessing": {
+          "double_flat_field": {
+            "DoubleFlatsFilterMethodPar": "median",
+            "DoubleFlatsPeriodNturns": "5",
+            "DoubleFlatsNsectorsPerTurn": "1",
+            "DoubleFlatsProjStep": "10",
+            "DoubleFlatsMethodScheme": "b",
+            "DoubleFlatsRadiusPixBasic": "20",
+            "DoubleFlatsPerStageScheme": "n"
+          },
+          "DetectorDistortionCorrection": {
+            "MapXzPathPar": "/gpfs/jazzy/data/bm18/inhouse/PAUL/OPTICS/2xOtus/251210_bi10_dist-map/mapfromslit_2368_4416.h5"
+          },
+          "LutPathSchemePar": {
+            "LutPathPar": "/gpfs/jazzy/data/bm18/inhouse/PAUL/OPTICS/luts/lut_tikhonov_LUTS_OPT_2X_PCObi10_CLHS_22500109_medium/lut_inv_global.txt"
+          },
+          "phase": {
+            "method": "Paganin",
+            "delta_beta": 2000.0,
+            "unsharp_coeff": 5.0,
+            "unsharp_sigma": 2.5,
+            "unsharp_method": "gaussian",
+            "padding_type": "edge"
+          }
+        },
+        "reconstruction": {
+          "method": "GHBP",
+          "prefix": "2.4um_137keV_PHerc-Paris4_ROI1_0001",
+          "rotation_axis_position": "4214.75"
+        },
+        "postprocessing": {
+          "32BitsConversion": {
+            "dataset_used_min": -0.02470460720360279,
+            "dataset_used_max": 0.21008306741714478
+          }
+        },
+        "32bitsData": {
+          "histogram": {
+            "min": -0.07328377664089203,
+            "max": 1.0037870407104492,
+            "min_0p002_percentile": 1.9371509552001953e-07,
+            "max_0p998_percentile": 0.12388285249471664,
+            "min_0p00001_percentile": -0.02470460720360279,
+            "max_0p99999_percentile": 0.21008306741714478
+          }
+        }
+      }
+    }
+  }
+}
