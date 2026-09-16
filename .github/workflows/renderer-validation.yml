@@ -84,41 +84,99 @@ jobs:
           test "$(cat ci-out/villa-HEAD.txt)" = "${VILLA_COMMIT}"
           git -C villa-src log -1 --format='%H %ad %s' --date=iso | tee ci-out/villa-commit.txt
 
-      - name: Install build dependencies (public apt list)
-        # Uses upstream's own scripts/install_build_deps.sh, unmodified: it is the
-        # dependency list upstream's CI image is built from, and it installs from
-        # the public Ubuntu archive. ubuntu-24.04 lacks flang-21 (used only for
-        # the Fortran flatboi target, which we disable) -- if apt fails on that
-        # one package the step fails loudly rather than silently degrading.
+      - name: Enable the universe repository
         run: |
-          set -euo pipefail
-          # The runner image sometimes holds the dpkg lock for unattended upgrades.
+          set -x
+          sudo add-apt-repository -y universe
+          sudo apt-get update -y
+
+      - name: apt diagnostics (does apt work at all on this runner?)
+        run: |
+          set -x
+          id
+          sudo -n true && echo "passwordless sudo: yes" || echo "passwordless sudo: no"
+          ls -l /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>&1 || true
+          sudo fuser -v /var/lib/dpkg/lock-frontend 2>&1 || true
+          apt-cache policy cmake ninja-build libopencv-dev libtiff-dev libboost-program-options-dev 2>&1 | head -40
+
+      - name: Install upstream's dependency list (apt)
+        # The package list is upstream's own scripts/install_build_deps.sh, which
+        # is what their CI image is built from. It is executed here package-group
+        # by package-group instead of via the script, because the script's `set -e`
+        # aborts on the first unavailable package and hides which one it was.
+        # Every group reports its own exit code; only the final verify step
+        # decides whether the build can proceed.
+        run: |
+          set -uo pipefail
           sudo systemctl stop unattended-upgrades.service 2>/dev/null || true
           sudo systemctl disable unattended-upgrades.service 2>/dev/null || true
-          sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock 2>/dev/null || true
 
-          if timeout 3000 sudo -E bash villa-src/volume-cartographer/scripts/install_build_deps.sh \
-               2>&1 | tee ci-out/install-deps.log; then
-            echo "install_build_deps.sh: OK" | tee -a ci-out/install-deps.log
-          else
-            echo "install_build_deps.sh reported failure; recording it" | tee -a ci-out/install-deps.log
-            echo "INSTALL_SCRIPT_FAILED=yes" >> ci-out/toolchain.txt
-          fi
+          sudo apt-get update -y > ci-out/apt-update.log 2>&1
+          echo "apt-get update exit: $?" | tee ci-out/apt-groups.txt
 
-          echo "--- installed versions ---" | tee -a ci-out/install-deps.log
-          dpkg-query -W -f='${Package} ${Version}\n' \
-            libopencv-dev libtiff-dev libboost-program-options-dev libceres-dev \
-            libcgal-dev qt6-base-dev libblosc-dev libzstd-dev liblz4-dev \
-            nlohmann-json3-dev libcurl4-openssl-dev zlib1g-dev cmake ninja-build \
-            2>/dev/null | tee -a ci-out/install-deps.log
+          GROUPS=(
+            "toolchain:clang lld llvm mold ccache pkg-config"
+            "cmake:ninja-build"
+            "qt6:qt6-base-dev"
+            "boost:libboost-system-dev libboost-program-options-dev"
+            "ceres:libceres-dev libsuitesparse-dev"
+            "opencv:libopencv-dev libopencv-contrib-dev"
+            "cgal:libcgal-dev libmpfr-dev libgmp-dev"
+            "compression:libblosc-dev libzstd-dev liblz4-dev zlib1g-dev"
+            "network:libcurl4-openssl-dev"
+            "json:nlohmann-json3-dev"
+            "tiff:libtiff-dev"
+            "misc:libavahi-client-dev file bzip2 wget jq"
+            "blas:gfortran libopenblas-dev liblapack-dev liblapacke-dev libomp-dev"
+            "scotch:libscotch-dev libscotchmetis-dev libhwloc-dev"
+            "flang:flang-21 libclang-rt-21-dev"
+          )
 
-          # Hard requirements for the renderer target's own closure. These must
-          # be present; anything else missing is reported, not fatal.
-          for pkg in libopencv-dev libtiff-dev libboost-program-options-dev cmake ninja-build; do
-            dpkg-query -W -f='${Status}\n' "$pkg" 2>/dev/null | grep -q "ok installed" \
-              || { echo "MISSING REQUIRED PACKAGE: $pkg"; exit 1; }
+          for group in "${GROUPS[@]}"; do
+            name="${group%%:*}"
+            pkgs="${group#*:}"
+            set +e
+            sudo apt-get install -y --no-install-recommends $pkgs \
+              > "ci-out/apt-${name}.log" 2>&1
+            rc=$?
+            set -e
+            if [ "$rc" -eq 0 ]; then
+              echo "OK    ${name}: ${pkgs}" | tee -a ci-out/apt-groups.txt
+            else
+              echo "FAIL(${rc}) ${name}: ${pkgs}" | tee -a ci-out/apt-groups.txt
+              grep -E "^E:" "ci-out/apt-${name}.log" | head -5 | sed 's/^/        /' \
+                | tee -a ci-out/apt-groups.txt
+            fi
           done
-          echo "required packages present"
+          exit 0
+
+      - name: Verify the renderer's own dependency closure is present
+        # Independent of the apt exit codes above: ask dpkg what is actually
+        # installed. Only the renderer target's real closure is required.
+        run: |
+          set -euo pipefail
+          echo "--- installed versions ---" | tee ci-out/verify-deps.txt
+          # NB: single quotes keep dpkg-query's own ${Package}/${Version}
+          # placeholders literal -- bash must not expand them.
+          dpkg-query -W -f='${Package} ${Version}\n' \
+            libopencv-dev libtiff-dev libboost-program-options-dev cmake ninja-build \
+            2>/dev/null | tee -a ci-out/verify-deps.txt
+          echo | tee -a ci-out/verify-deps.txt
+
+          missing=""
+          for pkg in libopencv-dev libtiff-dev libboost-program-options-dev cmake ninja-build; do
+            if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed"; then
+              echo "present: $pkg" | tee -a ci-out/verify-deps.txt
+            else
+              echo "MISSING: $pkg" | tee -a ci-out/verify-deps.txt
+              missing="$missing $pkg"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "FATAL: required packages missing:$missing" | tee -a ci-out/verify-deps.txt
+            exit 1
+          fi
+          echo "all required packages present" | tee -a ci-out/verify-deps.txt
 
       # ---------------------------------------------------------------------
       # Baseline: the pinned revision, unmodified.

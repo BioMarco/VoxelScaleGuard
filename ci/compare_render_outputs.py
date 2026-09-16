@@ -155,12 +155,30 @@ rule("4. Regression: are the pixels unchanged between baseline and patched?")
 
 
 def pixels(tag):
+    """Decoded pixel digests, plus the raw-file digest for reference.
+
+    The pixel digest is the regression check. The raw-file digest is NOT: the
+    patch deliberately changes the TIFF's resolution tag, which changes the file
+    bytes while leaving every pixel untouched. Comparing file bytes (or file
+    sizes) would report a regression that is really the fix. Both are printed so
+    the difference is visible rather than hidden.
+    """
     root = OUT / f"{tag}.tif"
     if not root.is_dir():
         return None
     out = {}
     for tif in sorted(root.glob("*.tif")):
-        out[tif.name] = hashlib.sha256(tif.read_bytes()).hexdigest()
+        raw = hashlib.sha256(tif.read_bytes()).hexdigest()
+        entry = {"raw": raw}
+        if HAVE_PIL:
+            try:
+                with Image.open(tif) as im:
+                    entry["pixels"] = hashlib.sha256(im.tobytes()).hexdigest()
+                    entry["size"] = im.size
+                    entry["mode"] = im.mode
+            except Exception as exc:  # noqa: BLE001
+                entry["error"] = str(exc)
+        out[tif.name] = entry
     return out
 
 
@@ -175,11 +193,37 @@ for family in ("0009B", "0172"):
         print("    no TIFF files on either side")
         continue
     print(f"    files baseline={sorted(a)} patched={sorted(b)}")
-    identical = a == b
-    print(f"    byte-identical TIFFs: {'YES' if identical else 'NO'}")
-    if not identical:
+
+    if not HAVE_PIL:
+        print("    Pillow unavailable: only raw-file digests are shown, and those")
+        print("    are expected to DIFFER because the resolution tag changed.")
         for name in sorted(set(a) | set(b)):
-            print(f"      {name}: baseline={a.get(name)} patched={b.get(name)}")
+            print(f"      {name}: baseline={a.get(name, {}).get('raw')} "
+                  f"patched={b.get(name, {}).get('raw')}")
+        continue
+
+    same_pixels = True
+    same_raw = True
+    for name in sorted(set(a) | set(b)):
+        pa = a.get(name, {}).get("pixels")
+        pb = b.get(name, {}).get("pixels")
+        ra = a.get(name, {}).get("raw")
+        rb = b.get(name, {}).get("raw")
+        tag_same = pa == pb and pa is not None
+        raw_same = ra == rb
+        same_pixels &= tag_same
+        same_raw &= raw_same
+        print(f"      {name}: pixels {'IDENTICAL' if tag_same else 'DIFFER'}"
+              f" | file bytes {'identical' if raw_same else 'differ'}")
+        if not tag_same:
+            print(f"        baseline pixels={pa}")
+            print(f"        patched  pixels={pb}")
+    print(f"    DECODED PIXELS IDENTICAL: {'YES' if same_pixels else 'NO'}"
+          f"   <-- the regression check")
+    print(f"    raw file bytes identical: {'YES' if same_raw else 'NO'}"
+          f"   (expected NO when the resolution tag changed)")
+    if same_pixels and not same_raw:
+        print("    This is the expected outcome: metadata corrected, pixels untouched.")
 
 rule("5. Log error/warning lines (both binaries, both volumes)")
 for tag in TAGS:
