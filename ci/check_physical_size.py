@@ -109,7 +109,9 @@ def read_tiff_dpi(tiff_arg: Path):
     try:
         from PIL import Image
     except Exception:  # noqa: BLE001
-        return None, None, "Pillow unavailable"
+        # A setup gap, not a property of the output. Reported as such so it can
+        # never be mistaken for "the TIFF has no resolution".
+        return None, None, "SETUP: Pillow is not installed, cannot read TIFF tags"
     with Image.open(path) as im:
         tags = dict(im.tag_v2)
         xres = tags.get(282)
@@ -151,7 +153,11 @@ def main():
     xres, unit_code, err = read_tiff_dpi(Path(args.tiff))
     um_from_tiff = None
     if err:
-        check("TIFF carries a resolution", False, err)
+        # Distinguish "the tooling is not installed" from "the output is wrong":
+        # only the latter is a finding about the renderer.
+        check("TIFF tags could be read", not err.startswith("SETUP:"), err)
+        if err.startswith("SETUP:"):
+            notes.append(err)
     elif xres in (None, 0):
         # A zero/absent resolution is what the renderer writes when it has no
         # usable size at all. With an explicit size that is a failure.
