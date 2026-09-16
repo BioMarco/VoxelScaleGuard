@@ -253,10 +253,15 @@ Instead, three properties of the final patch were checked mechanically:
 
 1. **The patch applies and round-trips.**
    ```
-   git apply --check --reverse patch/vc_render_tifxyz.patch   ->  exit 0
-   git apply --check          patch/vc_render_tifxyz.patch    ->  exit 1
-                                                                  ("does not apply" — it is already applied)
+   # from the workspace root; the patch path is relative to villa/ because
+   # `-C villa` changes directory before the patch argument is resolved
+   git -c safe.directory='*' -C villa apply --check --reverse ../patch/vc_render_tifxyz.patch
+       ->  exit 0
+   git -c safe.directory='*' -C villa apply --check          ../patch/vc_render_tifxyz.patch
+       ->  exit 1  ("patch does not apply" — it is already applied)
    ```
+   A reverse-apply that succeeds proves the patch is well-formed *and* exactly
+   describes the current working tree. Re-verified at handoff: exit 0.
    A reverse-apply that succeeds proves the patch is well-formed *and* exactly
    describes the current working tree.
 

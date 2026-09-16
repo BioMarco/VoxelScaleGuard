@@ -68,6 +68,8 @@ live catalog metadata. Details in `ROOT_CAUSE_ANALYSIS.md`; transcripts in
 | 7 | A prior fix for this exact defect exists as PR #1417, **closed unmerged by a 14-day inactivity bot**, not rejected | GitHub API |
 | 8 | The URL-fragment concern raised in #1417's review is **real** in `joinRemoteUrlPath` and reachable via the GUI's `remoteLocator()` for rebased volumes | **executed** + read |
 | 9 | A C++ toolchain was already present: MSVC 14.34.31933, Windows SDK 10.0.22000.0, plus CMake/Ninja bundled with VS 2022 | discovered and used |
+| 10 | A **prebuilt VC3D Windows package built from the pinned commit** (`VC3D-757f70c-2026-09-15-win64.zip`, 148 MB) is published on the `latest` release, and it bundles the `vc_*` CLI tools | GitHub releases API; `vc3d-windows.yml` smoke-tests `$bin\vc_tifxyz_trim.exe` in the same directory as `VC3D.exe` |
+| 11 | That package makes the **before** side of the demonstration obtainable from the real shipped binary, with no build — but not the **after** side, which still needs the `ci-windows-mingw` build (MSYS2 + the prebuilt `vc3d-deps` archive, not a from-source vcpkg closure) | **not yet attempted**; procedure in `DOCS/RESUME.md` §5 |
 
 ## 5. Completed work
 
@@ -100,9 +102,9 @@ finished because code compiles; it does not even compile yet.
 
 | Gap | Cause | What it needs |
 |---|---|---|
-| **The patched binary was never compiled or run** | No Qt, OpenCV, Ceres, CGAL or vcpkg on the machine; `windows-msvc` builds that closure from source. Upstream also wants CMake ≥ 3.28, and 3.24 is installed | The vcpkg dependency closure, or the CI container. Multi-GB, long build. **Requires authorisation; not attempted** |
-| **No `.zattrs` or TIFF was produced** | Needs the binary above plus a real volume and a tifxyz segment | (as above) |
-| **No render was run on real data** | (as above) | (as above) |
+| **The patched binary was never compiled or run** | No Qt, OpenCV, Ceres, CGAL or vcpkg on the machine; `windows-msvc` builds that closure from source. Upstream also wants CMake ≥ 3.28, and 3.24 is installed | Cheaper than first assumed: the `ci-windows-mingw` preset with MSYS2 UCRT64 plus the **prebuilt** `vc3d-deps` archive that CI restores via `oras pull`, not a from-source vcpkg build. **Requires authorisation; not attempted.** Procedure in `DOCS/RESUME.md` §5 |
+| **No `.zattrs` or TIFF was produced** | Needs the built binary plus a real volume **and a tifxyz segment** — no segment is present locally | Build (above), plus a published segment or one grown with the tools |
+| **No render was run on real data** | (as above) | (as above). Note the **before** half is separately obtainable now, from the published prebuilt package built on the pinned commit |
 | **The GUI path remains broken** | `SegmentationCommandHandler.cpp:2076` change deliberately left as a separate commit, because it changes GUI behaviour and its predicate has a lapsed history (#1228) | A maintainer decision; the exact edit is in `FEASIBILITY.md` §8 |
 | **The `vc_zarr_to_tiff` schema gap** | Same class of defect (local-only, top-level key only), but no remote path and not needed for the reported problem | Documented as a candidate, not developed |
 | **The live-S3 test still pins the legacy volume** | Changing an existing live test's fixture is a maintainer decision | Proposed in `PR_DRAFT.md` |
@@ -120,6 +122,7 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | File | Contents |
 |---|---|
 | `DOCS/INDEX.md` | reading order and the evidence map |
+| `DOCS/RESUME.md` | handoff for a new session: state verification, next step, decisions, traps |
 | `DOCS/PROJECT_STATUS.md` | this file |
 | `DOCS/RESEARCH.md` | sources, exact commits, licences, and three brief assumptions that failed |
 | `DOCS/PRIZE_REQUIREMENTS.md` | Progress Prize rules vs. what this project considers useful |
@@ -190,4 +193,6 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | `.gitattributes` (`* -text`) added so line-ending normalisation cannot corrupt the patch or the byte-for-byte copies |
 | Repository created and pushed to <https://github.com/BioMarco/VoxelScaleGuard> at the user's request (`4a77205`) |
 | Zero-byte `metadata_probe.json` (an artefact of a failed shell redirect) replaced by a real 3812-byte summary; the probe script now writes its own `--out` file (`6de80df`) |
-| Remaining: build the patched binary and produce artifact-level evidence — **blocked, needs authorisation** |
+| `DOCS/RESUME.md` written: state-verification commands, the next step with acceptance criteria, the decisions already made and why, the environment traps, and a ready-to-paste continuation prompt |
+| Reconnaissance for the handoff: found that the published prebuilt Windows package is built from the **pinned commit** and bundles the `vc_*` CLI tools, which makes the *before* half of the demonstration obtainable without a build |
+| Remaining: build the patched binary and produce artifact-level evidence — **blocked, needs authorisation**. Procedure in `DOCS/RESUME.md` §5 |

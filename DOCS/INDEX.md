@@ -6,8 +6,13 @@ and agents).
 
 ## Read in this order
 
+**Resuming work in a new session? Start at [`RESUME.md`](RESUME.md)** — it has the
+state verification commands, the next step with acceptance criteria, the decisions
+already made, and the environment traps.
+
 | # | Document | Why |
 |---|---|---|
+| 0 | [`RESUME.md`](RESUME.md) | Handoff: verify the inherited state, then continue from the next step |
 | 1 | [`PROJECT_STATUS.md`](PROJECT_STATUS.md) | Current state, the gaps, the environment traps, the activity log |
 | 2 | [`ROOT_CAUSE_ANALYSIS.md`](ROOT_CAUSE_ANALYSIS.md) | The cause, at file-and-line resolution, with every claim tagged by how it was established |
 | 3 | [`RESULTS.md`](RESULTS.md) | Everything actually executed — **and §7, everything that was not** |

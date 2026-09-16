@@ -103,8 +103,8 @@ assumed: the GUI passes `volume->remoteLocator()`, which keeps
 
 | Check | Command | Result |
 |---|---|---|
-| The patch is well-formed and matches the tree exactly | `git apply --check --reverse patch/vc_render_tifxyz.patch` | exit 0 |
-| …and is not already applied | `git apply --check patch/vc_render_tifxyz.patch` | exit 1, "does not apply" |
+| The patch is well-formed and matches the tree exactly | `git -c safe.directory='*' -C villa apply --check --reverse ../patch/vc_render_tifxyz.patch` (from the workspace root) | exit 0 |
+| …and is not already applied | same without `--reverse` | exit 1, "does not apply" |
 | The old reader is gone | `grep readVolumeVoxelSize` on the patched file | only comments |
 | No stale unit reaches the writer | both `writeZarrAttrs` call sites | pass `zarr_voxel_unit` |
 | Upstream files were not edited | byte-for-byte copy in `setup.ps1`; never written again | — |
