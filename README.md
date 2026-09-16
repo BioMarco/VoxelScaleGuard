@@ -7,8 +7,12 @@ renderer, `vc_render_tifxyz`.
 > **Status: the diagnosis is verified; the patch is logic-verified but has never
 > been compiled or run.** The application cannot be built on the machine used
 > here (no Qt/OpenCV/Ceres/CGAL/vcpkg). Read
-> [`RESULTS.md` §7](DOCS/RESULTS.md) before relying on anything. Nothing has been
-> published and no pull request has been opened.
+> [`RESULTS.md` §7](DOCS/RESULTS.md) before relying on anything. No pull request
+> has been opened against `villa`, and nothing has been submitted for a prize.
+
+**Start here:** [`DOCS/INDEX.md`](DOCS/INDEX.md) — reading order and the evidence map.
+**Contributing:** [`AGENTS.md`](AGENTS.md) — verification rules, attribution, and the
+environment traps.
 
 ---
 

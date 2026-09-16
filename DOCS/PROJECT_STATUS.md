@@ -1,11 +1,13 @@
 # PROJECT_STATUS
 
 **Project:** VoxelScale Guard
+**Repository:** <https://github.com/BioMarco/VoxelScaleGuard> (public)
 **Workspace:** `C:\Users\marco\Documents\DeepSeek\VoxelScaleGuard`
 **Status:** diagnosis verified and demonstrated on real data; patch written and
 logic-verified; **not compiled or run** — see §6
 **Upstream revision analysed:** `ScrollPrize/villa` @
 `757f70c0140a4cfbbbd44975ef09558444b96980` (`main`)
+**Last synced:** `main` @ `6de80df` (initial commit `4a77205`)
 
 ---
 
@@ -40,8 +42,11 @@ No second project has been created inside the old `Vesuvius` folder.
 * The previous project's folder `..\Vesuvius` was not touched.
 * The **remote** `villa` repository was not modified, pushed to, or opened as a
   pull request. A local clone was made and modified in place to hold the patch;
-  nothing left the machine.
-* No pull request was opened. Nothing was published.
+  nothing about `villa` left the machine.
+* No pull request was opened, and nothing was published — **with one authorised
+  exception:** this project's own repository,
+  <https://github.com/BioMarco/VoxelScaleGuard>, was created and synced at the
+  user's explicit request. That is this project's own artefact, not upstream's.
 * Nothing was installed. No download exceeded 2 GB (actual: ~1.2 MB of
   header-only libraries plus ~12 KB of volume metadata).
 * No paid service was used. No GPU compute was used.
@@ -109,22 +114,28 @@ Progress Prize submission.
 
 ## 7. Deliverables
 
+Documentation lives in `DOCS/`; `README.md` and `AGENTS.md` are the only
+Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
+
 | File | Contents |
 |---|---|
-| `PROJECT_STATUS.md` | this file |
-| `RESEARCH.md` | sources, exact commits, licences, and three brief assumptions that failed |
-| `PRIZE_REQUIREMENTS.md` | Progress Prize rules vs. what this project considers useful |
-| `ROOT_CAUSE_ANALYSIS.md` | the cause at file-and-line resolution |
-| `FEASIBILITY.md` | **GO**, with scope, resources, alternatives, and out-of-scope items |
-| `ARCHITECTURE.md` | the fix's design, ordering argument, and rejected alternatives |
-| `TEST_PLAN.md` | executed vs. blocked, and what would falsify each claim |
-| `RESULTS.md` | everything executed, with exit codes; and §7, what was not |
-| `README.md` | description, layout, build and run |
-| `PR_DRAFT.md` | pull request draft, **not submitted** |
-| `SUBMISSION_DRAFT.md` | Progress Prize draft, **not submitted** |
+| `DOCS/INDEX.md` | reading order and the evidence map |
+| `DOCS/PROJECT_STATUS.md` | this file |
+| `DOCS/RESEARCH.md` | sources, exact commits, licences, and three brief assumptions that failed |
+| `DOCS/PRIZE_REQUIREMENTS.md` | Progress Prize rules vs. what this project considers useful |
+| `DOCS/ROOT_CAUSE_ANALYSIS.md` | the cause at file-and-line resolution |
+| `DOCS/FEASIBILITY.md` | **GO**, with scope, resources, alternatives, and out-of-scope items |
+| `DOCS/ARCHITECTURE.md` | the fix's design, ordering argument, and rejected alternatives |
+| `DOCS/TEST_PLAN.md` | executed vs. blocked, and what would falsify each claim |
+| `DOCS/RESULTS.md` | everything executed, with exit codes; and §7, what was not |
+| `DOCS/PR_DRAFT.md` | pull request draft, **not submitted** |
+| `DOCS/SUBMISSION_DRAFT.md` | Progress Prize draft, **not submitted** |
+| `README.md` | landing page: description, layout, build and run |
+| `AGENTS.md` | operating rules, verification requirements, attribution, environment traps |
 | `patch/vc_render_tifxyz.patch` | the fix |
 | `harness/` | the reproducer and its tests |
-| `research/` | the live catalog probe and the raw documents it fetched |
+| `research/` | the live catalog probe, the raw documents it fetched, and the probe summary |
+| `tools/git.ps1` | git wrapper carrying the transient `safe.directory` flag |
 
 ## 8. Environment notes worth keeping
 
@@ -135,17 +146,27 @@ Progress Prize submission.
   `harness/CMakeLists.txt` is kept for normal environments.
 * **Native commands cannot have output redirected or piped**: `cmd > file`,
   `cmd | ...`, `cmd 2>&1` fail with `StandardOutputEncoding is only supported when
-  standard output is redirected`. Commands are recorded in the form that works;
-  `git diff --output=…` is used instead of a shell redirect.
-* **Git ownership**: the clone is owned by `BUILTIN/Administrators` because of the
-  elevated clone. `~/.gitconfig` is outside the sandbox, so git is invoked as
-  `git -c safe.directory='*' …`.
+  standard output is redirected`. Commands are recorded in the form that works.
+  `git diff --output=…` is used instead of a shell redirect, and
+  `research/fetch_volume_metadata.mjs` writes its own `--out` file for the same
+  reason.
+* **Git ownership**: both this working copy and the `villa` clone are owned by
+  `BUILTIN/Administrators`. `~/.gitconfig` is outside the sandbox, so the
+  transient `-c safe.directory='*'` flag is required and is wrapped by
+  `tools/git.ps1`.
+* **`git push` needs a stdio pipe** for the HTTPS transport, which the sandbox
+  denies. Every push in this project therefore required a one-shot escalation;
+  the transfer itself is a normal authenticated push through Git Credential
+  Manager.
 * **`Invoke-WebRequest` fails TLS** in this environment; Node's `fetch` works,
   which is why `research/fetch_volume_metadata.mjs` and `harness/fetch_deps.mjs`
   are Node scripts.
 * **Command execution is intermittent**: several external processes returned empty
   output with no exit code mid-session and later recovered. No work depends on a
   single such invocation.
+* **`.gitattributes` pins `* -text`.** Line-ending normalisation would corrupt
+  `patch/vc_render_tifxyz.patch` (git apply is EOL-sensitive) and would break the
+  byte-for-byte copy guarantee in `harness/setup.ps1`.
 
 ## 9. Activity log
 
@@ -162,5 +183,11 @@ Progress Prize submission.
 | Both #1417 review concerns reproduced as executable tests |
 | Two test assertions corrected when execution contradicted them (`0` and `-3` are *returned*, not merely mis-signalled) |
 | Patch applied to `villa`; diff verified to round-trip via `git apply --check --reverse` |
-| `RESEARCH.md`, `PRIZE_REQUIREMENTS.md`, `ROOT_CAUSE_ANALYSIS.md`, `FEASIBILITY.md`, `ARCHITECTURE.md`, `TEST_PLAN.md`, `RESULTS.md`, `README.md`, `PR_DRAFT.md`, `SUBMISSION_DRAFT.md` written |
+| All ten required documents written |
+| `AGENTS.md` added: verification rules, attribution, scope boundaries, environment traps |
+| Documentation reorganised into `DOCS/`; `DOCS/INDEX.md` added; links and code comments updated |
+| Tests re-run after the reorganisation: 13/13 and 16/16 still pass |
+| `.gitattributes` (`* -text`) added so line-ending normalisation cannot corrupt the patch or the byte-for-byte copies |
+| Repository created and pushed to <https://github.com/BioMarco/VoxelScaleGuard> at the user's request (`4a77205`) |
+| Zero-byte `metadata_probe.json` (an artefact of a failed shell redirect) replaced by a real 3812-byte summary; the probe script now writes its own `--out` file (`6de80df`) |
 | Remaining: build the patched binary and produce artifact-level evidence — **blocked, needs authorisation** |
