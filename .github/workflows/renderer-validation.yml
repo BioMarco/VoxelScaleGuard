@@ -284,8 +284,11 @@ jobs:
           /usr/bin/time -v cmake --build build/baseline --target vc_render_tifxyz --parallel "$(nproc)" \
             2>&1 | tee ../../ci-out/build-baseline.log
           test -x build/baseline/bin/vc_render_tifxyz
-          cp build/baseline/bin/vc_render_tifxyz ../../ci-out/vc_render_tifxyz.baseline
-          ls -l ../../ci-out/vc_render_tifxyz.baseline | tee -a ../../ci-out/build-baseline.log
+          # The binary stays in the build tree: upstream links the vc_* libraries
+          # as shared objects with an $ORIGIN/../lib rpath, so copying the
+          # executable elsewhere makes it unresolvable ("libvc_flattening.so:
+          # cannot open shared object file"). Keep every invocation in place.
+          ls -l build/baseline/bin/vc_render_tifxyz | tee -a ../../ci-out/build-baseline.log
 
       # ---------------------------------------------------------------------
       # Patched: the same commit with our one-file patch applied by git apply.
@@ -329,19 +332,27 @@ jobs:
           /usr/bin/time -v cmake --build build/patched --target vc_render_tifxyz --parallel "$(nproc)" \
             2>&1 | tee ../../ci-out/build-patched.log
           test -x build/patched/bin/vc_render_tifxyz
-          cp build/patched/bin/vc_render_tifxyz ../../ci-out/vc_render_tifxyz.patched
-          ls -l ../../ci-out/vc_render_tifxyz.patched | tee -a ../../ci-out/build-patched.log
+          ls -l build/patched/bin/vc_render_tifxyz | tee -a ../../ci-out/build-patched.log
 
-      - name: Capture --help from both binaries
+      - name: Capture --help from both binaries and compare
+        working-directory: villa-src/volume-cartographer
         run: |
           set -euo pipefail
-          ./ci-out/vc_render_tifxyz.baseline --help > ci-out/help-baseline.txt 2>&1 || true
-          ./ci-out/vc_render_tifxyz.patched  --help > ci-out/help-patched.txt  2>&1 || true
-          diff -u ci-out/help-baseline.txt ci-out/help-patched.txt \
-            > ci-out/help.diff || true
-          echo "--- help diff (expected: none) ---"
-          cat ci-out/help.diff
-          grep -E -- '--voxel-size|--voxel-unit' ci-out/help-patched.txt
+          BASE=build/baseline/bin/vc_render_tifxyz
+          PATCHED=build/patched/bin/vc_render_tifxyz
+          "$BASE"    --help > ../../ci-out/help-baseline.txt 2>&1
+          "$PATCHED" --help > ../../ci-out/help-patched.txt  2>&1
+          echo "baseline --help: $(wc -l < ../../ci-out/help-baseline.txt) lines"
+          echo "patched  --help: $(wc -l < ../../ci-out/help-patched.txt) lines"
+          if diff -u ../../ci-out/help-baseline.txt ../../ci-out/help-patched.txt \
+               > ../../ci-out/help.diff; then
+            echo "HELP_IDENTICAL=yes" | tee ../../ci-out/help.diff
+          else
+            echo "HELP_IDENTICAL=no (see help.diff)"
+          fi
+          cat ../../ci-out/help.diff
+          echo "--- the two flags that must be unchanged ---"
+          grep -E -- '--voxel-size|--voxel-unit' ../../ci-out/help-patched.txt
 
       # ---------------------------------------------------------------------
       # Public inputs: one tifxyz mesh sized for the 8.64 um volume, and a second
@@ -409,50 +420,52 @@ jobs:
       # Render: identical inputs, identical parameters, both binaries.
       # ---------------------------------------------------------------------
       - name: Render with both binaries (PHerc0009B, 8.64 um)
+        working-directory: villa-src/volume-cartographer
         run: |
           set -euo pipefail
+          W="$GITHUB_WORKSPACE"
           COMMON=(-g 0 --scale 1 -n 1 --cache-gb 4
                   --crop-x 3145 --crop-y 3412 --crop-width 128 --crop-height 128)
           run() {
             local bin="$1" tag="$2"
             set +e
-            "$bin" -v "vol-cache/0009B" \
-              -s data/seg-0009B-8.64um.tifxyz \
+            "$bin" -v "$W/vol-cache/0009B" \
+              -s "$W/data/seg-0009B-8.64um.tifxyz" \
               "${COMMON[@]}" \
-              --zarr-output "out/${tag}.zarr" \
-              --tif-output "out/${tag}.tif" \
-              > "ci-out/render-${tag}.log" 2>&1
-            echo "$?" > "ci-out/render-${tag}.exit"
+              --zarr-output "$W/out/${tag}.zarr" \
+              --tif-output "$W/out/${tag}.tif" \
+              > "$W/ci-out/render-${tag}.log" 2>&1
+            echo "$?" > "$W/ci-out/render-${tag}.exit"
             set -e
-            echo "=== $tag exit $(cat ci-out/render-${tag}.exit) ==="
-            cat "ci-out/render-${tag}.log"
-            echo "=== $tag artefacts ==="
-            find out -maxdepth 2 -name "${tag}*" | sort
+            echo "=== $tag exit $(cat "$W/ci-out/render-${tag}.exit") ==="
+            cat "$W/ci-out/render-${tag}.log"
           }
-          mkdir -p out
-          run ./ci-out/vc_render_tifxyz.baseline 0009B-baseline
-          run ./ci-out/vc_render_tifxyz.patched  0009B-patched
+          mkdir -p "$W/out"
+          run build/baseline/bin/vc_render_tifxyz 0009B-baseline
+          run build/patched/bin/vc_render_tifxyz  0009B-patched
 
       - name: Render with both binaries (PHerc0172, legacy 7.91 um control)
+        working-directory: villa-src/volume-cartographer
         run: |
           set -euo pipefail
+          W="$GITHUB_WORKSPACE"
           COMMON=(-g 0 --scale 1 -n 1 --cache-gb 4 --crop-width 128 --crop-height 128)
           run() {
             local bin="$1" tag="$2"
             set +e
-            "$bin" -v "vol-cache/0172" \
-              -s data/seg-0172-7.91um.tifxyz \
+            "$bin" -v "$W/vol-cache/0172" \
+              -s "$W/data/seg-0172-7.91um.tifxyz" \
               "${COMMON[@]}" \
-              --zarr-output "out/${tag}.zarr" \
-              --tif-output "out/${tag}.tif" \
-              > "ci-out/render-${tag}.log" 2>&1
-            echo "$?" > "ci-out/render-${tag}.exit"
+              --zarr-output "$W/out/${tag}.zarr" \
+              --tif-output "$W/out/${tag}.tif" \
+              > "$W/ci-out/render-${tag}.log" 2>&1
+            echo "$?" > "$W/ci-out/render-${tag}.exit"
             set -e
-            echo "=== $tag exit $(cat ci-out/render-${tag}.exit) ==="
-            cat "ci-out/render-${tag}.log"
+            echo "=== $tag exit $(cat "$W/ci-out/render-${tag}.exit") ==="
+            cat "$W/ci-out/render-${tag}.log"
           }
-          run ./ci-out/vc_render_tifxyz.baseline 0172-baseline
-          run ./ci-out/vc_render_tifxyz.patched  0172-patched
+          run build/baseline/bin/vc_render_tifxyz 0172-baseline
+          run build/patched/bin/vc_render_tifxyz  0172-patched
 
       - name: Inspect emitted metadata and pixels
         run: |

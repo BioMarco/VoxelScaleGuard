@@ -212,17 +212,25 @@ pwsh -File harness/build.ps1 -Configuration Release
 # tests
 cd harness/build/Release
 ./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: must stay 13/13
-./test_render_voxel_size.exe              # this project's: must stay 16/16
+./test_render_voxel_size.exe              # this project's: must stay 19/19
 ./probe_render_voxel_size.exe             # before/after over the real documents
 ```
-
-`test_upstream_voxel_size_metadata` is the **control**: upstream's own test file,
-compiled unmodified. If it ever fails, the harness is broken or the vendored
-sources were altered — investigate that before anything else.
 
 `harness/setup.ps1` copies upstream files **byte-for-byte**. Never edit the copies
 under `harness/src/villa/`; re-run `setup.ps1` to re-sync. Re-run it after changing
 the pinned commit.
+
+One exception is deliberate and load-bearing: the file the patch modifies,
+`vc_render_tifxyz.cpp`, is taken from **git at the pinned commit**
+(`git show <commit>:<path>`), not from `villa/`'s working tree. That clone is
+patched in place on purpose, so copying from it would yield the patched file while
+calling it pristine — which is what silently happened until a test caught it. The
+pristine copy is asserted unpatched by `test_render_voxel_size.exe`.
+
+The same suite also checks the patch as an artefact: that every name the new
+resolution block reads is declared above its call site. That check exists because
+the patch failed to compile in CI for exactly that reason; it cannot prove the
+file compiles, so the CI build remains the real verification.
 
 ## 9. Research: how to touch the network
 
