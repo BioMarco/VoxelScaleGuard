@@ -7,13 +7,19 @@ This file holds the final PR text for `ScrollPrize/villa`, written to villa's ow
 `.github/pull_request_template.md`. The evidence behind every claim is in
 `CI_VALIDATION.md` and `RESULTS.md`.
 
-Target: **one file** —
-`volume-cartographer/apps/src/vc_render_tifxyz.cpp`. Verified to apply to upstream
-`main` at `2dcfaf6a08c3bc796fde726c4fa32050c8fc90e7` (2026-09-17), where the file is
-byte-identical to the revision the patch was developed against
-(`757f70c0140a4cfbbbd44975ef09558444b96980`). The GUI change in
-`SegmentationCommandHandler.cpp` is deliberately **not** part of this and is
-described at the end as a follow-up.
+Target: **three files** — the renderer plus the writer whose contract had to change
+for the "size unknown" case to be honest:
+
+* `volume-cartographer/apps/src/vc_render_tifxyz.cpp` — the fix;
+* `volume-cartographer/core/src/Zarr.cpp` and
+  `volume-cartographer/core/include/vc/core/util/Zarr.hpp` — `writeZarrAttrs()`
+  now omits the `multiscales` block when the base voxel size is non-positive,
+  instead of always writing a per-axis `scale` (see "The size is unknown" below).
+
+All three are byte-identical between the pinned revision and current upstream
+`main` at `2dcfaf6a08c3bc796fde726c4fa32050c8fc90e7` (2026-09-17), and the patch
+applies to `main` cleanly. The GUI change in `SegmentationCommandHandler.cpp` is
+deliberately **not** part of this and is described at the end as a follow-up.
 
 ---
 
@@ -143,15 +149,21 @@ existed.
 
 ### Behaviour of each source, and of the CLI
 
-Priority, highest first: explicit `--voxel-size` → the store's local document → the
-open volume → unresolved.
+Priority, highest first: explicit `--voxel-size` → the open volume → the store's
+local document, when no volume is open → unresolved.
 
 | Source | Value used | Declared unit |
 |---|---|---|
 | `--voxel-size` (+ `--voxel-unit`) | converted to µm for the TIFF tag; the caller's own number for `.zattrs` | the caller's `--voxel-unit` |
-| local `meta.json` / `metadata.json` | the shared resolver's value | `micrometer` |
 | the open (streamed) volume | `Volume::voxelSize()` | `micrometer` |
-| nothing usable | no physical scale written to either output; warning on stderr | — |
+| local `meta.json` / `metadata.json`, when no volume is open | the shared resolver's value | `micrometer` |
+| nothing usable | **nothing declared**: no `multiscales` block, no TIFF resolution tag; warning on stderr | — |
+
+The opened volume is consulted **before** the local document. `--volume` is often a
+chunk cache for a remote source, and such cache directories carry the store's own
+root metadata (`docs/remote_file_cache.md`), so a stale local mirror must not be
+able to override the document `Volume` construction has just fetched. It is also the
+streamed volume, not the cache directory, that is being rendered.
 
 **CLI compatibility is preserved deliberately, including the meaning of
 `--voxel-unit`.** In `main` that flag describes the number supplied on the command
@@ -186,11 +198,28 @@ caught by CI checks that convert `.zattrs` and the TIFF tags to micrometres and
 compare both against the requested size. That history is in `RESULTS.md` §10 of the
 linked repository; the tests stay.
 
+### The size is unknown: nothing is declared
+
+`writeZarrAttrs()` wrote the per-axis `scale` unconditionally and only made the
+axis `unit` conditional (`Zarr.cpp:374` vs `:391-394`), so a render with no usable
+size still emitted `coordinateTransformations.scale = [1, 2, 4, …]`. A `scale` with
+no unit is a physical measurement that was never made, and a reader cannot tell it
+from a real one.
+
+The patch makes a non-positive `baseVoxelSize` mean "unknown" and omits the
+`multiscales` block entirely, and the renderer passes 0 in that case. The TIFF is
+unchanged: `tifDpi` stays 0, which already means "do not set the resolution tags".
+The stderr warning says the scale is unknown and that none will be declared, and it
+now names the unit a caller must supply (`--voxel-size <value> --voxel-unit
+micrometer`) — the flag defaults to `nanometer`, so the previous advice would have
+produced a self-consistent 1000× error.
+
 ### Scope of the change
 
-One file, `vc_render_tifxyz.cpp`: the private reader is replaced by the shared
-resolver plus the open volume, the resolution moves to after the volume is opened,
-and the number/unit pair is computed together. No new dependency, no interface
+The renderer: the private reader is replaced by the shared resolver plus the open
+volume, the resolution moves to after the volume is opened, and the number/unit pair
+is computed together. Plus the `writeZarrAttrs()` contract above, which is only
+reachable when a size is genuinely unavailable. No new dependency, no interface
 change, no change to the rendered pixels, no change to any option's meaning.
 
 ### Evidence, and how to reproduce it
@@ -225,6 +254,11 @@ Reproducible from a public repository without the dependency closure:
   8.64 µm, with `.zattrs` and the TIFF agreeing in every case.
 * **Unusable input** (`--voxel-size 0`, `-3`, `nan`, unknown unit) exits non-zero
   and writes no physical scale, matching `main`'s behaviour.
+* **Unknown size**, driven end to end with the real binary by keeping the volume
+  closed (no `--remote-url`, no cached marker, no local document): the render
+  declares **no** `multiscales` block and **no** TIFF resolution tag, and says so on
+  stderr. The same run on `main` declares `nanometer`/`[1,1,1]`, i.e. 1 nm — the
+  fabricated measurement this removes.
 
 ### Limitations, stated plainly
 
@@ -233,16 +267,16 @@ Reproducible from a public repository without the dependency closure:
   made about volumes not rendered here.
 * **One build configuration** (`QuickBuild`, gcc 13.3, Linux, `--scale 1`). Other
   presets, compilers and scales are unmeasured.
-* **The "no usable size anywhere" branch is covered by unit tests only.** With a
-  real volume the patched binary finds the value in the volume it opened — that is
-  the fix — so driving that branch end to end would mean severing a volume from its
-  own metadata.
 * **Identical decoded pixels** is a property of these runs on these volumes, not a
   proof that no input can change them. The patch touches no pixel-producing code
   path.
 * The patch also changes the log line to state the size exactly as `.zattrs`
   declares it; `main` printed the caller's unit next to a value that could be in
   micrometres. No code in the tree parses that line (checked).
+* Two strings a user can see change: `Voxel size (from CLI): …` becomes
+  `Voxel size (command line): …`, and the unsupported-unit error drops the words
+  "for TIFF resolution" because the abort now precedes both outputs. Both are
+  cosmetic; neither is parsed by anything in the tree.
 
 ### Credits
 

@@ -484,24 +484,37 @@ jobs:
           run build/patched/bin/vc_render_tifxyz  0172-patched
 
       - name: Unknown-size branch (patched binary, real CLI)
-        # The branch that warns and must declare NO physical scale. It is reached
-        # by keeping the volume CLOSED: no --remote-url and no cached marker, so
-        # there is no Volume to ask and no local store document either. The old
-        # private reader behaved the same way, so the baseline is the control.
+        # The branch that warns and must declare NO physical scale: a volume that
+        # opens and resolves, but whose store document states no voxel size.
         #
-        # This is the end-to-end counterpart of the unit test for the placeholder
-        # case: it asserts on the FILES, not on a helper, because the previous
-        # revision of this patch told the operator "no physical scale will be
-        # written" while still writing scale = 1.0.
+        # Reaching it needs care. An empty cache dir fails earlier ("cannot detect
+        # version") and proves nothing -- the first version of this step did exactly
+        # that and passed vacuously. So build a real cache directory: the
+        # .remote_source.json marker makes the volume open, and seed/0/.zarray
+        # declares the group so the level check passes. The remote document
+        # metadata.json is deliberately NOT placed in the cache, so
+        # Volume::voxelSize() returns 0 (Volume.cpp: "0 means unknown"), which is
+        # the unresolved case.
         working-directory: villa-src/volume-cartographer
         run: |
           set -uo pipefail
           W="$GITHUB_WORKSPACE"
-          mkdir -p "$W/vol-cache/unknown" "$W/out/unknown"
+          CACHE="$W/vol-cache/nosize"
+          mkdir -p "$CACHE/seed/0" "$W/out/unknown"
+          printf '{"url": "https://vesuvius-challenge-open-data.s3.amazonaws.com/PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr/"}\n' \
+            > "$CACHE/.remote_source.json"
+          # Level 0 must exist for the renderer's group check. One zero byte of
+          # chunk data is enough: this run never samples the volume.
+          printf '{"shape":[1,1,1],"chunks":[128,128,128],"fill_value":0,"order":"C","filters":null,"dimension_separator":"/","compressor":null,"zarr_format":2,"dtype":"|u1"}' \
+            > "$CACHE/seed/0/.zarray"
+          printf '{"zarr_format":2}' > "$CACHE/seed/.zgroup"
+          head -c 1 /dev/zero > "$CACHE/seed/0/0"
+          echo "cache dir built:"; find "$CACHE" -type f | sort
+
           run_unknown() {
             local bin="$1" tag="$2"
             set +e
-            "$bin" -v "$W/vol-cache/unknown" \
+            "$bin" -v "$CACHE" \
               -s "$W/data/seg-0009B-8.64um.tifxyz" \
               -g 0 --scale 1 -n 1 --cache-gb 1 \
               --crop-x 3145 --crop-y 3412 --crop-width 32 --crop-height 32 \
@@ -517,27 +530,29 @@ jobs:
           run_unknown build/patched/bin/vc_render_tifxyz  patched-unknown
           run_unknown build/baseline/bin/vc_render_tifxyz baseline-unknown
 
+          # The branch must actually have been reached, or the check below is
+          # vacuous. Require the warning in the patched log.
+          if ! grep -q "publishes no usable voxel size" "$W/ci-out/unknown-patched-unknown.log"; then
+            echo "FATAL: the unresolved branch was not reached, so this step proves nothing."
+            exit 1
+          fi
+
           echo
           echo "--- what each one DECLARED ---"
           FAILED=0
-          for tag in patched-unknown baseline-unknown; do
-            # The patched binary must declare nothing; the baseline is recorded
-            # for contrast and is allowed to declare the fabricated 1.0.
-            if [ "$tag" = "patched-unknown" ]; then
-              python3 "$W/ci/check_physical_size.py" \
-                --zattrs "$W/out/unknown/${tag}.zarr/.zattrs" \
-                --tiff "$W/out/unknown/${tag}.tif" \
-                --expect-unknown --label "$tag" || FAILED=1
-            else
-              python3 "$W/ci/summarize_zattrs.py" \
-                "$W/out/unknown/${tag}.zarr/.zattrs" 2>/dev/null \
-                | sed 's/^/    baseline declares: /' || true
-              python3 "$W/ci/check_physical_size.py" \
-                --zattrs "$W/out/unknown/${tag}.zarr/.zattrs" \
-                --tiff "$W/out/unknown/${tag}.tif" \
-                --expect-unknown --label "$tag" || true
-            fi
-          done
+          python3 "$W/ci/check_physical_size.py" \
+            --zattrs "$W/out/unknown/patched-unknown.zarr/.zattrs" \
+            --tiff "$W/out/unknown/patched-unknown.tif" \
+            --expect-unknown --label "patched-unknown" || FAILED=1
+          echo "--- baseline, for contrast (expected to declare the fabricated 1.0) ---"
+          python3 "$W/ci/summarize_zattrs.py" \
+            "$W/out/unknown/baseline-unknown.zarr/.zattrs" 2>/dev/null \
+            | sed 's/^/    baseline declares: /' || true
+          python3 "$W/ci/check_physical_size.py" \
+            --zattrs "$W/out/unknown/baseline-unknown.zarr/.zattrs" \
+            --tiff "$W/out/unknown/baseline-unknown.tif" \
+            --expect-unknown --label "baseline-unknown" \
+            | sed 's/^/    /' || true
           if [ "$FAILED" -ne 0 ]; then
             echo "FATAL: the unknown-size branch declared a physical scale."
             exit 1
