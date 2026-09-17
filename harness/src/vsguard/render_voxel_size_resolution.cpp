@@ -157,10 +157,15 @@ ResolvedVoxelSize resolveVoxelSize(
         cli && isUsableMicrometerPerVoxel(*cli)) {
         return {*cli, VoxelSizeSource::Cli};
     }
-    if (localMicrometerPerVoxel && isUsableMicrometerPerVoxel(*localMicrometerPerVoxel))
-        return {*localMicrometerPerVoxel, VoxelSizeSource::LocalStoreMetadata};
+    // The opened volume before the local document, matching
+    // resolveRenderVoxelSize() in the patch: the volume is what is being
+    // rendered, and --volume may be a cache directory whose mirrored metadata is
+    // stale. The separate remote fetch stays last, and is reachable only when no
+    // Volume has been opened.
     if (volumeMicrometerPerVoxel && isUsableMicrometerPerVoxel(*volumeMicrometerPerVoxel))
         return {*volumeMicrometerPerVoxel, VoxelSizeSource::RemoteVolume};
+    if (localMicrometerPerVoxel && isUsableMicrometerPerVoxel(*localMicrometerPerVoxel))
+        return {*localMicrometerPerVoxel, VoxelSizeSource::LocalStoreMetadata};
     if (remoteMicrometerPerVoxel && isUsableMicrometerPerVoxel(*remoteMicrometerPerVoxel))
         return {*remoteMicrometerPerVoxel, VoxelSizeSource::RemoteMetadata};
 

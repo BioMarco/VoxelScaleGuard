@@ -1,5 +1,5 @@
 diff --git a/volume-cartographer/apps/src/vc_render_tifxyz.cpp b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
-index 9d0c2b8..73a99f8 100644
+index 9d0c2b8..cf4e2a2 100644
 --- a/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 +++ b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 @@ -11,6 +11,7 @@
@@ -10,7 +10,7 @@ index 9d0c2b8..73a99f8 100644
  #include "utils/Json.hpp"
  
  #include <opencv2/imgproc.hpp>
-@@ -980,28 +981,146 @@ static void renderTiles(
+@@ -980,28 +981,156 @@ static void renderTiles(
  
  
  // ============================================================
@@ -140,11 +140,19 @@ index 9d0c2b8..73a99f8 100644
 +// publishing its resolution as an acquisition record resolved to nothing and the
 +// render continued at a scale of 1.0 with no physical meaning.
 +//
-+// For a streamed volume, Volume construction has already fetched and normalised
-+// that same document, so `remoteVolume->voxelSize()` is the value the rest of
-+// the process agrees on: it costs no extra request and cannot disagree with the
-+// volume actually being rendered. That is the whole reason this runs after the
-+// volume is opened rather than before it.
++// Order, and why it is this order:
++//
++//   1. the opened volume, when there is one. Volume construction has already
++//      fetched and normalised the store's own document, so this is the value the
++//      rest of the process agrees on: no extra request, and it cannot disagree
++//      with the volume actually being streamed.
++//   2. the local store document, for a run with no Volume open.
++//
++// The opened volume comes first because --volume is often a chunk cache for a
++// remote source rather than the store itself; where such a cache mirrors the
++// store's metadata it may be stale, and it is the streamed volume, not the cache
++// directory, that is being rendered. Consulting the cache first would let a stale
++// document win over the freshly fetched one.
 +static ResolvedVoxelSize resolveRenderVoxelSize(
 +    const std::filesystem::path& volPath,
 +    const Volume* remoteVolume,
@@ -153,12 +161,11 @@ index 9d0c2b8..73a99f8 100644
 +    const std::string& explicitUnit)
 +{
 +    if (hasExplicitVoxelSize) {
++        // Validated by the caller, which errors out on a bad pair; this is not a
++        // fallback for an unusable --voxel-size, and must not become one.
 +        if (const auto cli = explicitMicrometerPerVoxel(explicitValue, explicitUnit))
 +            return {*cli, VoxelSizeSource::Cli};
 +    }
-+
-+    if (const auto local = vc::metadata::resolveLocalStoreVoxelSize(volPath))
-+        return {*local, VoxelSizeSource::LocalStoreMetadata};
 +
 +    if (remoteVolume != nullptr) {
 +        const double fromVolume = remoteVolume->voxelSize();
@@ -166,13 +173,25 @@ index 9d0c2b8..73a99f8 100644
 +            return {fromVolume, VoxelSizeSource::RemoteVolume};
 +    }
 +
++    if (const auto local = vc::metadata::resolveLocalStoreVoxelSize(volPath))
++        return {*local, VoxelSizeSource::LocalStoreMetadata};
++
 +    return {};
 +}
 +
  // ============================================================
  // main
  // ============================================================
-@@ -1370,62 +1489,96 @@ int main(int argc, char *argv[])
+@@ -1081,7 +1210,7 @@ int main(int argc, char *argv[])
+         ("resume", po::bool_switch()->default_value(false), "Skip chunks that already exist on disk")
+         ("pre", po::bool_switch()->default_value(false), "Create zarr + all level datasets")
+         ("voxel-size", po::value<double>(), "Physical voxel size for OME-Zarr scale metadata (reads from volume metadata if omitted)")
+-        ("voxel-unit", po::value<std::string>()->default_value("nanometer"), "Physical unit for OME-Zarr axes (e.g. nanometer, micrometer)");
++        ("voxel-unit", po::value<std::string>()->default_value("nanometer"), "Unit of the number given to --voxel-size (nanometer, micrometer, millimeter, meter). Sizes read from volume metadata are always declared in micrometer.");
+     // clang-format on
+ 
+     po::options_description all("Usage");
+@@ -1370,62 +1499,103 @@ int main(int argc, char *argv[])
      }
  
      // --- Resolve voxel size for OME-Zarr metadata ---
@@ -236,7 +255,10 @@ index 9d0c2b8..73a99f8 100644
 +    // are written as a pair by writeZarrAttrs and nothing checks that they agree, so
 +    // they are computed together below. `base_voxel_size` is always micrometres;
 +    // these are in the caller's own unit for an explicit --voxel-size.
-+    double zarr_voxel_value = 1.0;
++    //
++    // The value starts at 0 = "unknown", which is what writeZarrAttrs needs in
++    // order to omit the physical scale rather than declare a placeholder one.
++    double zarr_voxel_value = 0.0;
 +    std::string zarr_voxel_unit = voxel_unit;
 +
 +    // --- Resolve the physical voxel size -------------------------------------
@@ -294,12 +316,15 @@ index 9d0c2b8..73a99f8 100644
 +                : base_voxel_size;
 +            tifDpi = voxelSizeToDpi(umPerOutputPixel);
 +        } else {
-+            // 1.0 is a placeholder, not a measurement. Say so, and leave the
-+            // physical scale out of both outputs rather than asserting one.
++            // There is no measurement to declare. Passing 0 tells writeZarrAttrs
++            // to omit the multiscales block rather than to publish a scale of
++            // 1.0, and a zero tifDpi leaves the TIFF resolution tags unset. Both
++            // outputs therefore say "unknown" instead of inventing a size.
 +            logPrintf(stderr,
 +                      "Warning: this volume publishes no usable voxel size, so its "
-+                      "physical scale is unknown; no physical scale will be written. "
-+                      "Pass --voxel-size (um) to supply one.\n");
++                      "physical scale is unknown and none will be declared. Pass "
++                      "--voxel-size <value> --voxel-unit micrometer to supply one.\n");
++            zarr_voxel_value = 0.0;
 +            zarr_voxel_unit.clear();
 +        }
 +
@@ -308,7 +333,8 @@ index 9d0c2b8..73a99f8 100644
 +        // pixel spans 1/tgt_scale level-g voxels (--scale), and through-plane,
 +        // adjacent layers sit --slice-step level-g voxels apart (buildOffsetList).
 +        // writeZarrAttrs derives the per-axis .zattrs scale from this base value,
-+        // so this argument MUST be in the same unit as zarr_voxel_unit.
++        // so this argument MUST be in the same unit as zarr_voxel_unit -- and 0
++        // when there is no size to declare.
 +        render_level_voxel_size = ds_scale > 0
 +            ? zarr_voxel_value / double(ds_scale)
 +            : zarr_voxel_value;
@@ -316,7 +342,7 @@ index 9d0c2b8..73a99f8 100644
  
      int rotQuadGlobal = -1;
      if (std::abs(rotate_angle) > 1e-6) {
-@@ -1580,7 +1733,7 @@ int main(int argc, char *argv[])
+@@ -1580,7 +1750,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
@@ -325,7 +351,7 @@ index 9d0c2b8..73a99f8 100644
                  return true;
              } else if (numParts > 1) {
                  if (!std::filesystem::exists(std::filesystem::path(zarrOutputArg) / "0" / ".zarray")) {
-@@ -1788,7 +1941,7 @@ int main(int argc, char *argv[])
+@@ -1788,7 +1958,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
@@ -334,3 +360,40 @@ index 9d0c2b8..73a99f8 100644
              }
          }
          return true;
+diff --git a/volume-cartographer/core/include/vc/core/util/Zarr.hpp b/volume-cartographer/core/include/vc/core/util/Zarr.hpp
+index 0239efa..34a698f 100644
+--- a/volume-cartographer/core/include/vc/core/util/Zarr.hpp
++++ b/volume-cartographer/core/include/vc/core/util/Zarr.hpp
+@@ -88,6 +88,11 @@ void createPyramidDatasets(const std::filesystem::path& outFile,
+ // Write OME-Zarr .zattrs multiscales JSON. The declared scale is per-axis:
+ // Z = baseVoxelSize * sliceStep, Y/X = baseVoxelSize / pixelsPerVoxel
+ // (baseVoxelSize describes one source voxel at the rendered level).
++//
++// baseVoxelSize <= 0 means the physical size is unknown: the multiscales block
++// is then omitted entirely instead of writing a scale of 1.0. A
++// coordinateTransformations scale with no meaningful unit is a physical
++// measurement that was never made, and a reader cannot tell it from a real one.
+ void writeZarrAttrs(const std::filesystem::path& outFile,
+                     const std::filesystem::path& volPath, int groupIdx,
+                     size_t baseZ, double sliceStep, double accumStep,
+diff --git a/volume-cartographer/core/src/Zarr.cpp b/volume-cartographer/core/src/Zarr.cpp
+index 703b2fd..212f588 100644
+--- a/volume-cartographer/core/src/Zarr.cpp
++++ b/volume-cartographer/core/src/Zarr.cpp
+@@ -367,6 +367,16 @@ void writeZarrAttrs(const std::filesystem::path& outDir,
+     }
+     attrs["note_axes_order"] = "ZYX (slice, row, col)";
+ 
++    // A non-positive baseVoxelSize means "unknown", not "1.0 units". Writing a
++    // scale of 1.0 in that case invents a physical measurement: readers cannot
++    // distinguish it from a real one, and the absence of a unit does not stop
++    // them multiplying by it. Omit the multiscales block instead -- the caller
++    // is responsible for having said so on stderr.
++    if (!(std::isfinite(baseVoxelSize) && baseVoxelSize > 0.0)) {
++        vc::writeZarrAttributes(outDir, attrs);
++        return;
++    }
++
+     Json ms;
+     ms["version"] = "0.4"; ms["name"] = "render";
+     auto makeAxis = [&](const char* name) -> Json {

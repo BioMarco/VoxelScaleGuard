@@ -483,6 +483,67 @@ jobs:
           run build/baseline/bin/vc_render_tifxyz 0172-baseline
           run build/patched/bin/vc_render_tifxyz  0172-patched
 
+      - name: Unknown-size branch (patched binary, real CLI)
+        # The branch that warns and must declare NO physical scale. It is reached
+        # by keeping the volume CLOSED: no --remote-url and no cached marker, so
+        # there is no Volume to ask and no local store document either. The old
+        # private reader behaved the same way, so the baseline is the control.
+        #
+        # This is the end-to-end counterpart of the unit test for the placeholder
+        # case: it asserts on the FILES, not on a helper, because the previous
+        # revision of this patch told the operator "no physical scale will be
+        # written" while still writing scale = 1.0.
+        working-directory: villa-src/volume-cartographer
+        run: |
+          set -uo pipefail
+          W="$GITHUB_WORKSPACE"
+          mkdir -p "$W/vol-cache/unknown" "$W/out/unknown"
+          run_unknown() {
+            local bin="$1" tag="$2"
+            set +e
+            "$bin" -v "$W/vol-cache/unknown" \
+              -s "$W/data/seg-0009B-8.64um.tifxyz" \
+              -g 0 --scale 1 -n 1 --cache-gb 1 \
+              --crop-x 3145 --crop-y 3412 --crop-width 32 --crop-height 32 \
+              --zarr-output "$W/out/unknown/${tag}.zarr" \
+              --tif-output "$W/out/unknown/${tag}.tif" \
+              > "$W/ci-out/unknown-${tag}.log" 2>&1
+            echo "$?" > "$W/ci-out/unknown-${tag}.exit"
+            set -e
+            echo "=== ${tag} exit $(cat "$W/ci-out/unknown-${tag}.exit") ==="
+            grep -E "Voxel size|Warning|physical scale|Error" "$W/ci-out/unknown-${tag}.log" \
+              || echo "  (no voxel-size line)"
+          }
+          run_unknown build/patched/bin/vc_render_tifxyz  patched-unknown
+          run_unknown build/baseline/bin/vc_render_tifxyz baseline-unknown
+
+          echo
+          echo "--- what each one DECLARED ---"
+          FAILED=0
+          for tag in patched-unknown baseline-unknown; do
+            # The patched binary must declare nothing; the baseline is recorded
+            # for contrast and is allowed to declare the fabricated 1.0.
+            if [ "$tag" = "patched-unknown" ]; then
+              python3 "$W/ci/check_physical_size.py" \
+                --zattrs "$W/out/unknown/${tag}.zarr/.zattrs" \
+                --tiff "$W/out/unknown/${tag}.tif" \
+                --expect-unknown --label "$tag" || FAILED=1
+            else
+              python3 "$W/ci/summarize_zattrs.py" \
+                "$W/out/unknown/${tag}.zarr/.zattrs" 2>/dev/null \
+                | sed 's/^/    baseline declares: /' || true
+              python3 "$W/ci/check_physical_size.py" \
+                --zattrs "$W/out/unknown/${tag}.zarr/.zattrs" \
+                --tiff "$W/out/unknown/${tag}.tif" \
+                --expect-unknown --label "$tag" || true
+            fi
+          done
+          if [ "$FAILED" -ne 0 ]; then
+            echo "FATAL: the unknown-size branch declared a physical scale."
+            exit 1
+          fi
+          exit 0
+
       - name: Error and edge cases (patched binary, real CLI)
         # The user-facing question is not "does the function handle 0" but "can the
         # program ever quietly assert a physical scale that does not exist". These

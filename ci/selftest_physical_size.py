@@ -80,6 +80,34 @@ print("=" * 72)
 print("check_physical_size.py self-test (synthetic fixtures)")
 print("=" * 72)
 
+
+def run_unknown(label: str, *, multiscales: bool, resolution: bool,
+                expect_ok: bool) -> bool:
+    """Exercise --expect-unknown: the branch that emits the warning."""
+    tmp = Path(tempfile.mkdtemp(prefix="vsg-unknown-"))
+    try:
+        zattrs = tmp / "out.zarr" / ".zattrs"
+        tiff = tmp / "out.tif" / "00.tif"
+        zattrs.parent.mkdir(parents=True, exist_ok=True)
+        if multiscales:
+            write_zattrs(zattrs, 1.0, "nanometer")   # the fabricated placeholder
+        else:
+            zattrs.write_text(json.dumps({"source_zarr": "x", "canvas_size": [4, 4]}))
+        write_tiff(tiff, 8.64, with_resolution=resolution)
+        proc = subprocess.run(
+            [sys.executable, str(CHECKER), "--zattrs", str(zattrs), "--tiff", str(tiff),
+             "--expect-unknown", "--label", label],
+            capture_output=True, text=True)
+        ok = (proc.returncode == 0) == expect_ok
+        print(f"{'PASS' if ok else 'FAIL'}  {label} (expected "
+              f"{'accept' if expect_ok else 'reject'}, got rc={proc.returncode})")
+        if not ok:
+            print(proc.stdout[-2000:])
+        return ok
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 results = []
 
 # 1. The correct outcome for the case the patch got wrong.
@@ -110,6 +138,21 @@ results.append(run("TIFF right, zattrs 1000x off", um=8.64, zarr_value=0.00864,
 results.append(run("TIFF carries no resolution", um=8.64, zarr_value=8640.0,
                    zarr_unit="nanometer", tiff_um=8.64, with_resolution=False,
                    expect_ok=False))
+
+# 7. The UNKNOWN case: no multiscales block, no resolution tag -> accepted.
+#    This is the branch that warns, and the patch now omits the physical scale
+#    instead of writing a placeholder of 1.0.
+results.append(run_unknown("unknown size: nothing declared", multiscales=False,
+                           resolution=False, expect_ok=True))
+
+# 8. An "unknown" size that nonetheless declares a scale must be REJECTED: that
+#    is exactly the fabricated measurement this change removed.
+results.append(run_unknown("unknown size but a scale was written -> rejected",
+                           multiscales=True, resolution=False, expect_ok=False))
+
+# 9. Likewise if a resolution tag survives.
+results.append(run_unknown("unknown size but a resolution tag -> rejected",
+                           multiscales=False, resolution=True, expect_ok=False))
 
 print()
 if all(results):

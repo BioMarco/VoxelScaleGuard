@@ -123,12 +123,41 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--zattrs", required=True)
     ap.add_argument("--tiff", required=True)
-    ap.add_argument("--expect-um", type=float, required=True)
+    ap.add_argument("--expect-um", type=float)
     ap.add_argument("--label", default="case")
     ap.add_argument("--tolerance", type=float, default=1e-6)
+    ap.add_argument(
+        "--expect-unknown", action="store_true",
+        help="The size is expected to be UNKNOWN: neither output may declare one. "
+             "Asserts the multiscales block and the TIFF resolution tag are absent, "
+             "which is what the renderer promises on stderr in that case.")
     args = ap.parse_args()
 
+    if not args.expect_unknown and args.expect_um is None:
+        ap.error("--expect-um is required unless --expect-unknown is given")
+
     say()
+    if args.expect_unknown:
+        say(f"=== {args.label}: expected UNKNOWN physical size ===")
+
+        attrs = Path(args.zattrs)
+        if attrs.is_file():
+            try:
+                doc = json.loads(attrs.read_text())
+                check("zattrs declares no multiscales block", "multiscales" not in doc,
+                      f"keys: {sorted(doc)}")
+            except Exception as exc:  # noqa: BLE001
+                check("zattrs is parseable", False, str(exc))
+        else:
+            check("no .zattrs written at all", True, "nothing that could declare a scale")
+
+        xres, _unit, err = read_tiff_dpi(Path(args.tiff))
+        if err and err.startswith("SETUP:"):
+            check("TIFF tags could be read", False, err)
+        else:
+            check("TIFF declares no resolution", xres in (None, 0), f"XResolution={xres}")
+        return 1 if failures else 0
+
     say(f"=== {args.label}: expected {args.expect_um:g} um per voxel ===")
 
     # --- 1. .zattrs ---------------------------------------------------------

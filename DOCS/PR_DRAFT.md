@@ -3,299 +3,313 @@
 **Not submitted. No pull request has been opened, and none will be without
 authorisation.**
 
+This file holds the final PR text for `ScrollPrize/villa`, written to villa's own
+`.github/pull_request_template.md`. The evidence behind every claim is in
+`CI_VALIDATION.md` and `RESULTS.md`.
+
+Target: **one file** —
+`volume-cartographer/apps/src/vc_render_tifxyz.cpp`. Verified to apply to upstream
+`main` at `2dcfaf6a08c3bc796fde726c4fa32050c8fc90e7` (2026-09-17), where the file is
+byte-identical to the revision the patch was developed against
+(`757f70c0140a4cfbbbd44975ef09558444b96980`). The GUI change in
+`SegmentationCommandHandler.cpp` is deliberately **not** part of this and is
+described at the end as a follow-up.
+
 ---
 
 ## Title
 
 ```
-vc_render_tifxyz: resolve the voxel size from the volume, not from a local file
+vc_render_tifxyz: take the voxel size from the volume that is open, not from a local file
 ```
 
-## Branch / commit plan
+## Body — to paste into the PR
 
-Three commits. The first is the fix and is self-sufficient; the other two are
-separable so a maintainer can take one without the others.
+**In one sentence:** renders no longer declare a physically wrong voxel size — the
+OME-Zarr `.zattrs` axis units and the TIFF resolution tags now describe the volume
+that was actually rendered.
 
-| # | Commit | Contents |
+**One real example:** starting with the published volume
+`PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr` and a mesh
+authored for it (`20250510172639-on-20250521125136-8.64um.tifxyz`), I ran
+`vc_render_tifxyz` on the current `main` and it wrote `.zattrs` declaring the voxel
+size as `1` in **nanometres**; the same command after this patch writes
+`8.64` in **micrometres**.
+
+**Before:** the render attaches a physically wrong scale to everything it produces.
+On that volume the declared physical voxel size is wrong by **×8640**; on others we
+measured ×2400 and ×45532. The rendered pixels are fine — every physical number
+attached to them is not, and the TIFF gets no resolution tag at all.
+
+```
+$ vc_render_tifxyz -v cache/ -s seg.tifxyz -g 0 --scale 1 -n 1 \
+    --crop-x 3145 --crop-y 3412 --crop-width 128 --crop-height 128 \
+    --zarr-output out.zarr --tif-output out.tif
+Voxel size: 1.0 (no metadata found; override with --voxel-size)
+
+out.zarr/.zattrs -> axes unit "nanometer", scale [1, 1, 1]      # 0.001 um/voxel
+out.tif/00.tif   -> no XResolution tag at all
+```
+
+**After this PR:** the same command, same inputs, same settings:
+
+```
+Voxel size (remote volume metadata): 8.64 micrometer
+
+out.zarr/.zattrs -> axes unit "micrometer", scale [8.64, 8.64, 8.64]
+out.tif/00.tif   -> XResolution 2939.81 px/inch  ( == 25400 / 8.64 )
+```
+
+**Proof:** run
+[35247583260](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35247583260)
+builds `main` **and** `main + this patch` from the same commit and runs both on two
+public volumes, `PHerc0009B` (8.64 µm) and `PHerc0172` (7.91 µm). Look at:
+
+* the `.zattrs` unit and scale;
+* the TIFF `XResolution`, read twice — once with Pillow, once with `tiffinfo`;
+* the decoded-pixel digests, which are **identical** between the two binaries, so
+  the images are unchanged and only the physical metadata is corrected.
+
+```
+PHerc0009B  baseline  .zattrs nanometer  scale [1,1,1]      TIFF no resolution tag
+            patched   .zattrs micrometer scale [8.64,...]   TIFF 2939.81 px/inch
+PHerc0172   baseline  .zattrs nanometer  scale [1,1,1]      TIFF no resolution tag
+            patched   .zattrs micrometer scale [7.91,...]   TIFF 3211.13 px/inch
+
+decoded pixels, baseline vs patched, both volumes: identical
+```
+
+**Why / where this is useful:** anything that measures a render in physical units
+reads these numbers — ink-detection input scaling, mesh/volume frame checks, scale
+bars on published images (a Grand Prize submission requirement), and any downstream
+tool that opens the `.zarr` and trusts its axes. Correcting them makes the outputs
+of `vc_render_tifxyz` comparable with the volumes they came from.
+
+- [ ] I personally verified that the example and proof above were produced by this PR on the stated data.
+
+## Details
+
+### The defect
+
+`vc_render_tifxyz` wrote a physical voxel size into OME-Zarr `.zattrs` axis units
+and per-axis scale, and into the TIFF resolution tag. It resolved that number
+**before** opening the source volume, from a local file only, using a private
+reader that recognised a single schema:
+
+```cpp
+if (auto v = tryFile(volPath / "meta.json", nullptr)) return v;
+if (auto v = tryFile(volPath / "metadata.json", "scan")) return v;
+if (auto v = tryFile(volPath / "metadata.json", nullptr)) return v;
+```
+
+It looked only for a top-level `voxelsize`. Most of the published catalog instead
+records its resolution as `scan.tomo.acquisition.detector.samplePixelSize` (mm) in
+`metadata.json`, so the reader resolved nothing and the render continued at a scale
+of `1.0`, declared with `--voxel-unit`'s default of `nanometer`. The error is the
+product of two independent mistakes: an unresolved number, and a unit that does not
+describe it.
+
+Measured against four published stores' own metadata documents, that reader
+resolves **one** — the legacy-shaped `PHerc0172`, which is the volume
+`core/test/test_volume_live_s3.cpp` happens to pin. That is why this survived.
+
+### The cause, and why the value is taken from the open volume
+
+The value was already available. A few lines later the same function has opened the
+volume remotely via `Volume::NewFromUrl()`, and `Volume` construction has already
+fetched and normalised that same store document:
+
+* `Volume.cpp:1043` calls `vc::metadata::voxelSizeFromStoreMetadata(full)`;
+* `Volume.cpp:1345` does the same for the remote path in
+  `loadRemoteVolumeMetadata()`;
+* `Volume::voxelSize()` (`Volume.cpp:1575`) returns that normalised value, `0` when
+  unknown, in **micrometres**.
+
+So this patch resolves the size **after** the volume is open and reads
+`remoteVolume->voxelSize()`. Concretely, versus the earlier approach in #1417:
+
+* **no extra network request** — the document has already been fetched;
+* **it cannot disagree with the volume being rendered**, because it is the same
+  object the renderer is streaming from;
+* it reuses `vc::metadata::resolveLocalStoreVoxelSize()` for the local case, the
+  shared resolver `vc_grow_seg_from_segments` already uses, so this tool stops
+  having a third opinion about what a store's document says;
+* the URL-fragment hazard raised in #1417's review — `joinRemoteUrlPath` does not
+  strip a `#vc-base-scale=N` fragment — is **unreachable by construction**, because
+  no URL is constructed here at all.
+
+The ordering *is* the fix: resolving earlier is exactly why the private reader
+existed.
+
+### Behaviour of each source, and of the CLI
+
+Priority, highest first: explicit `--voxel-size` → the store's local document → the
+open volume → unresolved.
+
+| Source | Value used | Declared unit |
 |---|---|---|
-| 1 | `vc_render_tifxyz: use the shared voxel-size resolver, after the volume is open` | `apps/src/vc_render_tifxyz.cpp` — the whole patch |
-| 2 | `core/test: cover a modern metadata.json volume in the live S3 test` | *(proposed, not written)* point the live test at a `metadata.json`-shaped volume as well as `PHerc0172` |
-| 3 | *(separate PR, recommended)* `VC3D: pass the voxel size whenever it is known, not only when rebased` | `SegmentationCommandHandler.cpp:2074-2078` — see below |
+| `--voxel-size` (+ `--voxel-unit`) | converted to µm for the TIFF tag; the caller's own number for `.zattrs` | the caller's `--voxel-unit` |
+| local `meta.json` / `metadata.json` | the shared resolver's value | `micrometer` |
+| the open (streamed) volume | `Volume::voxelSize()` | `micrometer` |
+| nothing usable | no physical scale written to either output; warning on stderr | — |
 
-Commit 1 is the deliverable. Commit 2 is the test that would have caught this.
-Commit 3 is deliberately not bundled: it changes GUI behaviour and its predicate
-has a lapsed history (PR #1228).
+**CLI compatibility is preserved deliberately, including the meaning of
+`--voxel-unit`.** In `main` that flag describes the number supplied on the command
+line: the pre-patch code multiplied by `0.001` for `nanometer` *solely* to reach
+micrometres for the TIFF tag, and passed the caller's raw number and unit straight
+to `writeZarrAttrs`. This patch keeps that, so
+`--voxel-size 8640 --voxel-unit nanometer` still means 8640 nm. The documented
+invocation in the tutorial — `--voxel-size 9.362 --voxel-unit micrometer` — is
+unaffected.
+
+The only output-side change relative to `main` is which unit label accompanies a
+**metadata-sourced** size: `micrometer` instead of whatever `--voxel-unit` said.
+For the default `nanometer` that is precisely the ×1000 correction. If a caller
+explicitly passed `--voxel-unit micrometer` (as the tutorial does), it is a no-op.
+
+### `.zattrs` number and unit are now computed together
+
+`writeZarrAttrs` writes `scale` and `axes[*].unit` from two separate arguments and
+never checks that they agree, so a number and a unit can silently describe
+different physical sizes. This patch computes them as a pair
+(`zarrVoxelValue()` / `zarrVoxelUnit()`), with the invariant
+
+```
+zarrScaleValue(...) x micrometersPerUnit(zarrUnit(...)) == micrometerPerVoxel
+```
+
+asserted in the test suite for nm/µm/mm/m in both long and short spellings, at
+level 0 and through the pyramid. This is not hypothetical: an earlier revision of
+this patch wrote the converted micrometre number under the caller's unit label,
+which declared 8.64 nm for `--voxel-size 8640 --voxel-unit nanometer`. It was
+caught by CI checks that convert `.zattrs` and the TIFF tags to micrometres and
+compare both against the requested size. That history is in `RESULTS.md` §10 of the
+linked repository; the tests stay.
+
+### Scope of the change
+
+One file, `vc_render_tifxyz.cpp`: the private reader is replaced by the shared
+resolver plus the open volume, the resolution moves to after the volume is opened,
+and the number/unit pair is computed together. No new dependency, no interface
+change, no change to the rendered pixels, no change to any option's meaning.
+
+### Evidence, and how to reproduce it
+
+Reproducible from a public repository without the dependency closure:
+
+* **Workflow:** `.github/workflows/renderer-validation.yml` in
+  <https://github.com/BioMarco/VoxelScaleGuard>. It clones `ScrollPrize/villa` at a
+  chosen commit, builds `vc_render_tifxyz` twice from the same tree (once clean,
+  once with the patch applied by `git apply`), checks the applied diff is
+  byte-identical to the committed patch, and runs both binaries on public catalog
+  data with identical arguments.
+* **Run:** [35247583260](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35247583260)
+  (build + before/after + physical-size checks).
+* **What was measured**, on `PHerc0009B` at `-g 0 --scale 1`, 128×128 crop, one
+  slice, streamed from the public Open Data bucket:
+
+  | | baseline (`main`) | patched |
+  |---|---|---|
+  | log line | `Voxel size: 1.0 (no metadata found…)` | `Voxel size (remote volume metadata): 8.64 micrometer` |
+  | `.zattrs` unit | `nanometer` | `micrometer` |
+  | `.zattrs` scale, level 0 | `[1, 1, 1]` | `[8.64, 8.64, 8.64]` |
+  | TIFF `XResolution` | absent | `2939.814697265625` px/inch |
+  | decoded pixels | — | **identical** |
+
+* **Control:** the same binary pair on `PHerc0172` (7.91 µm), the legacy-shaped
+  volume the existing live-S3 test pins: `.zattrs` goes from `nanometer`/`[1,1,1]`
+  to `micrometer`/`[7.91,…]`, TIFF gains `3211.1252` px/inch, decoded pixels
+  identical.
+* **Unit coherence:** `--voxel-size` given as `8640 nanometer`, `8.64 micrometer`,
+  `0.00864 millimeter` and `0.00000864 meter` all declare and resolve to the same
+  8.64 µm, with `.zattrs` and the TIFF agreeing in every case.
+* **Unusable input** (`--voxel-size 0`, `-3`, `nan`, unknown unit) exits non-zero
+  and writes no physical scale, matching `main`'s behaviour.
+
+### Limitations, stated plainly
+
+* **Two volumes, one crop, one slice.** This demonstrates the correction and the
+  absence of a pixel regression; it is not a survey of the catalog, and no claim is
+  made about volumes not rendered here.
+* **One build configuration** (`QuickBuild`, gcc 13.3, Linux, `--scale 1`). Other
+  presets, compilers and scales are unmeasured.
+* **The "no usable size anywhere" branch is covered by unit tests only.** With a
+  real volume the patched binary finds the value in the volume it opened — that is
+  the fix — so driving that branch end to end would mean severing a volume from its
+  own metadata.
+* **Identical decoded pixels** is a property of these runs on these volumes, not a
+  proof that no input can change them. The patch touches no pixel-producing code
+  path.
+* The patch also changes the log line to state the size exactly as `.zattrs`
+  declares it; `main` printed the caller's unit next to a value that could be in
+  micrometres. No code in the tree parses that line (checked).
+
+### Credits
+
+The idea of having the renderer consult the **volume's own remote voxel size** is
+**NicolasHuberty**'s, from PR #1417, which lapsed to an inactivity bot rather than
+being rejected. The `samplePixelSize` schema handling,
+`vc::metadata::resolveLocalStoreVoxelSize`, and the `Volume::voxelSize()` semantics
+this reuses are **Bullo27**'s and the villa maintainers' (PRs #1227, #1229, #1454).
+The VC3D enable-predicate diagnosis is **Bullo27**'s from PR #1228. The issue
+reports are **DarthCeltic**'s (#1403) and **Bullo27**'s (#1226).
+
+For the avoidance of doubt: the `vc_grow_seg_from_seed` half of #1403 is **already
+fixed upstream**. This contribution does not claim it.
+
+### Follow-up, deliberately not in this PR
+
+`apps/VC3D/SegmentationCommandHandler.cpp:2076-2078` suppresses `--voxel-size` for
+a native-resolution remote volume, so this CLI fix is not reachable from VC3D — the
+route most users take. That changes GUI behaviour and its predicate has a lapsed
+history (#1228), so it is proposed separately rather than bundled here. The exact
+edit is in `FEASIBILITY.md` §8 of the linked repository.
 
 ---
 
-## Body
+## How this gets submitted — procedure and the authorisation it needs
 
-### What this fixes
+`VoxelScaleGuard` is a **standalone repository, not a fork of `villa`**, so a pull
+request cannot be opened from a branch of it. GitHub requires the head branch to
+live in a repository related to the base — in practice a fork.
 
-Renders of volumes that publish their resolution as an acquisition record come out
-with a physically wrong scale, silently. The rendered pixels are correct; the
-OME-Zarr axis metadata and the TIFF resolution tags are not.
+Checked [live] 2026-09-17: the authenticated account is **BioMarco**, and it owns
+**no fork** of `ScrollPrize/villa`.
 
-`vc_render_tifxyz` resolved the voxel size **before** it opened the source volume,
-from a local file only:
+The path that works, once authorised:
 
-```cpp
-static std::optional<double> readVolumeVoxelSize(const std::filesystem::path& volPath)
-{
-    auto tryFile = [](const std::filesystem::path& p, const char* key) -> std::optional<double> {
-        if (!std::filesystem::exists(p)) return std::nullopt;
-        ...
-        if (sub.is_object() && sub.contains("voxelsize") && sub["voxelsize"].is_number())
-            return sub["voxelsize"].get_double();
-        ...
-    };
-    if (auto v = tryFile(volPath / "meta.json", nullptr)) return v;
-    if (auto v = tryFile(volPath / "metadata.json", "scan")) return v;
-    if (auto v = tryFile(volPath / "metadata.json", nullptr)) return v;
-    return std::nullopt;
-}
-```
+1. **Fork `ScrollPrize/villa`** into the account (creates
+   `BioMarco/villa`). *Not done — needs authorisation, because it publishes a new
+   repository.*
+2. **Add the patch as a branch there, containing only the renderer change.**
+   Nothing from `VoxelScaleGuard` — no harness, no CI, no documents, no data —
+   goes into the fork:
+   ```bash
+   git clone https://github.com/BioMarco/villa.git villa-fork
+   cd villa-fork
+   git checkout -b fix/render-voxel-size-from-open-volume main
+   git apply /path/to/VoxelScaleGuard/patch/vc_render_tifxyz.patch
+   git add volume-cartographer/apps/src/vc_render_tifxyz.cpp
+   git commit   # the patch's own commit message
+   git push -u origin fix/render-voxel-size-from-open-volume
+   ```
+   The committed artefact is one file; `git show --stat` must list exactly one.
+3. **Open the PR** from `BioMarco:fix/render-voxel-size-from-open-volume` into
+   `ScrollPrize/villa:main`, pasting the body above and ticking the template's
+   verification checkbox. *Not done — needs authorisation.*
 
-Meanwhile, a few lines later, the same function had already opened the volume
-remotely — `Volume::NewFromUrl(remoteUrl, remoteAuth)` — and `Volume` construction
-had already fetched and normalised **exactly this document**, via
-`loadRemoteVolumeMetadata` → `vc::metadata::voxelSizeFromStoreMetadata`. The
-correct value was in the process and was discarded.
+Alternative, if a fork is not wanted: ask a villa maintainer for permission to push
+a branch to `ScrollPrize/villa` directly (collaborator access), or send the patch by
+email. Both need the maintainers, not only this project.
 
-For a streamed volume there is no local metadata, so every candidate misses. The
-renderer then fell back to `1.0` and passed it to `writeZarrAttrs` as the axis
-scale, with `--voxel-unit` defaulting to `nanometer`.
+Two things worth settling before the PR goes out, because villa's CONTRIBUTING.md
+is strict about them:
 
-### Measured, on the published catalog
-
-The pinned-revision reader and the fixed chain, run over four real volumes
-(`PHerc0009B` and `PHercParis4` as used in #1403, plus `PHerc0172`):
-
-| Store | Old reader | Store actually says | Declared physical size |
-|---|---|---|---|
-| `PHerc0009B/…-8.640um-1.2m-116keV-masked.zarr` | **not found** | 8.64 µm | `1 nm` → wrong by **×8640** |
-| `PHercParis4/…-45.532um-11.0m-110keV-masked.zarr` | **not found** | 45.532 µm | `1 nm` → wrong by **×45532** |
-| `PHercParis4/…-2.400um-0.2m-137keV-masked.zarr` | **not found** | 2.4 µm | `1 nm` → wrong by **×2400** |
-| `PHerc0172/…-7.910um-53keV-masked.zarr` | 7.91 µm | 7.91 µm | `7.91 nm` → wrong by ×1000 |
-
-Those volumes publish no top-level `voxelsize`; the number is only at
-`scan.tomo.acquisition.detector.samplePixelSize` (millimetres). The old reader
-resolves **one of the four** — and that one is the legacy `meta.json`-shaped
-volume, which is the volume `core/test/test_volume_live_s3.cpp` pins. That is why
-this went unnoticed.
-
-Note the last row: even where the reader succeeds, the output is still 1000× wrong,
-because the value is in micrometres and is declared in nanometres. Fixing
-discovery alone would turn "×8640 wrong" into "×1000 wrong".
-
-### The change
-
-1. **Resolve the voxel size after the volume is open.** For a streamed volume, use
-   `remoteVolume->voxelSize()` — the value `Volume` construction already fetched,
-   costing no extra request and unable to disagree with the volume actually being
-   streamed.
-2. **Use `vc::metadata::resolveLocalStoreVoxelSize` for the local case** and delete
-   the private reader. That resolver is what `Volume::voxelSize()` and
-   `vc_grow_seg_from_segments` already agree on; keeping a third opinion here is
-   how the two drifted apart. It also brings the `samplePixelSize` fallback, which
-   fixes the **local** case too — a downloaded modern store was misread the same
-   way.
-3. **Validate once.** The shared resolver rejects non-finite and non-positive
-   values. It also reports whether the document *stated* a size at all, so
-   "published something unusable" and "published nothing" produce different
-   messages instead of one "invalid metadata voxelsize".
-4. **Track where the value came from** (`VoxelSizeSource`), so `1.0` can no longer
-   be written out as a physical scale, and so the emitted unit matches the number.
-   A metadata-sourced size is in micrometres by definition; `--voxel-unit` still
-   describes a `--voxel-size` given on the command line.
-5. **Validate CLI input earlier**, including the unit, so a bad `--voxel-unit`
-   fails before the remote pyramid is opened rather than after.
-
-### What does not change
-
-* **The rendered pixels.** `base_voxel_size` feeds only `tifDpi` and the `.zattrs`
-  scale; `buildOffsetList` documents that slice offsets are in level-g voxels and
-  are deliberately not scaled by it. This is why the change is low-risk, and also
-  why the bug went unseen.
-* **Public interfaces.** `writeZarrAttrs`'s signature is untouched.
-* **`--voxel-unit`'s default.** Still `nanometer`. (#1313 proposed changing it;
-  that is a separate change with a separate blast radius. Deriving the unit from
-  the value's source achieves correct output without it.)
-* **Metadata conventions.** Nothing added to or redefined in store documents.
-* **CLI and local-metadata priority.** Unchanged, and tested.
-
-One deliberate behaviour change: when no physical size can be resolved, the tool
-now leaves the `.zattrs` axis unit unset, with a distinct warning, instead of
-asserting `1.0 nanometer`. No in-tree consumer reads that unit back, and
-`dpi == 0` already suppresses the TIFF resolution tags.
-
-### Tests
-
-Added: 19 cases / 107 assertions covering local and remote valid metadata, missing
-metadata, zero, negative and non-finite values, an explicit size with unit
-conversion (nm/µm/mm/m), an unknown unit, native and reduced resolution, all six
-`voxelsize` aliases, tier priority, and the unusable-vs-absent distinction.
-
-The five reproduction cases assert the **pre-patch** behaviour, so they fail if the
-old reader is ever reintroduced:
-
-```cpp
-TEST_CASE("DEFECT: the deployed reader cannot read a modern published store") {
-    const fs::path store = makeStore("modern", "", kModernStoreMetadata); // PHerc0009B
-    const auto shared = vc::metadata::resolveLocalStoreVoxelSize(store);
-    REQUIRE(shared.has_value());
-    CHECK(*shared == doctest::Approx(8.64));
-    CHECK_FALSE(vc::metadata::readVolumeVoxelSize(store).has_value());   // the bug
-}
-```
-
-Upstream's `core/test/test_voxel_size_metadata.cpp` passes unmodified as the
-control.
-
-### Verified by execution
-
-The patch has now been **compiled and run**, on a GitHub-hosted Linux runner, from
-the pinned revision, with the baseline built from the same tree and the applied
-diff checked byte-identical to the patch. Full record in `CI_VALIDATION.md`.
-
-Against `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr`, and
-with `PHerc0172` as the control:
-
-| | baseline | patched |
-|---|---|---|
-| log line | `Voxel size: 1.0 (no metadata found…)` | `Voxel size (remote volume metadata): 8.64 micrometer` |
-| `.zattrs` unit | `nanometer` | `micrometer` |
-| `.zattrs` scale (level 0) | `[1, 1, 1]` | `[8.64, 8.64, 8.64]` |
-| TIFF `XResolution` | absent | `2939.814697265625` px/inch |
-| decoded pixels | — | **byte-identical** to the baseline |
-
-**And a caveat that belongs in this PR rather than in a footnote:** the version of
-this patch first submitted to CI **did not compile**. The new resolution block had
-been placed ~60 lines before the declarations it reads, producing
-
-```
-error: 'hasExplicitVoxelSize' was not declared in this scope
-```
-
-That is fixed, and the harness now asserts that every name the block reads is
-declared above its call site — but the fact that a change this small could be
-"logic-verified" and not build is worth a maintainer knowing.
-
-### Still open
-
-* The GUI path (`SegmentationCommandHandler.cpp:2076-2078`) is deliberately not
-  touched here; see commit 3 above and `FEASIBILITY.md` §8.
-* The "no usable voxel size anywhere" branch — warning emitted, no physical scale
-  written — is logic-verified in the harness but not driven end to end, because the
-  volume used finds its value in the volume it opened. That is the fix working, not
-  a gap in the test, but it means the branch is covered by unit tests only.
-* Two volumes and one crop each. This is a demonstration, not a survey.
-
-### A second defect found by running it, and fixed here
-
-Worth a maintainer's attention because it is the same class of bug this PR fixes,
-and it was introduced by the first version of this patch.
-
-`--voxel-size 8640 --voxel-unit nanometer` wrote `.zattrs` with scale `8.64` and
-unit `nanometer` — declaring 8.64 nm where the caller asked for 8640 nm, a silent
-×1000 error, while the TIFF tag was correct. Cause: the CLI pair was converted to
-micrometres and the converted *number* was written under the caller's *unit*.
-`writeZarrAttrs` writes the two independently and never checks that they agree.
-
-It was not pre-existing. `main` writes the caller's raw number under the caller's
-unit (`8640 nanometer`) and uses the converted value only for the TIFF resolution,
-so `.zattrs` and the TIFF both denoted 8640 nm. So `--voxel-unit` has always meant
-"the unit of the number I am giving you", and this PR broke that.
-
-Fixed by computing the number and the unit together, so a mismatch is not
-expressible:
-
-```cpp
-if (const char* unit = zarrVoxelUnit(resolved, voxel_unit)) {
-    zarr_voxel_unit = unit;                                       // caller's unit
-    zarr_voxel_value = zarrVoxelValue(resolved, explicitVoxelSize);  // caller's number
-}
-```
-
-Metadata-sourced sizes are still declared in micrometres, unchanged. No option
-semantics change. The invariant
-`zarrScaleValue() × micrometersPerUnit(zarrUnit()) == micrometerPerVoxel` is now
-asserted for nm/µm/mm/m, and the CI check converts `.zattrs` **and** the TIFF tags
-to micrometres and compares both against what the command line asked for.
-
-### Reproducing the evidence
-
-All of it is reproducible from this repository without the dependency closure:
-
-* `.github/workflows/renderer-validation.yml` — builds `main` and this patch from
-  the same pinned revision on a free `ubuntu-24.04` runner using only public apt
-  packages, runs both on `PHerc0009B` and `PHerc0172`, and compares the outputs.
-* `DOCS/CI_VALIDATION.md` — the run record: revision, configuration, the log lines,
-  the emitted `.zattrs`, the TIFF tags, the pixel regression check, and the
-  edge cases.
-* `harness/` — the reproducer, buildable in minutes with a local MSVC toolchain;
-  upstream's own suite passes unmodified as the control.
-
-Measured on `PHerc0009B` @ `-g 0 --scale 1`, baseline vs patched:
-
-| | baseline | patched |
-|---|---|---|
-| log | `Voxel size: 1.0 (no metadata found…)` | `Voxel size (remote volume metadata): 8.64 micrometer` |
-| `.zattrs` unit | `nanometer` | `micrometer` |
-| `.zattrs` scale (level 0) | `[1, 1, 1]` | `[8.64, 8.64, 8.64]` |
-| TIFF `XResolution` | absent | `2939.8147` px/inch (`25400/8.64`) |
-| decoded pixels | — | **byte-identical** |
-
-### Against upstream `main` today
-
-Checked [live] on 2026-09-16, when `main` was at `5ab585f`:
-
-* `volume-cartographer/apps/src/vc_render_tifxyz.cpp` is **byte-identical** between
-  the pinned `757f70c` and `5ab585f` — the file this PR changes has not moved;
-* the patch still applies cleanly to `5ab585f` (`git apply --check` exits 0);
-* so this does not need rebasing, and the line numbers cited above still hold.
-
-The workflow takes the commit as an input, so it can be pointed at `main`'s tip
-rather than the pin to re-confirm this at any time.
-
-### Relationship to other work
-
-* **#1226 / #1227** fixed the same class of problem in `Volume` construction. This
-  is a separate execution path that never used Volume construction for this value,
-  so that fix could not reach it. Not a regression, not a duplicate.
-* **PR #1417** (`vc_render_tifxyz: discover remote volume voxel size`) addressed
-  the same symptom by exposing `remoteVolumeVoxelSize()` and re-fetching the
-  document. It was closed by an inactivity bot on 2026-08-27. This takes the same
-  goal — consult the remote volume's voxel size — but reads the value from the
-  volume already open, so it needs no second fetch. That also makes it immune to a
-  hazard raised in #1417's own review: `joinRemoteUrlPath` does not strip URL
-  fragments, so passing a locator carrying `#vc-base-scale=N` requests
-  `…zarr#vc-base-scale=1/meta.json`, which silently resolves nothing. Credit for
-  the approach is the author's.
-* **PR #1228** diagnosed the GUI side: `SegmentationCommandHandler.cpp:2076`
-  enables `setRenderVoxelSize` only when `baseScaleLevel() > 0 ||
-  hasExplicitVoxelSizeOverride()`, so a native-resolution remote volume passes
-  neither `--voxel-size` nor… a size. With this patch the CLI path is correct, but
-  the GUI still suppresses the flag, so a native-resolution remote render from
-  VC3D continues to fall back. Recommended follow-up, kept separate:
-
-  ```cpp
-  const double renderVoxelSizeUm = renderVolume ? renderVolume->voxelSize() : 0.0;
-  _cmdRunner->setRenderVoxelSize(
-      renderVoxelSizeUm,
-      std::isfinite(renderVoxelSizeUm) && renderVoxelSizeUm > 0.0);
-  ```
-
-  `setRenderVoxelSize` already discards a non-positive value, so this is inert
-  when the size is unknown.
-
-### Checklist
-
-- [x] Cause identified at file-and-line resolution
-- [x] Demonstrated on real published volumes, with a control
-- [x] No public interface change; no new dependency; no new metadata convention
-- [x] Regression tests added; upstream's suite passes unmodified
-- [x] Rendered pixels unaffected, argued from the code paths that consume the value
-- [ ] Patched binary compiled and run — **blocked on the dependency closure**
-- [ ] Real `.zattrs` / TIFF verified — **blocked on the build**
-- [ ] Full `ctest` run — **blocked on the build**
+* it asks for before/after evidence **including an image or video**, and for the fix
+  to come from someone running the tool on real scroll data. This PR has real
+  volumetric data, real before/after terminal output and real `.zattrs`/TIFF dumps
+  from public catalog volumes, but **no image pair**. Rendering one slice pair as
+  PNG is cheap (the workflow already writes the TIFFs) and would close that gap.
+* the body must be accompanied by **human-written** commentary explaining why the
+  change is useful, per the AI guidelines. The text above is a draft for that: it
+  should be reviewed and, if needed, rewritten in your own words before posting.

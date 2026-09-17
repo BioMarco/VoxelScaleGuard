@@ -345,11 +345,32 @@ TEST_CASE("priority: an explicit override outranks every metadata source")
     CHECK(resolved.micrometerPerVoxel == doctest::Approx(7.91));
 }
 
-TEST_CASE("priority: local metadata outranks remote")
+TEST_CASE("priority: the open volume outranks the local store document")
 {
+    // The opened volume is what is actually being streamed, and its metadata was
+    // freshly normalised during construction. --volume is often a chunk cache for
+    // a remote source rather than the store itself; where such a cache mirrors the
+    // store's metadata it can be stale, so the streamed volume wins.
     const ResolvedVoxelSize resolved = vsguard::resolveVoxelSize(
         ExplicitVoxelSize{}, /*local*/ 8.64, /*volume*/ 9.6, /*remote*/ 45.532, 1.0);
+    CHECK(vsguard::sourceName(resolved) == vsguard::sourceName({0.0, VoxelSizeSource::RemoteVolume}));
+    CHECK(resolved.micrometerPerVoxel == doctest::Approx(9.6));
+}
+
+TEST_CASE("priority: the local store document is used when no volume is open")
+{
+    const ResolvedVoxelSize resolved = vsguard::resolveVoxelSize(
+        ExplicitVoxelSize{}, /*local*/ 8.64, std::nullopt, /*remote*/ 45.532, 1.0);
     CHECK(vsguard::sourceName(resolved) == vsguard::sourceName({0.0, VoxelSizeSource::LocalStoreMetadata}));
+    CHECK(resolved.micrometerPerVoxel == doctest::Approx(8.64));
+}
+
+TEST_CASE("priority: a local document does not pre-empt the open volume")
+{
+    // Stated as its own case because the opposite order was implemented once: a
+    // stale local mirror could then win over the freshly fetched document.
+    const ResolvedVoxelSize resolved = vsguard::resolveVoxelSize(
+        ExplicitVoxelSize{}, /*local*/ 1.0, /*volume*/ 8.64, std::nullopt, 1.0);
     CHECK(resolved.micrometerPerVoxel == doctest::Approx(8.64));
 }
 
@@ -369,7 +390,30 @@ TEST_CASE("the unresolved case is flagged, not passed off as a measurement")
         ExplicitVoxelSize{}, std::nullopt, std::nullopt, std::nullopt, 1.0);
     CHECK(vsguard::sourceName(resolved) == vsguard::sourceName({0.0, VoxelSizeSource::Unspecified}));
     CHECK_FALSE(resolved.isUsable());
-    CHECK(resolved.micrometerPerVoxel == doctest::Approx(1.0));
+
+    // What the renderer must hand writeZarrAttrs in this case. It must be 0 --
+    // "unknown", which makes writeZarrAttrs omit the physical scale -- and NOT
+    // the placeholder, which would be published as a measurement of 1.0 in some
+    // unit. The placeholder stays only as the struct's initialiser.
+    const double declaredWhenUnusable =
+        resolved.isUsable() ? resolved.micrometerPerVoxel : 0.0;
+    CHECK(declaredWhenUnusable == doctest::Approx(0.0));
+
+    // And a zero base size is what writeZarrAttrs treats as "omit"; this is the
+    // contract the renderer relies on.
+    CHECK(vsguard::voxelSizeToDpi(declaredWhenUnusable) == doctest::Approx(0.0));
+}
+
+TEST_CASE("an unusable local value does not block the open volume")
+{
+    // local 0 / negative / non-finite must fall through, not resolve.
+    for (const double bad : {0.0, -3.0, std::numeric_limits<double>::quiet_NaN()}) {
+        CAPTURE(bad);
+        const ResolvedVoxelSize resolved = vsguard::resolveVoxelSize(
+            ExplicitVoxelSize{}, bad, /*volume*/ 8.64, std::nullopt, 1.0);
+        CHECK(vsguard::sourceName(resolved) == vsguard::sourceName({0.0, VoxelSizeSource::RemoteVolume}));
+        CHECK(resolved.micrometerPerVoxel == doctest::Approx(8.64));
+    }
 }
 
 TEST_CASE("non-finite and non-positive candidates are rejected at every tier")
