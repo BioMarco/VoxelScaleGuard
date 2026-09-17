@@ -43,20 +43,26 @@ sentence. Do not upgrade a **[read]** to an **[exec]**, and do not describe a
 derived consequence as a measurement.
 
 Concretely, the following **are currently unverified** and must not be described
-otherwise. This list is deliberately short now: it was four items, and three were
-closed by execution on 2026-09-16 (`DOCS/CI_VALIDATION.md`). Do not add anything
-back to it by implication — if you cannot tag a claim, say "unverified" in the same
-sentence.
+otherwise. This list is deliberately short now: it was four items, and all four have
+since been closed by execution (`DOCS/CI_VALIDATION.md`, `DOCS/RESULTS.md` §9–§11).
+Do not add anything back to it by implication — if you cannot tag a claim, say
+"unverified" in the same sentence.
 
 * the GUI path: `vc_render_tifxyz`'s fix is **not reachable from VC3D**, because
-  the enable predicate is deliberately unchanged;
+  the enable predicate is deliberately unchanged. This is a *known gap*, not an
+  unverified claim;
 * coverage: **two volumes, one crop, one slice each**. That demonstrates the
   correction; it is not a survey, and no claim about other volumes is supported;
-* the "no usable voxel size anywhere" branch is covered by **unit tests only** —
-  it is not driven end to end;
 * the `.zattrs`/TIFF artifacts come from a **single build configuration**
   (`QuickBuild`, gcc 13.3, Linux) with `--scale 1`. Other presets, compilers and
   scales are unmeasured.
+
+The fourth item used to read "the 'no usable voxel size anywhere' branch is covered
+by unit tests only — it is not driven end to end". It now is: `RESULTS.md` §11.1
+renders a local-only store with no metadata document and asserts on the emitted
+files that nothing is declared. Getting that check to actually exercise the branch
+took **two attempts that passed vacuously** — see §11.1. A test that cannot fail is
+not a test.
 
 **And one thing this file got wrong, kept because it is instructive.** Until
 2026-09-16 this section asserted that "the patched `vc_render_tifxyz` has never
@@ -226,7 +232,7 @@ pwsh -File harness/build.ps1 -Configuration Release
 # tests
 cd harness/build/Release
 ./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: must stay 13/13
-./test_render_voxel_size.exe              # this project's: must stay 19/19
+./test_render_voxel_size.exe              # this project's: must stay 27/27
 ./probe_render_voxel_size.exe             # before/after over the real documents
 ```
 

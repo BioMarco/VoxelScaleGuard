@@ -186,7 +186,7 @@ this project has no access to.
 | Invalid local value (`0`, `-3`) | noted in review, unfixed | fixed; origin tracked |
 | Unit mismatch between number and declared unit | not addressed | fixed (value-source-derived unit) |
 | GUI enable predicate (`baseScaleLevel() > 0 \|\| …`) | not addressed | diagnosed; not applied (§8) |
-| Tests | none added | 19 cases, 107 assertions, plus upstream's suite as a control |
+| Tests | none added | 27 cases, 208 assertions, plus upstream's suite as a control |
 | Binary-verified | no | **yes** — compiled and run on real published volumes (`CI_VALIDATION.md`) |
 
 The distinction that matters is not line count. #1417 fetched the metadata a

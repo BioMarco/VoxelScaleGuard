@@ -85,14 +85,14 @@ issues #1403 and #1226 in full with comments; PRs #1417, #1228, #1229, #1313,
 executable tests rather than accepted or dismissed. One confirmed and shown
 reachable; one confirmed and shown *worse* than the review described.
 
-**Patch** — `patch/vc_render_tifxyz.patch`, one file, **+176/−63** after the fix
+**Patch** — `patch/vc_render_tifxyz.patch`, **3 files, +250/−65** after the review fixes
 described in `RESULTS.md` §9. Applies exactly to the pinned revision
 (`git apply --check --reverse` succeeds on the patched tree).
 
 **Harness** — `harness/`, which compiles the pinned revision's real
 `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte and runs:
 upstream's own suite unmodified (**13 cases / 54 assertions**, as a control) plus
-this project's tests (**19 cases / 107 assertions**), plus a before/after probe.
+this project's tests (**27 cases / 208 assertions**), plus a before/after probe.
 The suite also asserts that the pristine `vc_render_tifxyz.cpp` copy really is
 unpatched, and that the patch declares every name its new block reads before using
 it — the defect the first real compile exposed (§9).
@@ -199,7 +199,7 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | All ten required documents written |
 | `AGENTS.md` added: verification rules, attribution, scope boundaries, environment traps |
 | Documentation reorganised into `DOCS/`; `DOCS/INDEX.md` added; links and code comments updated |
-| Tests re-run after the reorganisation: 13/13 and 19/19 still pass (count grew again on 2026-09-16; see `RESULTS.md` §9) |
+| Tests re-run after the reorganisation: 13/13 and 27/27 still pass (count grew again on 2026-09-16; see `RESULTS.md` §9) |
 | `.gitattributes` (`* -text`) added so line-ending normalisation cannot corrupt the patch or the byte-for-byte copies |
 | Repository created and pushed to <https://github.com/BioMarco/VoxelScaleGuard> at the user's request (`4a77205`) |
 | Zero-byte `metadata_probe.json` (an artefact of a failed shell redirect) replaced by a real 3812-byte summary; the probe script now writes its own `--out` file (`6de80df`) |

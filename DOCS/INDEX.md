@@ -33,9 +33,9 @@ already made, and the environment traps.
 
 | Path | What it is |
 |---|---|
-| `../patch/vc_render_tifxyz.patch` | The proposed fix: one file, **+176/−63**, against `villa` @ `757f70c` |
+| `../patch/vc_render_tifxyz.patch` | The proposed fix: **3 files, +250/−65**, against `villa` @ `757f70c` |
 | `../harness/` | The reproducer. Compiles the pinned revision's real translation units, plus a verbatim copy of the pre-patch reader, plus tests |
-| `../harness/tests/test_render_voxel_size.cpp` | **19 cases / 107 assertions**, including five that reproduce the defect and three that check the patch as an artefact |
+| `../harness/tests/test_render_voxel_size.cpp` | **27 cases / 208 assertions**, including five that reproduce the defect and three that check the patch as an artefact |
 | `../harness/tools/probe_render_voxel_size.cpp` | The before/after demonstrator over the real published documents |
 | `../research/fetch_volume_metadata.mjs` | Read-only live catalog probe |
 | `../research/raw_metadata/` | The raw published documents it fetched |

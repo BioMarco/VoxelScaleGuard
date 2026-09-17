@@ -97,10 +97,15 @@ the current fallback behaviour"* — answered structurally rather than by a comm
 the placeholder can no longer be mistaken for a value, because the type says which
 it is.
 
-The enum also makes the emitted unit derivable instead of guessed:
+The enum also makes the emitted number and unit derivable instead of guessed, and —
+after the unit regression of `RESULTS.md` §10 — computed **together**, so a number
+and a unit that describe different physical sizes are not expressible:
 
 ```cpp
-kiloMicrometerUnit(resolved)  // -> "micrometer" for metadata sources, nullptr for Cli/Unspecified
+zarrVoxelUnit(resolved, voxel_unit)      // caller's unit for Cli; "micrometer" otherwise
+zarrVoxelValue(resolved, explicitValue)  // caller's number for Cli; the µm value otherwise
+// invariant, asserted in the tests:
+//   zarrVoxelValue(...) * micrometersPerUnit(zarrVoxelUnit(...)) == micrometerPerVoxel
 ```
 
 A size from a store document is in micrometres **by definition** (`voxelsize` is
@@ -170,15 +175,21 @@ and the pixels are unchanged.
 
 ## 7. Files touched
 
-One file, one commit's worth of change:
+Three files, one commit's worth of change. The renderer is the fix; the two `core`
+files are the writer contract it needs in order not to publish a fabricated scale
+when the size is unknown.
 
 ```
-volume-cartographer/apps/src/vc_render_tifxyz.cpp      +176 / -63
+volume-cartographer/apps/src/vc_render_tifxyz.cpp       +235 / -65
+volume-cartographer/core/src/Zarr.cpp                   +10 / -0
+volume-cartographer/core/include/vc/core/util/Zarr.hpp   +5 / -0
+                                                         = +250 / -65
 ```
 
 * adds `#include "vc/core/util/VoxelSizeMetadata.hpp"`
 * replaces `readVolumeVoxelSize` with `VoxelSizeSource`, `ResolvedVoxelSize`,
-  `voxelSizeSourceName`, `kiloMicrometerUnit`, `explicitMicrometerPerVoxel`,
+  `voxelSizeSourceName`, `zarrVoxelUnit`, `zarrVoxelValue`,
+  `explicitMicrometerPerVoxel`,
   `resolveRenderVoxelSize`
 * moves the resolution to after the volume is opened
 * validates CLI inputs earlier, including the unit

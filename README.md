@@ -73,7 +73,7 @@ fixed chain side by side:
 The last row is the reason the bug survived: it is the only catalog entry the old
 reader handles, and it is the volume `core/test/test_volume_live_s3.cpp` pins.
 
-Tests: **19 cases / 107 assertions** added, plus upstream's own **13 cases / 54
+Tests: **27 cases / 208 assertions** added, plus upstream's own **13 cases / 54
 assertions** compiled unmodified as a control. Transcripts in
 [`RESULTS.md`](DOCS/RESULTS.md).
 
@@ -128,7 +128,7 @@ pwsh -File harness/build.ps1 -Configuration Release
 # 3. tests
 cd harness/build/Release
 ./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: 13/13
-./test_render_voxel_size.exe              # this project's: 19/19
+./test_render_voxel_size.exe              # this project's: 27/27
 
 # 4. the before/after demonstration (uses the documents in research/raw_metadata)
 ./probe_render_voxel_size.exe

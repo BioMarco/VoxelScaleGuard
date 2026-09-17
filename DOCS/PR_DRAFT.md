@@ -315,19 +315,23 @@ The path that works, once authorised:
 1. **Fork `ScrollPrize/villa`** into the account (creates
    `BioMarco/villa`). *Not done — needs authorisation, because it publishes a new
    repository.*
-2. **Add the patch as a branch there, containing only the renderer change.**
-   Nothing from `VoxelScaleGuard` — no harness, no CI, no documents, no data —
-   goes into the fork:
+2. **Add the patch as a branch there, containing only the three patched files.**
+   Nothing from `VoxelScaleGuard` — no harness, no CI, no documents, no data, no
+   generated images — goes into the fork:
    ```bash
    git clone https://github.com/BioMarco/villa.git villa-fork
    cd villa-fork
    git checkout -b fix/render-voxel-size-from-open-volume main
+   git apply --check /path/to/VoxelScaleGuard/patch/vc_render_tifxyz.patch   # must exit 0
    git apply /path/to/VoxelScaleGuard/patch/vc_render_tifxyz.patch
-   git add volume-cartographer/apps/src/vc_render_tifxyz.cpp
+   git add volume-cartographer/apps/src/vc_render_tifxyz.cpp \
+           volume-cartographer/core/src/Zarr.cpp \
+           volume-cartographer/core/include/vc/core/util/Zarr.hpp
    git commit   # the patch's own commit message
    git push -u origin fix/render-voxel-size-from-open-volume
    ```
-   The committed artefact is one file; `git show --stat` must list exactly one.
+   Verify before pushing: `git show --stat` must list **exactly three files**, and
+   nothing else may be staged.
 3. **Open the PR** from `BioMarco:fix/render-voxel-size-from-open-volume` into
    `ScrollPrize/villa:main`, pasting the body above and ticking the template's
    verification checkbox. *Not done — needs authorisation.*

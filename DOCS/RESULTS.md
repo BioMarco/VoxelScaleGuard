@@ -771,7 +771,7 @@ Two harness defects were found while fixing this:
    the two apart. It cannot prove the file compiles; only the build can.
 
 Harness after the fix [exec]: upstream control **13 cases / 54 assertions** pass
-unmodified; this project **19 cases / 107 assertions** pass; probe unchanged at
+unmodified; this project **27 cases / 208 assertions** pass; probe unchanged at
 4 documents, 3 divergences.
 
 ### 9.3 Both binaries built from one commit
@@ -978,7 +978,99 @@ single physical quantity and have to be tested as one.
 
 ---
 
-## 11. Bottom line
+## 11. Session of 2026-09-17 — pre-PR adversarial review, and three more fixes
+
+Ahead of proposing the patch upstream, it was reviewed adversarially against the
+pristine revision and the writer it calls. The review found three should-fix issues.
+**All three were reproduced before being changed**, and all three are fixed.
+
+### 11.1 The unresolved branch published a fabricated measurement
+
+`writeZarrAttrs()` writes the per-axis `scale` unconditionally and makes only the
+axis `unit` conditional (`core/src/Zarr.cpp:374` vs `:391-394`). So when no voxel
+size could be resolved, the render still emitted
+`coordinateTransformations.scale = [1, 2, 4, …]` — the same numbers `main` emits —
+while the new warning told the operator *"no physical scale will be written"*. The
+message was false, and a placeholder measurement survived.
+
+**Fixed by making "unknown" mean unknown.** A non-positive `baseVoxelSize` now makes
+`writeZarrAttrs()` omit the `multiscales` block, and the renderer passes 0 in that
+case. The TIFF is untouched: `tifDpi` stays 0, which already means "do not set the
+resolution tags".
+
+Verified end to end [exec], run 35249590299, by rendering a purely LOCAL store that
+has no `metadata.json` and no remote marker, so nothing can resolve a size:
+
+| | `.zattrs` keys | TIFF |
+|---|---|---|
+| baseline | `… multiscales …` with `nanometer` / `[1, 1, 1]` | no resolution tag |
+| patched | `['canvas_size', 'chunk_size', 'note_axes_order', 'num_slices', 'slice_step', 'source_group', 'source_zarr']` — **no multiscales** | no resolution tag |
+
+The baseline row is the fabricated measurement: it declares 1 nm. The patched row
+declares nothing.
+
+Note on getting there: the **first two attempts at that check passed vacuously** and
+were caught by reading the logs. An empty cache directory made the binary exit at
+`Error opening local zarr: … cannot detect version` before resolving anything; then
+a cache carrying `.remote_source.json` streamed the real store, whose own document
+states 8.64 µm, so the branch was never entered. The step now asserts the warning
+text is present and that no cached remote source was used, so it cannot pass
+without exercising the branch.
+
+### 11.2 The warning's own advice produced a 1000x error
+
+It said *"Pass `--voxel-size` (um)"*, but `--voxel-unit` defaults to `nanometer`, so
+following it literally yields a self-consistent 7.91 **nm**. The message now names
+the unit: `--voxel-size <value> --voxel-unit micrometer`. The default itself is
+deliberately unchanged — reversing it is a documented separate decision
+(`RESUME.md` §6).
+
+### 11.3 The opened volume was consulted *after* the local document
+
+`resolveRenderVoxelSize()` checked the local store document before
+`remoteVolume->voxelSize()`, while its own comment justified the opposite on the
+grounds that the open volume "cannot disagree with the volume actually being
+rendered". `--volume` is frequently a chunk cache for a remote source, and such
+cache directories carry the store's root metadata
+(`docs/remote_file_cache.md:197-201`), so a **stale local mirror could win** over the
+document `Volume` construction had just fetched.
+
+**Fixed by reordering**: explicit CLI → the open volume → the local document, when no
+volume is open. Precedence tests updated, with a new case asserting that a local
+document does not pre-empt the open volume.
+
+### 11.4 Also from the review
+
+* the unreachable re-check inside the CLI tier is gone, with a comment stating it is
+  **not** a fallback for an unusable `--voxel-size` (the caller hard-errors first);
+* `--voxel-unit`'s help text said "Physical unit for OME-Zarr axes", which stopped
+  being true once sizes are declared in the unit their source implies. It now
+  describes what the flag does. The default is unchanged;
+* the pure-whitespace hunk and a comment falsely claiming an "upstream logging test"
+  asserts the log format were removed (`main`'s logging test asserts only error
+  diagnostics: `--segmentation required`, `Error opening local zarr:` and two
+  option-validation messages).
+
+### 11.5 Scope, and the state after the review
+
+The patch is now **three files**: the renderer, plus `core/src/Zarr.cpp` and
+`core/include/vc/core/util/Zarr.hpp` for the omit-when-unknown contract. All three
+are byte-identical between the pinned revision and upstream `main` at `2dcfaf6`
+[exec], and the patch applies to `main` cleanly.
+
+| Check | Result |
+|---|---|
+| Patch reverse-applies against the pinned revision | exit 0 |
+| Patch applies to upstream `main` (`2dcfaf6`) | exit 0 |
+| Harness: upstream control | 13 cases / 54 assertions pass, unmodified |
+| Harness: this project | **27 cases / 208 assertions** pass |
+| Probe over the real documents | 4 documents, 3 divergences — unchanged |
+| Reporter self-tests | `compare_render_outputs` 4/4, `check_physical_size` 11/11 |
+| CI end to end | run 35249590299 — success, 25/25 steps |
+
+---
+
+## 12. Bottom line
 
 | Question | Answer |
 |---|---|
@@ -986,7 +1078,7 @@ single physical quantity and have to be tested as one.
 | Reproduced? | **Yes**, against the live catalog: the pre-patch reader resolves 1 of 4 real published volumes |
 | Demonstrated before/after? | **Yes**, twice over: on the resolution logic against live metadata, **and now from two real compiled binaries on a real published volume** (§9) |
 | Tested on real data? | **Yes** — real published metadata documents, **and a real render** of `PHerc0009B` and `PHerc0172` through the real binaries (§9.4) |
-| Regression tests? | 19 cases / 107 assertions; upstream's 13 cases / 54 assertions pass unmodified as a control |
+| Regression tests? | 27 cases / 208 assertions; upstream's 13 cases / 54 assertions pass unmodified as a control |
 | Binary-verified? | **Yes** since 2026-09-16: both binaries compile in CI and were run on public data (§9.3–9.4) |
 | Does the patch compile? | **Yes** — but it did **not** before this session. The committed patch could never have built (§9.1). That is the single most important result in this document |
 | Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |

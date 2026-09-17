@@ -28,7 +28,7 @@ node harness/fetch_deps.mjs
 pwsh -File harness/build.ps1 -Configuration Release
 cd harness\build\Release
 .\test_upstream_voxel_size_metadata.exe            # expect: 13 cases / 54 assertions, all pass
-.\test_render_voxel_size.exe                       # expect: 19 cases / 107 assertions, all pass
+.\test_render_voxel_size.exe                       # expect: 27 cases / 208 assertions, all pass
 .\probe_render_voxel_size.exe                      # expect: 3 divergences out of 4 volumes
 cd ..\..\..
 
@@ -85,7 +85,7 @@ boundaries, environment traps.
   `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980`.
 * **The harness**, which compiles the pinned revision's real
   `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte, plus a
-  verbatim copy of the pre-patch reader, plus tests: 19 cases / 107 assertions, with
+  verbatim copy of the pre-patch reader, plus tests: 27 cases / 208 assertions, with
   upstream's own 13-case suite compiled unmodified as the control.
 * **The before/after demonstration on four real published volumes**, with a
   deliberate control (the one legacy-shaped volume that already worked, and which
@@ -325,7 +325,7 @@ DOCS/ARCHITECTURE.md, DOCS/TEST_PLAN.md, DOCS/INDEX.md.
 
 Prima di qualunque cosa, esegui le verifiche di DOCS/RESUME.md §1 (sono read-only)
 e riportami l'esito: repository pulito e allineato, i due binari di test che
-passano (13/13 e 19/19), il probe che mostra 3 divergenze su 4 volumi, e la patch
+passano (13/13 e 27/27), il probe che mostra 3 divergenze su 4 volumi, e la patch
 che fa round-trip con `git apply --check --reverse`.
 
 Stato al 2026-09-16 (seconda sessione): diagnosi verificata; **la patch è stata

@@ -54,7 +54,7 @@ Built and run with `pwsh -File harness/build.ps1 -Configuration Release`, then:
 
 ```
 harness/build/Release/test_upstream_voxel_size_metadata.exe   13 cases / 54 assertions
-harness/build/Release/test_render_voxel_size.exe              19 cases / 107 assertions
+harness/build/Release/test_render_voxel_size.exe              27 cases / 208 assertions
 harness/build/Release/probe_render_voxel_size.exe             before/after on 4 real stores
 ```
 

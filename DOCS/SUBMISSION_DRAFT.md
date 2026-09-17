@@ -52,7 +52,7 @@ happens to pin — which is why the defect has survived.
 1. **A verified diagnosis**, at file-and-line resolution, of five interacting
    defects, including the finding that the error is the *product* of two
    independent bugs (an unresolved number, and a unit that does not match it).
-2. **A contained fix** — one file, +176/−63 — that routes resolution through an
+2. **A contained fix** — 3 files, +250/−65 — that routes resolution through an
    abstraction `core` already provides and that other tools already use, and that
    resolves the value *after* the volume is open so the already-fetched remote
    value is reused. No public interface change, no new dependency, no new
@@ -116,7 +116,7 @@ Stated plainly, because this is what the review team will check first.
 * The pre-patch reader returns `0.0` and `-3.0` as if they were measurements.
 * The URL-fragment hazard from #1417's review is real in `joinRemoteUrlPath`, and
   reachable via the GUI's `remoteVolumeLocator()` for rebased volumes.
-* The fixed decision procedure behaves as specified, across 19 cases.
+* The fixed decision procedure behaves as specified, across 27 cases.
 * The patch applies to the pinned revision exactly (`git apply --check --reverse`
   succeeds on the patched tree).
 * **The patched binary compiles and runs.** Both the baseline and the patched
