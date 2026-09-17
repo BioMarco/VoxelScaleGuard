@@ -1,5 +1,5 @@
 diff --git a/volume-cartographer/apps/src/vc_render_tifxyz.cpp b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
-index 9d0c2b8..ce5069b 100644
+index 9d0c2b8..73a99f8 100644
 --- a/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 +++ b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 @@ -11,6 +11,7 @@
@@ -172,15 +172,7 @@ index 9d0c2b8..ce5069b 100644
  // ============================================================
  // main
  // ============================================================
-@@ -1352,6 +1471,7 @@ int main(int argc, char *argv[])
-         logPrintf(stdout, "zarr dataset size for group %d [%s]\n", group_idx, oss.str().c_str());
-     }
- 
-+
-     const bool output_is_u16 = (chunk_cache->dtype() == vc::render::ChunkDtype::UInt16);
-     logPrintf(stdout, "Source dtype: %s\n", output_is_u16 ? "uint16" : "uint8");
- 
-@@ -1370,62 +1490,96 @@ int main(int argc, char *argv[])
+@@ -1370,62 +1489,96 @@ int main(int argc, char *argv[])
      }
  
      // --- Resolve voxel size for OME-Zarr metadata ---
@@ -291,8 +283,8 @@ index 9d0c2b8..ce5069b 100644
 -        ? base_voxel_size / double(ds_scale)
 -        : base_voxel_size;
 +        if (resolved.isUsable()) {
-+            // Log exactly what .zattrs will declare, in the format the upstream
-+            // logging test expects: the source name, then the number and unit.
++            // Log exactly what .zattrs will declare, so the log line can be
++            // checked against the output instead of needing its own conversion.
 +            logPrintf(stdout, "Voxel size (%s): %g %s\n",
 +                      voxelSizeSourceName(resolved.source), zarr_voxel_value,
 +                      zarr_voxel_unit.c_str());
@@ -324,7 +316,7 @@ index 9d0c2b8..ce5069b 100644
  
      int rotQuadGlobal = -1;
      if (std::abs(rotate_angle) > 1e-6) {
-@@ -1580,7 +1734,7 @@ int main(int argc, char *argv[])
+@@ -1580,7 +1733,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
@@ -333,7 +325,7 @@ index 9d0c2b8..ce5069b 100644
                  return true;
              } else if (numParts > 1) {
                  if (!std::filesystem::exists(std::filesystem::path(zarrOutputArg) / "0" / ".zarray")) {
-@@ -1788,7 +1942,7 @@ int main(int argc, char *argv[])
+@@ -1788,7 +1941,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
