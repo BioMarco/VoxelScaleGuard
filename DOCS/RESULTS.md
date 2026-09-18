@@ -1257,7 +1257,95 @@ a line and continuing (§12.1).
 
 ---
 
-## 13. Bottom line
+## 14. Session of 2026-09-18 (second) — the licence and attribution applied
+
+Separate section because it is a different kind of work from §12: §12 found the
+defects, this session **acted** on the two that needed a decision. No code changed
+again — the only tracked source file touched is the probe tool in §12.5, from the
+previous session — and no build or render was re-run, because nothing here can
+affect either.
+
+### 14.1 What was applied
+
+| Artefact | What it establishes |
+|---|---|
+| `LICENSE` | MIT, **Copyright (c) 2026 Marco Pontesilli**, for this repository's original work, **with an explicit clause listing what it does not cover**. That clause is the point: a bare MIT file at the root of a mixed repository is exactly the ambiguity the inventory was written to remove |
+| `LICENSE-GPL-3.0.txt` | The GNU GPL v3 text, copied byte-for-byte from `villa/volume-cartographer/LICENSE` — 35,832 bytes, SHA-256 `95dd6ceb0e40950eb88fef3a6eb017802f13c6e87fefc72500ebcededd24c760`, **verified identical to the source**, not retyped [exec] |
+| `NOTICE.md` | The authoritative path-by-path map: §1 MIT, §2 GPL-3.0-or-later with the verbatim upstream programme notice and external notices (nlohmann/json, OpenABF, bvh, mpl-colormaps), §2.2 the statement of modification with dates, §2.3 the preserved upstream notices, §2.4 what is **not** determined, §3 the third-party data, §4 what is not redistributed |
+| `DATA_ATTRIBUTION.md` | The data's terms, the per-volume dataset assignment, **both** required citations, and an itemised description of the transformations applied to the figure |
+| `patch/README.md` | The patch's own GPL notice, its modification dates, and its "proposed, not applied, not merged" status |
+| GPL headers on four files | `harness/src/vsguard/upstream_read_volume_voxel_size.hpp`, `render_voxel_size_resolution.hpp`, `render_voxel_size_resolution.cpp`, `harness/tests/test_render_voxel_size.cpp` |
+| `DOCS/PROGRESS_PRIZE_QUESTION.md` | The organisers' question, in English, ready to send. **Not sent** |
+
+**The conservative treatment was chosen, not a technical separation.** The proposal
+offered the option of splitting the GPL-linked harness files apart so that only the
+genuinely upstream code stayed GPL. That was rejected: the `vsguard` resolver exists
+precisely to call `vc::metadata::voxelSizeFromStoreMetadata`, so separating it would
+mean either duplicating the resolver — the exact failure mode that caused this bug in
+the first place — or building a second target, for no benefit to a reader. All four
+files are therefore marked GPL-3.0-or-later, which **grants recipients more
+permission than may strictly be required** and cannot be wrong in the direction that
+matters. `NOTICE.md` §2.4 says that this is a deliberate over-inclusion and not a
+finding that the strict reading is correct.
+
+### 14.2 The one thing deliberately *not* done
+
+Adding the notice as a comment **inside** `patch/vc_render_tifxyz.patch` was
+considered and rejected. The CI step compares the applied diff byte-for-byte against
+that artefact (`PATCH_IDENTICAL`), so anything prepended would either break the check
+or make it compare something other than the bytes `git apply` consumes. The notice
+lives in `patch/README.md` instead, and the patch is untouched — verified: no diff
+against §12's state, and the file still reverse-applies.
+
+### 14.3 Checks actually run this session [exec]
+
+| Check | Result |
+|---|---|
+| `LICENSE-GPL-3.0.txt` identical to the upstream source | yes — SHA-256 match, 35,832 bytes |
+| Patch unchanged from the previous commit | `git diff` empty for `patch/` |
+| Patch still reverse-applies to the pinned revision | exit 0 |
+| Patch still touches exactly 3 files | `git apply --numstat` → 3 paths |
+| `ci/preflight_workflow.py` | **PRE-FLIGHT OK**, including the 3-file assertion |
+| Relative links in every tracked `*.md` resolve | all resolve (two known non-links: a code fragment, and a quotation of upstream's own relative link, annotated as such) |
+| No licence applied indiscriminately to third-party material | audited: `LICENSE` names the exclusions; every `MIT` mention in `NOTICE.md` and `DATA_ATTRIBUTION.md` is an exclusion, a grant for this project's own work, an upstream dependency's licence, or part of a quoted licence text — none applies MIT to the patch or the data |
+| GPL header present on all four derived files | audited: `GPL-3.0-or-later`, `NOT MIT` and a `NOTICE.md` reference in the first 25 lines of each |
+| No generated upstream files tracked | `git ls-files` shows no `harness/src/villa/**`, no `harness/third_party/**`, no `villa/**` |
+| **Harness rebuilt and re-run** | `cl.exe` build exit 0; upstream control **13/13**, project suite **27/27 (208 assertions)**, probe **4 documents / 3 divergences** |
+| Figure generators | **not modified** this session, so their self-tests were not re-run; they were last run green in §12 |
+
+**Rebuilt even though the header edits were comment-only, and that was the right
+call**: the four files are compiled translation units, so "it was only a comment" is
+a claim about the compiler that is cheaper to check than to assert. The rebuild is
+what makes it a measurement. **No render and no full CI run**: the changes cannot
+affect either, and §9's results stand from run `35249590299` / `35374993168`.
+
+### 14.4 What remains open after this session
+
+1. **Whether the organisers' wording accepts the split.** Asked, not sent:
+   `PROGRESS_PRIZE_QUESTION.md`. Nothing here asserts either answer.
+2. **The two legal uncertainties** in `NOTICE.md` §2.4 — the aggregate question and
+   the derivative-or-combined question. Documented precisely; **not** resolved, and
+   not resolvable by adding a notice.
+3. **One dataset assignment is a derivation, not a quotation** — `PHerc0172` is
+   placed in EduceLab-Scrolls from the shape and naming of its own metadata
+   document, because no per-volume dataset index was found. `DATA_ATTRIBUTION.md`
+   §2 says so and gives the reasoning, so a reader can disagree with it.
+
+### 14.5 The prize page was re-read, and reported rather than interpreted [live]
+
+`https://scrollprize.org/prizes`, re-read 2026-09-18. **Nothing relevant changed**:
+the Progress Prize deadline is still *"11:59pm Pacific, September 30th, 2026"*, the
+award is still *"Best Submission of the Month: $20,000"*, the three milestone
+deadlines are still June 25th 2027, the Terms still say *"permissive license"*, the
+Grand Prize conditions still say *"open source license (e.g. MIT)"*, Discord
+registration is still a Grand Prize requirement rather than a Progress Prize one, and
+the submission form is still the same per-month form. The table is in
+`PROGRESS_PRIZE_QUESTION.md` §5. **The discrepancy is therefore still live and was
+not resolved by re-reading** — which is the reason the question exists.
+
+---
+
+## 15. Bottom line
 
 | Question | Answer |
 |---|---|
@@ -1270,5 +1358,7 @@ a line and continuing (§12.1).
 | Does the patch compile? | **Yes** — but it did **not** before this session. The committed patch could never have built (§9.1). That is the single most important result in this document |
 | Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |
 | Can the patched binary be built on this machine? | **No** locally (§8.4), which is why the build runs on GitHub Actions (§9) |
-| Ready to submit as-is? | **The technical evidence is; the paperwork is not.** The licence decision and the third-party attribution are open (§12.2, §12.4), and no PR has been opened |
+| Is the repository's licensing settled? | **Yes as an arrangement, no as a question.** The split is applied (`LICENSE`, `LICENSE-GPL-3.0.txt`, `NOTICE.md`, `DATA_ATTRIBUTION.md`) and two legal uncertainties are documented in `NOTICE.md` §2.4. Whether the organisers accept it is asked and unanswered (§14.4) |
+| Is the third-party attribution done? | **Yes** — `DATA_ATTRIBUTION.md`, reachable from the README, the figures' own README and the copied documents' provenance file (§14.1) |
+| Ready to submit as-is? | **The evidence and the paperwork are both in place.** Remaining: the author's decision to open the PR, to send the organisers' question, and to fill in the form |
 | Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-18. Earlier revisions wrongly said it had passed; see §8.2 |

@@ -128,8 +128,8 @@ to tick is not the same as treating it as a thing to find out.
   them carries a per-file licence header — the obligation flows from the
   directory-level `LICENSE`/`NOTICE`. Until 2026-09-18 this bullet asserted
   "`villa` is MIT", which is true of the monorepo root and false of the patched
-  subtree. See `DOCS/LICENSING_PROPOSAL.md`; the licence of *this* repository is
-  an open decision, not a settled one.
+  subtree. **This repository's own licence was settled on 2026-09-18** — see §11
+  below and [`NOTICE.md`](NOTICE.md), which maps it path by path.
 
 ## 5. Attribution — non-negotiable
 
@@ -298,7 +298,42 @@ file compiles, so the CI build remains the real verification.
   `harness/tools/ninja.exe`, or any downloaded dataset. `.gitignore` covers these;
   if you add a new build output, add it there too.
 
-## 11. Documentation conventions
+## 11. Licences — read before adding any file
+
+**This repository is not under a single licence and must never be described as if it
+were.** [`NOTICE.md`](NOTICE.md) is the authoritative path-by-path map; where it and
+any other document disagree, `NOTICE.md` governs.
+
+| Terms | Applies to |
+|---|---|
+| **MIT**, Copyright (c) 2026 Marco Pontesilli ([`LICENSE`](LICENSE)) | this project's original work only |
+| **GPL-3.0-or-later**, Copyright (C) 2023 EduceLab ([`LICENSE-GPL-3.0.txt`](LICENSE-GPL-3.0.txt)) | `patch/` and anything derived from or copied out of Volume Cartographer |
+| **CC BY-NC 4.0** unless otherwise noted ([`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md)) | the third-party tomographic data and images derived from it |
+
+Rules that follow, all of which have already been broken once:
+
+* **Never apply MIT to a new file without checking provenance first.** If a file
+  includes, copies or is compiled with Volume Cartographer code, it is
+  GPL-3.0-or-later and needs a header saying so — see the four files listed in
+  `NOTICE.md` §2.1 for the pattern. The licence proposal's rule is conservative
+  treatment over a technical separation; do not "simplify" that without evidence.
+* **`NOTICE.md` §2.4 records two uncertainties that are genuinely unresolved** —
+  whether this repository is an *aggregate* under GPL-3.0 §5, and whether the
+  GPL-linked harness files are derivative or combined works. **Do not describe
+  either as settled**, and do not try to settle it by adding wording. Adding a
+  notice is not a legal conclusion.
+* **Do not modify `patch/vc_render_tifxyz.patch` to carry a notice.** CI compares
+  the applied diff byte-for-byte against that artefact; the notice belongs in
+  `patch/README.md`.
+* **Third-party data keeps its own terms.** Committing a fetched document, or an
+  image rendered from one, means recording its source, its licence and the required
+  citation in `DATA_ATTRIBUTION.md` — and the two datasets in use have *different*
+  required citations, so do not generalise from one to the other.
+* The eight Volume Cartographer sources under `harness/src/villa/**` are generated,
+  untracked, and GPL-3.0-or-later by provenance. Keep them that way: they must not
+  be committed.
+
+## 12. Documentation conventions
 
 * Documents live in `DOCS/`. Only `README.md` and `AGENTS.md` sit at the root, so
   the repository landing page stays readable. `README.md` links to `DOCS/` with
@@ -316,7 +351,7 @@ file compiles, so the CI build remains the real verification.
 * Write the negative results. `DOCS/RESULTS.md` §7 is the most important section of
   the document set: it is what makes the positive claims checkable.
 
-## 12. Definition of done
+## 13. Definition of done
 
 A task is done when:
 

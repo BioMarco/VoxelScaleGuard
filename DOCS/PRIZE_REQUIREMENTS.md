@@ -104,7 +104,16 @@ source by the OSI definition but **not** permissive. That is a question for the
 organisers, not one to resolve in this document. Full inventory and the two
 defensible framings: `LICENSING_PROPOSAL.md` §1 and §4.
 
-Nothing has been published.
+**State of play on 2026-09-18.** The licence split itself is no longer open: this
+repository's original work is MIT and the derived material is GPL-3.0-or-later, as
+mapped path by path in `NOTICE.md`. What remains open is **only** whether that
+satisfies the organisers' wording, and the question is drafted and awaiting the
+author's decision to send it — `PROGRESS_PRIZE_QUESTION.md`. Nothing has been sent
+to the organisers, and this document does not assert that the submission is or is
+not eligible under that condition.
+
+Because the condition attaches to *accepting* a prize rather than to submitting
+(§2.5), an open answer here does not by itself block an entry.
 
 ### 2.4 How submissions are made, and the form's actual fields
 
@@ -146,7 +155,9 @@ wrong:
 
 * **"permissive" here is a condition of *accepting a prize*, not of submitting.**
   The submission may be closed-source at the time of entry. So the GPL-3.0-or-later
-  question in §2.3 does **not** block an entry; it conditions the *award*.
+  question in §2.3 does **not** block an entry; it conditions the *award*. Note that
+  this contribution is *more* open than the Terms require of a submission: it is
+  public now, split and documented path by path in `NOTICE.md`.
 * **The Grand Prize section states the permissive requirement directly**, not only
   in the general Terms: *"Pipeline fully reproducible and code shared under an open
   source license (e.g. MIT), published publicly on GitHub. It does not have to be
@@ -173,8 +184,8 @@ for the wrong rubric.
 
 | Requirement | Status |
 |---|---|
-| Open source under a permissive licence, **if a prize is won** | **Open question, and it is a real one** — the patch is a derivative of **GPL-3.0-or-later** code (`volume-cartographer/`), not of MIT code; this repository's own work can be permissively licensed, but the prize text says "permissive" in the Terms and "open source (e.g. MIT)" in the Grand Prize conditions. It does **not** block submitting (§2.5). Ask the organisers. See §2.3 and `LICENSING_PROPOSAL.md` §4 |
-| Problem identification and solution, with a demonstration of its use | **Partial** — problem identified and demonstrated at the metadata-resolution level (`RESULTS.md` §2); a *use* demonstration needs a real render |
+| Open source under a permissive licence, **if a prize is won** | **Split applied; the reading is an open question.** The original work is MIT and the derived patch is GPL-3.0-or-later by necessity (`NOTICE.md` maps it path by path; `LICENSE` states what it does not cover). What is unresolved is whether the organisers' *"permissive license"* wording accepts a GPL-3.0-or-later patch — asked in `PROGRESS_PRIZE_QUESTION.md`, **not sent**. It does **not** block submitting (§2.5) |
+| Problem identification and solution, with a demonstration of its use | **Yes** — problem identified and demonstrated both at the metadata-resolution level (`RESULTS.md` §2) and from two real compiled binaries on real published volumes (`RESULTS.md` §9, `CI_VALIDATION.md`) |
 | Significant advantage over existing solutions | **Demonstrated against alternatives** — `FEASIBILITY.md` §7 compares concretely with the lapsed PR #1417 |
 | Comprehensive documentation and usage examples | **Yes** — this file set |
 | Standard formats (OME-Zarr / Zarr / tifxyz) | **Yes** — the fix is about OME-Zarr `.zattrs` and TIFF resolution tags; no format change |

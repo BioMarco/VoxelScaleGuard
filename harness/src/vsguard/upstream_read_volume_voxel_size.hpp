@@ -8,6 +8,15 @@
 //   file    volume-cartographer/apps/src/vc_render_tifxyz.cpp
 //   lines   982-1003
 //
+// LICENCE — THIS FILE IS GPL-3.0-or-later, NOT MIT.
+//   It is Volume Cartographer code, verbatim.
+//   Copyright (C) 2023 EduceLab.
+//   Licensed under the GNU General Public License, version 3 or (at your
+//   option) any later version: see LICENSE-GPL-3.0.txt at the repository root
+//   and NOTICE.md section 2. It is NOT covered by this repository's MIT
+//   licence in LICENSE.
+//   Unmodified: no change of any kind has been made to the copied lines.
+//
 // It is reproduced here — rather than simulated — so that the tests exercise the
 // actual decision procedure, including its exact key order and its exact
 // exception behaviour, instead of a paraphrase of it.

@@ -1,9 +1,36 @@
 # LICENSING_PROPOSAL
 
-**A proposal for the author's decision. No licence has been applied to this
-repository's original work.** Nothing here is legal advice; it states what the
-relevant licences say and what the conventions are, so the decision can be made on
-facts.
+> **STATUS — APPROVED AND APPLIED on 2026-09-18, with one question still open.**
+>
+> The author approved the split proposed here: **MIT** for this repository's
+> original work where that licence is genuinely applicable, **GPL-3.0-or-later**
+> for everything derived from or copied out of Volume Cartographer, and the
+> **third-party data terms preserved** for the tomographic material.
+>
+> What that produced, in the repository root:
+>
+> * [`LICENSE`](../LICENSE) — MIT, for the original work only, with an explicit
+>   statement of what it does **not** cover;
+> * [`LICENSE-GPL-3.0.txt`](../LICENSE-GPL-3.0.txt) — the full GPL v3 text, copied
+>   byte-for-byte from upstream (35,832 bytes, SHA-256 `95dd6ceb…`), which
+>   GPL-3.0 §4 requires for anyone receiving the covered material;
+> * [`NOTICE.md`](../NOTICE.md) — **the authoritative path-by-path mapping**, the
+>   verbatim upstream programme notice and external notices, the statement of
+>   modification with dates, and §2.4 recording what remains uncertain;
+> * [`DATA_ATTRIBUTION.md`](../DATA_ATTRIBUTION.md) — the third-party data, its
+>   terms, and the citations its publishers require;
+> * [`patch/README.md`](../patch/README.md) — the patch's own GPL notice, its
+>   modification dates, and its "proposed, not applied, not merged" status;
+> * GPL headers on the four derived files listed in §2.2 below.
+>
+> **Where this document and `NOTICE.md` disagree, `NOTICE.md` governs.** This file
+> is kept as the working record — including the checks behind the position and the
+> two claims that were wrong before them — not as the licence. It is not legal
+> advice.
+>
+> **One thing approved here remains open**: the question for the prize organisers
+> about the "permissive license" wording, prepared in
+> [`PROGRESS_PRIZE_QUESTION.md`](PROGRESS_PRIZE_QUESTION.md) and **not sent**.
 
 Two readings inform this document, both done on 2026-09-18 from the local
 checkouts:
@@ -266,32 +293,42 @@ GPL-3.0-or-later parts as separate works in one repository.
 | `harness/src/vsguard/render_voxel_size_resolution.{hpp,cpp}`, `harness/tests/test_render_voxel_size.cpp` | author's own code that includes and calls GPL code; **derivative-or-combined, not determinable here** (§7) — the conservative treatment is GPL-3.0-or-later |
 | `harness/src/villa/**` | upstream's terms; GPL-3.0-or-later for all eight; **already untracked, so not distributed** |
 
-### Concrete edits this proposal would need, if approved
+### The edits this proposal called for, and what was actually done
+
+Recorded as a checklist so the applied state can be compared with the proposal
+rather than assumed. **All five were done on 2026-09-18.**
 
 1. **`LICENSE`** at the repository root — the MIT text with the author's copyright
-   line. *(Not added: awaiting the decision.)*
-2. **`NOTICE`** (or a `## Licences` section that `NOTICE` points at) stating plainly:
-   * this repository's own work is MIT;
-   * `patch/vc_render_tifxyz.patch`, `harness/src/vsguard/upstream_read_volume_voxel_size.hpp`,
-     and the (untracked) copies under `harness/src/villa/**` are
-     **GPL-3.0-or-later**, Copyright (C) 2023 EduceLab, and are **not** covered by
-     the MIT licence;
-   * a copy of the GPL-3.0 text and upstream's `NOTICE` are required by GPL-3.0 §4
-     for anyone receiving those files, and where they can be obtained
-     (`https://github.com/ScrollPrize/villa` → `volume-cartographer/LICENSE` and
-     `volume-cartographer/NOTICE`), since `villa/` is git-ignored here;
-   * the date and fact of modification for the patched files (GPL-3.0 §5(a));
-   * that the copied upstream files are byte-for-byte and unmodified, so a reader
-     can tell them apart from this project's code.
-3. **A short header** on `harness/src/vsguard/upstream_read_volume_voxel_size.hpp`
-   recording that it is upstream code under GPL-3.0-or-later, with origin
-   (`villa` @ `757f70c`, file and line range). It currently has a provenance comment
-   but **no licence notice**.
-4. **`README.md`'s Licences section** updated to state the split rather than the
-   previously asserted "villa is MIT".
-5. **Third-party data attribution for `research/raw_metadata/**` and
-   `DOCS/evidence/before-after.png`** (§4) — required by CC BY-NC 4.0's attribution
-   term and missing today. Independent of which licence the author chooses.
+   line, **plus an explicit statement of what it does not cover** (the GPL material
+   and the third-party data), because a bare MIT file at the root of a mixed
+   repository is exactly the ambiguity this proposal exists to remove.
+   → [`LICENSE`](../LICENSE). *Done.*
+2. **`NOTICE.md`** stating plainly which paths fall under which terms, the verbatim
+   upstream programme notice and external notices, the statement of modification
+   with dates, and the residual uncertainties.
+   → [`NOTICE.md`](../NOTICE.md). The GPL text itself was **not** referenced only by
+   URL: it was copied byte-for-byte into the repository, because GPL-3.0 §4 requires
+   giving recipients a copy, and `villa/` is git-ignored here.
+   → [`LICENSE-GPL-3.0.txt`](../LICENSE-GPL-3.0.txt). *Done, and stronger than
+   proposed.*
+3. **Headers on the four derived files.** The proposal named one; the applied change
+   covers all four in §2's table, including the two `render_voxel_size_resolution.*`
+   files and the test file, under the conservative treatment. *Done.*
+4. **`README.md`'s licence section** rewritten to state the split, and to link
+   `NOTICE.md`, `DATA_ATTRIBUTION.md` and this document from the reviewer table at
+   the top rather than burying them. *Done.*
+5. **Third-party data attribution** for `research/raw_metadata/**` and
+   `DOCS/evidence/before-after.png`, reachable from the README and from the pages
+   that show the images. → [`DATA_ATTRIBUTION.md`](../DATA_ATTRIBUTION.md), linked
+   from `README.md`, `NOTICE.md` §3, `DOCS/evidence/README.md` and
+   `research/raw_metadata/PROVENANCE.md`. *Done.*
+
+One thing the proposal did **not** anticipate and the applied change adds: a notice
+beside the patch itself, [`patch/README.md`](../patch/README.md), carrying the
+modification statement and the "proposed, not applied, not merged" status. It is a
+separate file rather than a comment at the top of the patch because CI compares the
+applied diff byte-for-byte against the patch artefact, so anything prepended to the
+patch would either break that check or make it compare something else.
 
 ### One decision that the inventory resolved in passing
 
@@ -304,9 +341,12 @@ remain, and the choice is the author's:
   an over-broad `.gitignore` pattern rather than a stated policy, so it is worth a
   one-line comment in `.gitignore` making it deliberate; and `harness/CMakeLists.txt`
   cannot build from a bare clone without a `villa` checkout (already documented).
+  **This is the option taken**: the comment was added in the previous session and
+  the state is now stated in `NOTICE.md` §4 as well.
 * **re-document it explicitly** — say in `README.md` and `AGENTS.md` that
   `harness/src/villa/**` is generated, deliberately untracked, and GPL-3.0-or-later
-  by provenance, so no reader has to rediscover this.
+  by provenance, so no reader has to rediscover this. **Also done**, because the two
+  are not exclusive and the second costs nothing.
 
 Either way, the current state is the licensing-clean one, and this document records
 that it was found to be so **by accident**, not by design.
@@ -355,21 +395,28 @@ Recorded rather than guessed:
    `villa`'s copy is the authority used here.
 
 None of items 3-7 changes any decision in this document. Items 1 and 2 do, and they
-are why §5 is a proposal rather than a statement.
+are why the applied scheme is stated as a treatment rather than as a settled
+conclusion — see `NOTICE.md` §2.4, which is where the residual uncertainty now
+lives.
 
 ---
 
-## 8. What I need from you
+## 8. Decisions requested — all three answered on 2026-09-18
 
 1. **Approve MIT for the original work**, or name a different licence. If the
    "aggregate" reading in §7(1) is uncomfortable, the fallback is to license the
    whole repository GPL-3.0-or-later, which is certainly lawful and costs nothing
    except the prize wording in §4.
+   → **Approved: MIT for the original work, only where that licence is genuinely
+   applicable.** Applied in [`LICENSE`](../LICENSE), with the aggregate uncertainty
+   recorded in `NOTICE.md` §2.4 rather than treated as resolved.
 2. **Approve the third-party data attribution edits** in §4/§5 item 5 — these are
    required by the source data's terms and are missing today, so they are not really
    optional.
+   → **Approved and done**, in [`DATA_ATTRIBUTION.md`](../DATA_ATTRIBUTION.md).
 3. **Say whether to raise the "open source vs permissive" wording with the prize
    organisers** before submitting, given that the patched files are GPL-3.0-or-later.
-
-Until then, no `LICENSE` file is added, and the split in §5 is documented only as a
-proposal.
+   → **To be raised, and the message is written.** It is prepared, in English, in
+   [`PROGRESS_PRIZE_QUESTION.md`](PROGRESS_PRIZE_QUESTION.md). **It has not been
+   sent**, and the organisers have not been contacted. Whether the submission is
+   eligible therefore remains unknown — this document does not assert either answer.

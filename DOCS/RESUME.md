@@ -304,7 +304,8 @@ Full list in `AGENTS.md` §7. The ones that will cost you an hour:
 | Point `core/test/test_volume_live_s3.cpp` at a modern `metadata.json` volume as well as `PHerc0172` | `DOCS/TEST_PLAN.md` §4.5 — the test that would have caught this |
 | `vc_zarr_to_tiff.cpp:69-86` has the same schema gap (local-only, top-level key only) | `DOCS/FEASIBILITY.md` §8.3 |
 | Open the PR to `villa`; submit for a Progress Prize | `DOCS/PR_DRAFT.md`, `DOCS/SUBMISSION_DRAFT.md`, `DOCS/PROGRESS_PRIZE_CHECKLIST.md` §4.1. **Deadline re-confirmed [live] 2026-09-18: 11:59pm Pacific, 30 Sep 2026** — 12 days out. Earlier revisions of `RESUME.md`, `README.md`, `PRIZE_REQUIREMENTS.md` and `SUBMISSION_DRAFT.md` wrongly said it had passed; corrected in place and recorded in `DOCS/RESULTS.md` §8 |
-| Decide the repository licence, and add the third-party Open Data attribution | `DOCS/LICENSING_PROPOSAL.md` — the `volume-cartographer/` subtree is **GPL-3.0-or-later**, not MIT, so five documents' licence reasoning had to be corrected (`RESULTS.md` §12.2). The attribution item is required by the data's own terms and is **not** optional; the licence choice is |
+| Decide the repository licence, and add the third-party Open Data attribution | **Done 2026-09-18.** `LICENSE` (MIT, original work only), `LICENSE-GPL-3.0.txt` (verbatim upstream GPL text), `NOTICE.md` (authoritative path-by-path map, including the two uncertainties that remain open), `DATA_ATTRIBUTION.md` (the data, both dataset citations, the transformations), GPL headers on the four derived files. `RESULTS.md` §14 |
+| Send, or not, the prepared question to the prize organisers | `DOCS/PROGRESS_PRIZE_QUESTION.md` — written in English, **not sent**. Only the author can decide |
 | Keep the patch artefact honest | `AGENTS.md` §4's regeneration command now names all three paths, and CI asserts the touched-file count. Both exist because the old command silently produced a 2/3 patch (`RESULTS.md` §12.1) |
 
 ## 10. Conventions

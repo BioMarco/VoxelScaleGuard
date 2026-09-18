@@ -278,17 +278,35 @@ Everything is public and needs no paid service.
 
 ### Licence note for the submission
 
-`villa`'s root is MIT; the `volume-cartographer` subproject that this patch modifies
-is licensed **GPL-3.0-or-later** (Copyright (C) 2023 EduceLab — see
-`volume-cartographer/NOTICE` and its `LICENSE`). So the patch itself is a derivative
-of GPL-3.0-or-later code and cannot be relicensed MIT; this repository's own work —
-the investigation, harness, CI, evidence and documentation — can be licensed
-permissively without difficulty.
+**The licensing is settled and applied, and this is the split, stated plainly.**
 
-The form's Terms say *"you have to make it open source under a permissive license to
-accept the prize"*, and the Grand Prize section says *"open source license (e.g.
-MIT)"*. Note that this is a condition of **accepting a prize**, not of submitting.
-Whether a contribution to a GPL-3.0-or-later subproject satisfies the "permissive"
-wording is a question for the organisers, raised here rather than assumed. Full
-inventory, including the third-party Open Data attribution that still needs adding:
-`LICENSING_PROPOSAL.md`.
+* **The original work — the investigation, the test harness, the CI workflow, the
+  evidence figures and the documentation — is released under the MIT licence**
+  (`LICENSE`, Copyright (c) 2026 Marco Pontesilli). That is the larger and more
+  original part of this contribution, and it is public now, not merely promised.
+* **The patch itself is a modification of GPL-3.0-or-later code.** The three files
+  it fixes live in `volume-cartographer/`, which `villa` licenses GPL-3.0-or-later,
+  Copyright (C) 2023 EduceLab. A patch against them cannot be relicensed MIT by its
+  author, so it is not: `LICENSE-GPL-3.0.txt` carries the licence, `NOTICE.md`
+  preserves upstream's notices and states the modification and its date, and
+  `patch/README.md` does the same beside the patch.
+* **The third-party tomographic data and the images rendered from it keep their own
+  terms** (CC BY-NC 4.0 unless otherwise noted), with both dataset citations, the
+  source links and a description of the transformations, in `DATA_ATTRIBUTION.md`.
+  They are not covered by the MIT licence.
+
+`NOTICE.md` is the authoritative path-by-path map, and `LICENSE` explicitly lists
+what it does not cover — so nothing here could be mistaken for a whole-repository
+MIT claim.
+
+**One point I cannot settle myself.** The Terms say *"you have to make it open
+source under a permissive license to accept the prize"*, while the Grand Prize
+conditions say *"open source license (e.g. MIT)"*. GPL-3.0-or-later is open source
+by the OSI definition but is not permissive, and the patched files are
+GPL-3.0-or-later because that is how `villa` licenses them. Whether that satisfies
+your condition is for you to judge; I have asked rather than assumed, and I have not
+picked the reading that suits me.
+
+Two things I have deliberately **not** claimed: that the submission is eligible, and
+that it is not. Both readings are genuinely open, and the files above record exactly
+what is uncertain rather than smoothing it over.

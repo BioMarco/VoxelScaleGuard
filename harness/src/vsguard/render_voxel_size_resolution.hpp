@@ -1,6 +1,15 @@
 // VoxelScale Guard - pure voxel-size resolution for vc_render_tifxyz.
 // See DOCS/ARCHITECTURE.md. No OpenCV/Qt/Volume dependency: this is the decision
 // procedure only, so it can be exercised by the harness.
+//
+// LICENCE — THIS FILE IS TREATED AS GPL-3.0-or-later, NOT MIT.
+//   The code is original to this project, but it includes Volume Cartographer
+//   headers (utils/Json.hpp → GPL-3.0-or-later, Copyright (C) 2023 EduceLab) and
+//   the matching .cpp calls vc::metadata::voxelSizeFromStoreMetadata. Whether that
+//   makes this a derivative or a combined work is a legal question this project
+//   cannot settle, so the conservative treatment is applied: GPL-3.0-or-later.
+//   See LICENSE-GPL-3.0.txt and NOTICE.md sections 2.1 and 2.4. It is NOT covered
+//   by the MIT licence in LICENSE.
 
 #pragma once
 

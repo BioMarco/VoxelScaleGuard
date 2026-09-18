@@ -37,9 +37,26 @@ requirements.
 CC BY-NC 4.0's attribution term applies to redistributing these copies: source,
 licence, and an indication of any changes (there are none — the files are
 byte-identical to what the bucket served, which is what the hashes above
-establish). It is **not yet stated in this repository's own licence material**;
-`DOCS/LICENSING_PROPOSAL.md` §4 records that as a gap to close. This file is the
-pointer to it and the raw evidence for it, not a substitute for it.
+establish).
+
+**The attribution that term requires is now carried in the repository**, not only
+here: [`../../DATA_ATTRIBUTION.md`](../../DATA_ATTRIBUTION.md) names the rights
+holders, gives the source links and both dataset citations, and itemises the
+transformations applied to the derived figure. It is linked from the repository
+`README.md` and from [`../../NOTICE.md`](../../NOTICE.md) §3. This file remains the
+raw evidence — per-file URL, byte count and SHA-256 — behind it.
+
+Two further points that this directory alone would not tell you:
+
+* **The MIT licence at the repository root does not cover these files.** They are
+  third-party material with their own terms. `NOTICE.md` §1 says so explicitly.
+* **The four documents do not all come from the same dataset**, and therefore do
+  not all carry the same required citation. `PHerc0009B` and the two `PHercParis4`
+  documents are from scans made at ESRF BM18 in 2025–2026 and belong to the
+  *Vesuvius Challenge – CT Scans of Herculaneum Papyri* dataset; `PHerc0172` is the
+  legacy flat form and belongs to *EduceLab-Scrolls* (© EduceLab / The University
+  of Kentucky). `DATA_ATTRIBUTION.md` §2 records how each was assigned and §3 gives
+  both citations.
 
 The same terms reach `DOCS/evidence/before-after.png`, whose raster panels are
 renders of two of these volumes, and `DOCS/evidence/README.md` says so beside the

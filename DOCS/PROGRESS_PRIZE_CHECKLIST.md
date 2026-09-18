@@ -119,7 +119,7 @@ Everything below already exists. Nothing needs to be written from scratch.
 | Documentation and usage examples | `README.md`; `DOCS/INDEX.md` (reading order); `harness/` builds and runs in minutes |
 | Reproduction, no paid services | `.github/workflows/renderer-validation.yml` — public apt packages on a free runner, no private registry |
 | Standard formats | OME-Zarr `.zattrs` and TIFF resolution tags are exactly what the patch corrects; the outputs stay in those formats |
-| Open source, under the page's licence wording | repository is public; **the patch derives from `volume-cartographer/`, which is GPL-3.0-or-later, not MIT** — so this row is an *open question*, not a satisfied one. See §2.3 of `PRIZE_REQUIREMENTS.md` and `LICENSING_PROPOSAL.md` §4 |
+| Open source, under the page's licence wording | **Split applied, question open.** `LICENSE` is MIT for the original work, `LICENSE-GPL-3.0.txt` and `NOTICE.md` cover the derived patch material, `DATA_ATTRIBUTION.md` covers the third-party data. Whether the organisers' *"permissive license"* wording accepts a GPL-3.0-or-later patch is asked in `PROGRESS_PRIZE_QUESTION.md` and **not sent** |
 | Advantages over existing solutions | `DOCS/FEASIBILITY.md` §7 — the comparison with #1417 and the other lapsed attempts |
 | The artifact itself | `patch/vc_render_tifxyz.patch`; the fork branch <https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume> |
 
@@ -177,14 +177,19 @@ without them would not survive reproduction.
 
 ## 6. Suggested order
 
-Nothing below has been done. Steps 1 and 5 need your explicit authorisation; step 2
-is a decision only you can make.
+Steps 1 and 5 need your explicit authorisation; steps 0 and the message in step 0b
+need only your decision, and nothing has been sent or opened.
 
-0. **Decide the licence and attribution question** — `LICENSING_PROPOSAL.md` §8. The
-   third-party Open Data attribution (its §4) is required by the data's own terms
-   whether or not a prize is ever claimed, so it is the one item here that is not
-   optional. This does not block submitting: the form's Terms make the licence a
-   condition of *accepting* a prize, not of entry (`PRIZE_REQUIREMENTS.md` §2.5).
+0. ~~Decide the licence and attribution question.~~ **Done 2026-09-18**: the licence
+   split is applied and the third-party attribution is in place. `NOTICE.md` is the
+   authoritative map; `LICENSE` states what it does not cover; `DATA_ATTRIBUTION.md`
+   carries the data's citations. Nothing further is required here.
+0b. **Decide whether to send the organisers' question** —
+   `PROGRESS_PRIZE_QUESTION.md` holds it in English, ready to paste into the
+   Vesuvius Challenge Discord. It is **not sent**, and it does not block submitting:
+   the form's Terms make the licence a condition of *accepting* a prize, not of
+   entry (`PRIZE_REQUIREMENTS.md` §2.5). Sending it before the deadline is worth
+   doing if you want the answer on record.
 1. Open the PR against villa (needs your comment and your checkbox tick — see
    `PR_DRAFT.md` Part 2). Maintainer feedback before a prize submission is only an
    advantage. **This is the item `README.md` lists as still open, and it has not been

@@ -22,7 +22,9 @@ renderer, `vc_render_tifxyz`.
 | The reading order for everything | [`DOCS/INDEX.md`](DOCS/INDEX.md) |
 | The proposed PR text | [`DOCS/PR_DRAFT.md`](DOCS/PR_DRAFT.md) |
 | The prize submission text | [`DOCS/SUBMISSION_DRAFT.md`](DOCS/SUBMISSION_DRAFT.md) |
-| Licence and attribution position | [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) — a proposal; no licence applied |
+| **What you may reuse, and under what terms** | [`NOTICE.md`](NOTICE.md) — the authoritative path-by-path map. This repository is **not** under one licence |
+| The third-party data and its required citations | [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md) |
+| How the licence position was reached, and what stays uncertain | [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) |
 
 ---
 
@@ -140,6 +142,10 @@ byte-identical to the pinned revision [exec]. The GUI change is **not** included
 ```
 README.md      this file
 AGENTS.md      operating rules for agents working in this repository
+LICENSE        MIT — this project's ORIGINAL work only
+LICENSE-GPL-3.0.txt   the GPL text for the derived patch material
+NOTICE.md      which paths fall under which terms (authoritative)
+DATA_ATTRIBUTION.md   the third-party data, its terms and its citations
 
 DOCS/          all project documentation
   INDEX.md                    reading order and the evidence map
@@ -152,16 +158,18 @@ DOCS/          all project documentation
   TEST_PLAN.md                what was tested, what is blocked, what would falsify this
   RESEARCH.md                 sources, exact commits, licences, assumptions that failed
   PRIZE_REQUIREMENTS.md       Progress Prize rules vs. this project
+  PROGRESS_PRIZE_QUESTION.md  the prepared question for the organisers; NOT sent
   PR_DRAFT.md                 the pull request, ready to paste; NOT open
   SUBMISSION_DRAFT.md         Progress Prize submission text; NOT sent
   PROGRESS_PRIZE_CHECKLIST.md what is prepared, and what only the author can attest
-  LICENSING_PROPOSAL.md       licence/attribution inventory and the decision it needs
+  LICENSING_PROPOSAL.md       how the licence position was reached, and what is uncertain
   evidence/
-    before-after.png          the before/after figure
+    before-after.png          the before/after figure (contains third-party data)
     terminal-before-after.png the run's log lines, drawn verbatim
     README.md                 where every value comes from, and the data's licence
 
 patch/vc_render_tifxyz.patch    the proposed fix (three files)
+patch/README.md                 the patch's GPL notice, modification dates and status
 harness/                        the reproducer: real upstream code + tests
 ci/                             the validation workflow's helpers and self-tests
 research/                       live catalog probe + the raw documents it fetched
@@ -259,45 +267,58 @@ i.e. the patch describes it exactly, and it applies to current upstream `main`.
 4. **No prize submission has been made.**
    [`PROGRESS_PRIZE_CHECKLIST.md`](DOCS/PROGRESS_PRIZE_CHECKLIST.md) holds what is
    prepared and what only the author can attest.
-5. **A repository licence has not been chosen.** See below.
+5. **One licence question is open and needs the organisers, not more work here.**
+   The repository's own licence is settled and applied (see below), but the prize
+   Terms require a *"permissive license"* to accept an award, and the patch is a
+   modification of GPL-3.0-or-later code. `NOTICE.md` §2.4 and
+   [`LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) §4 record exactly what is
+   uncertain; `DOCS/PROGRESS_PRIZE_QUESTION.md` is a prepared question for the
+   organisers, **not sent**.
 
-## Licences
+## Data and licences
 
-Facts, so the author can decide; no licence has been applied to this repository's
-own work yet.
+**This repository is not under a single licence, and the difference matters.**
+[`NOTICE.md`](NOTICE.md) is the authoritative path-by-path map; the summary is:
 
-* `villa`'s **root** is **MIT**, Copyright (c) 2024 Vesuvius Challenge — but that
-  file does **not** govern the subtree this patch modifies.
-  `villa/volume-cartographer/` is **GPL-3.0-or-later**, Copyright (C) 2023 EduceLab
-  (`volume-cartographer/LICENSE` and `NOTICE`; corroborated by
-  `volume-cartographer/Dockerfile:10`). All three files the patch touches live
-  there, so the patch is a derivative of GPL-3.0-or-later code, not MIT code.
-  *This section previously said "`villa` is MIT … the patch is a diff against
-  MIT-licensed files", which was wrong; corrected 2026-09-18. The full inventory,
-  including the rest of villa's per-subproject licence patchwork, is in
+| Terms | Applies to | File |
+|---|---|---|
+| **MIT**, Copyright (c) 2026 Marco Pontesilli | the original work of this repository — the investigation, harness, CI, figure generators, documentation | [`LICENSE`](LICENSE) |
+| **GNU GPL v3.0-or-later**, Copyright (C) 2023 EduceLab | the patch and everything derived from or copied out of Volume Cartographer | [`LICENSE-GPL-3.0.txt`](LICENSE-GPL-3.0.txt), [`NOTICE.md`](NOTICE.md) §2 |
+| **CC BY-NC 4.0** unless otherwise noted | the third-party tomographic data and the images rendered from it | [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md) |
+
+Three things worth stating plainly, because they are easy to get wrong:
+
+* **The patch is not MIT.** `villa`'s *root* is MIT, Copyright (c) 2024 Vesuvius
+  Challenge — but the three files the patch modifies live under
+  `volume-cartographer/`, which is **GPL-3.0-or-later**. The MIT licence here
+  covers this project's own work and does not reach them. *An earlier revision of
+  this section said "`villa` is MIT … the patch is a diff against MIT-licensed
+  files", which was wrong; corrected 2026-09-18. The full inventory, including the
+  rest of villa's per-subproject licence patchwork, is in
   [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) §1.*
-* The harness copies eight `volume-cartographer/` translation units
-  byte-for-byte. Those are GPL-3.0-or-later by provenance, but they are
-  **not tracked in git** (`.gitignore`'s `villa/` pattern has no leading slash, so
-  it matches a `villa` directory at any depth), so a clone of this repository
-  redistributes none of them; `harness/setup.ps1` re-creates them locally. See the
-  proposal §2 and §5.
-* `nlohmann/json` (MIT) and `doctest` (MIT) are fetched at build time, not
-  vendored.
-* `scrollprize.org` content is CC BY-NC 4.0 unless otherwise specified; quoted prize
-  rules are attributed to that page. The four committed metadata documents under
-  `research/raw_metadata/` and the rendered panels inside
-  `DOCS/evidence/before-after.png` are **derived from or copies of Open Data bucket
-  material under the same CC BY-NC 4.0 terms**, and that attribution is currently
-  recorded only in the proposal — see its §4, which flags it as a gap to close.
-* The Open Data bucket is accessed anonymously and read-only.
+* **The images contain third-party data.** `DOCS/evidence/before-after.png` embeds
+  rendered panels of the `PHerc0009B` volume, and the four documents under
+  `research/raw_metadata/` are verbatim copies of published metadata. Those are
+  **CC BY-NC 4.0 unless otherwise noted**, and the required attribution — authors,
+  source links, both dataset citations, and an indication of the modifications made
+  — is in [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md), linked from
+  [`DOCS/evidence/README.md`](DOCS/evidence/README.md) and from
+  `research/raw_metadata/PROVENANCE.md`.
+* **Two licence questions remain genuinely open** and are documented rather than
+  smoothed over: whether this repository is an *aggregate* in the sense of
+  GPL-3.0 §5 (the MIT grant for the documentation and CI rests on that reading),
+  and whether the `harness/src/vsguard/` files that include GPL headers are
+  derivative or combined works. They are treated conservatively as
+  GPL-3.0-or-later regardless. `NOTICE.md` §2.4 states both, and nothing here
+  claims they are settled.
 
-A proposal for licensing this repository's original scripts and documentation, with
-the notices and attributions it would require, is in
-[`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md). **It is a proposal
-awaiting the author's decision, not an applied licence.** It also records a real
-conflict with the prize rules' wording ("permissive license … to accept the prize")
-that the author should raise with the organisers rather than resolve silently.
+Also: `nlohmann/json` (MIT) and `doctest` (MIT) are fetched at build time, not
+vendored; the eight Volume Cartographer sources that `harness/setup.ps1` copies are
+**not tracked in git** and so are not redistributed by a clone; and the Open Data
+bucket is accessed anonymously and read-only.
+
+The reasoning, the checks behind it and the two claims that were wrong before them
+are recorded in [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md).
 
 ## Attribution
 

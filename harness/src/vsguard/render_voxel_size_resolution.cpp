@@ -1,5 +1,12 @@
 // VoxelScale Guard - pure voxel-size resolution for vc_render_tifxyz.
 // See render_voxel_size_resolution.hpp and DOCS/ARCHITECTURE.md.
+//
+// LICENCE — THIS FILE IS TREATED AS GPL-3.0-or-later, NOT MIT.
+//   Original code, but it includes Volume Cartographer headers (GPL-3.0-or-later,
+//   Copyright (C) 2023 EduceLab) and calls vc::metadata::voxelSizeFromStoreMetadata
+//   from them. Derivative-or-combined is not determinable here, so the
+//   conservative treatment is applied. See LICENSE-GPL-3.0.txt and NOTICE.md
+//   sections 2.1 and 2.4. Not covered by the MIT licence in LICENSE.
 
 #include "vsguard/render_voxel_size_resolution.hpp"
 

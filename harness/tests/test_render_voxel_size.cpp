@@ -12,6 +12,14 @@
 //  * Resolution cases. The patched decision procedure is checked on its own,
 //    including the URL-fragment and unusable-local-metadata concerns raised in
 //    review of ScrollPrize/villa#1417.
+//
+// LICENCE — THIS FILE IS TREATED AS GPL-3.0-or-later, NOT MIT.
+//   The tests are original, but they include the verbatim upstream reader and the
+//   Volume Cartographer headers, and are compiled together with those translation
+//   units. Derivative-or-combined is not determinable here, so the conservative
+//   treatment is applied. See LICENSE-GPL-3.0.txt and NOTICE.md sections 2.1 and
+//   2.4. Not covered by the MIT licence in LICENSE. (doctest itself is MIT and is
+//   fetched at build time, not distributed here.)
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>

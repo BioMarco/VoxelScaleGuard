@@ -26,8 +26,11 @@ already made, and the environment traps.
 |---|---|
 | [`RESEARCH.md`](RESEARCH.md) | Sources, exact commits and licences; the architecture of the Villa monorepo; and §4, the assumptions in the original brief that did not survive contact with the source |
 | [`PRIZE_REQUIREMENTS.md`](PRIZE_REQUIREMENTS.md) | The Progress Prize rules as published — including the submission form's actual fields and Terms, §2.4-2.5 — separated from what this project merely considers useful; and where this project stands against each criterion |
+| [`PROGRESS_PRIZE_QUESTION.md`](PROGRESS_PRIZE_QUESTION.md) | The prepared question for the organisers about the "permissive license" wording. **Not sent** |
 | [`PROGRESS_PRIZE_CHECKLIST.md`](PROGRESS_PRIZE_CHECKLIST.md) | What is prepared for a submission, field by field, and what only the author can attest |
-| [`LICENSING_PROPOSAL.md`](LICENSING_PROPOSAL.md) | Licence and attribution inventory of this repository and of `villa`; the GPL-3.0-or-later finding that corrects several documents; the third-party Open Data attribution still missing; and the decision it needs. **No licence has been applied** |
+| [`LICENSING_PROPOSAL.md`](LICENSING_PROPOSAL.md) | How the licence position was reached: the inventory, the GPL-3.0-or-later finding that corrected five documents, and the two uncertainties that remain. **Approved and applied on 2026-09-18** — `NOTICE.md` is the authoritative map and governs where the two disagree |
+| [`../NOTICE.md`](../NOTICE.md) | **The authoritative path-by-path licence map** for the whole repository |
+| [`../DATA_ATTRIBUTION.md`](../DATA_ATTRIBUTION.md) | The third-party data, its terms, and the citations its publishers require |
 | [`PR_DRAFT.md`](PR_DRAFT.md) | Pull request draft. **Not submitted.** |
 | [`SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md) | Progress Prize submission draft, including the form's four questions answered in its own order. **Not submitted.** |
 

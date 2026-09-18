@@ -117,8 +117,8 @@ not compile.** See `RESULTS.md` §9.
 | **Coverage is two volumes, one crop, one slice** | **Open.** Enough to demonstrate the correction and the absence of a pixel regression; not a survey |
 | **The `vc_zarr_to_tiff` schema gap** | **Open.** Same class of defect (local-only, top-level key only), but no remote path and not needed for the reported problem. Documented as a candidate, not developed |
 | **The live-S3 test still pins the legacy volume** | **Open.** Changing an existing live test's fixture is a maintainer decision. Proposed in `PR_DRAFT.md` |
-| **No repository licence is applied, and the licence reasoning was wrong** | **Open, and now correctly stated.** `villa`'s root is MIT but every file this project patches or copies is under `volume-cartographer/`, which is **GPL-3.0-or-later** (© 2023 EduceLab). Five documents relied on the false "villa is MIT" premise; all are corrected, and `LICENSING_PROPOSAL.md` holds the inventory and the decision. `RESULTS.md` §12.2 |
-| **Third-party Open Data attribution is missing from the repository's own licence material** | **Open, and required by the data's terms** whether or not a prize is claimed: four bucket metadata documents are committed verbatim and the before/after figure embeds renders of two volumes, all under CC BY-NC 4.0 unless otherwise noted. Recorded in `research/raw_metadata/PROVENANCE.md` and `LICENSING_PROPOSAL.md` §4; not yet in a `NOTICE` |
+| **No repository licence is applied, and the licence reasoning was wrong** | **CLOSED 2026-09-18.** The wrong reasoning was found and corrected in five documents, and the licence is now applied: `LICENSE` (MIT, original work only), `LICENSE-GPL-3.0.txt` (verbatim upstream GPL text), `NOTICE.md` (the authoritative path-by-path map), `DATA_ATTRIBUTION.md` (third-party data), and GPL headers on the four derived files. Two residual uncertainties are recorded in `NOTICE.md` §2.4 rather than treated as settled. `RESULTS.md` §12.2 and §14 |
+| **Third-party Open Data attribution was missing from the repository's own licence material** | **CLOSED 2026-09-18.** `DATA_ATTRIBUTION.md` names the rights holders, gives source links and **both** dataset citations, itemises the transformations applied to the figure, and is linked from `README.md`, `NOTICE.md`, `DOCS/evidence/README.md` and `research/raw_metadata/PROVENANCE.md`. `RESULTS.md` §14.1 |
 | **The documented patch-regeneration command was wrong** | **FOUND AND FIXED 2026-09-18.** `AGENTS.md` §4 named one path where the patch covers three, so following it produced an 18,480-byte patch that reverse-applied cleanly while having dropped both Zarr hunks. Fixed, and CI now asserts the touched-file count. `RESULTS.md` §12.1 |
 | **No submission and no PR** | By instruction. The evidence needed for one now exists; the paperwork is the remaining work |
 
@@ -147,9 +147,15 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | `DOCS/PR_DRAFT.md` | pull request draft, **not submitted** |
 | `DOCS/SUBMISSION_DRAFT.md` | Progress Prize draft, including the form's four questions answered in the form's own order; **not submitted** |
 | `DOCS/PROGRESS_PRIZE_CHECKLIST.md` | the submission, field by field, and what only the author can attest |
-| `DOCS/LICENSING_PROPOSAL.md` | licence and attribution inventory; **proposal, nothing applied** |
-| `README.md` | landing page: description, layout, build and run |
+| `DOCS/LICENSING_PROPOSAL.md` | How the licence position was reached; approved and applied 2026-09-18; `NOTICE.md` governs |
+| `DOCS/PROGRESS_PRIZE_QUESTION.md` | The prepared question for the organisers. **Not sent** |
+| `README.md` | landing page: description, layout, build and run, and the licence summary |
 | `AGENTS.md` | operating rules, verification requirements, attribution, environment traps |
+| `LICENSE` | MIT — this project's original work only, with what it does not cover |
+| `LICENSE-GPL-3.0.txt` | the GPL v3 text, copied byte-for-byte from upstream |
+| `NOTICE.md` | the authoritative path-by-path licence map |
+| `DATA_ATTRIBUTION.md` | the third-party data, its terms and its required citations |
+| `patch/README.md` | the patch's GPL notice, modification dates, and its not-applied status |
 | `patch/vc_render_tifxyz.patch` | the fix |
 | `harness/` | the reproducer and its tests |
 | `research/` | the live catalog probe, the raw documents it fetched, and the probe summary |
@@ -226,3 +232,7 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | Two earlier runs on the same commit were cancelled by the workflow's own `cancel-in-progress: true`, not by any failure; recorded so the next session does not misread a cancelled run as a broken build (`RESULTS.md` §12.7) |
 | Prize rules and submission form re-read; the form's fields and Terms transcribed, and the four form questions answered in `DOCS/SUBMISSION_DRAFT.md` (`RESULTS.md` §12.3) |
 | Still not done, by instruction: no PR opened, no submission sent, no `LICENSE` applied, no merge to `main` |
+| Licence and third-party attribution **applied** (author-approved): `LICENSE` (MIT, original work only, with what it excludes), `LICENSE-GPL-3.0.txt` (verbatim upstream GPL text, hash-verified), `NOTICE.md` (authoritative map, upstream notices preserved, modification dates, two uncertainties recorded), `DATA_ATTRIBUTION.md` (rights holders, both dataset citations, transformations), `patch/README.md`, and GPL headers on the four derived files (`RESULTS.md` §14) |
+| Organisers' question drafted in English and **not sent**: `DOCS/PROGRESS_PRIZE_QUESTION.md` |
+| Prize page re-read 2026-09-18: deadline, awards and Terms all unchanged; the "permissive license" wording discrepancy is still live and remains unanswered (`RESULTS.md` §14.5) |
+| Still not done, by instruction: no PR opened, no submission sent, no message to the organisers, no merge to `main` |
