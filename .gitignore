@@ -12,6 +12,11 @@ harness/tools/ninja.exe
 # absorbed into this repository. The committed artefact is patch/.
 villa/
 
+# The fork working copy (BioMarco/villa), used to stage the PR branch. Same rule as
+# villa/: it is a separate checkout with its own .git and must never be committed
+# here. The branch it carries lives on GitHub, not in this repository.
+tools/fork/
+
 # Local scratch — throwaway probe trees and downloads (e.g. the VC3D package).
 # Durable recon helpers belong in research/, not here.
 scratch/

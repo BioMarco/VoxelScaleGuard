@@ -1,35 +1,32 @@
 # PR_DRAFT
 
-**Not submitted. No pull request has been opened, and none will be without
-authorisation.**
+**Branch pushed to the fork. The pull request is NOT open. Nothing has been
+submitted anywhere.**
 
-This file holds the final PR text for `ScrollPrize/villa`, written to villa's own
-`.github/pull_request_template.md`. The evidence behind every claim is in
-`CI_VALIDATION.md` and `RESULTS.md`.
+| | |
+|---|---|
+| Fork | **<https://github.com/BioMarco/villa>** (created 2026-09-18, public, forked from `ScrollPrize/villa`) |
+| Branch | **`fix/render-voxel-size-from-open-volume`** |
+| Commit | **`d419dece6af51e0e015f6dc1df92c0312be76075`** |
+| Contents | **exactly 3 files**, +250/−65 — verified locally and via the GitHub API |
+| Based on | `ScrollPrize/villa` `main` @ `b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18), 0 behind |
+| Open the PR at | <https://github.com/BioMarco/villa/pull/new/fix/render-voxel-size-from-open-volume> |
 
-Target: **three files** — the renderer plus the writer whose contract had to change
-for the "size unknown" case to be honest:
-
-* `volume-cartographer/apps/src/vc_render_tifxyz.cpp` — the fix;
-* `volume-cartographer/core/src/Zarr.cpp` and
-  `volume-cartographer/core/include/vc/core/util/Zarr.hpp` — `writeZarrAttrs()`
-  now omits the `multiscales` block when the base voxel size is non-positive,
-  instead of always writing a per-axis `scale` (see "The size is unknown" below).
-
-All three are byte-identical between the pinned revision and current upstream
-`main` at `2dcfaf6a08c3bc796fde726c4fa32050c8fc90e7` (2026-09-17), and the patch
-applies to `main` cleanly. The GUI change in `SegmentationCommandHandler.cpp` is
-deliberately **not** part of this and is described at the end as a follow-up.
+**Two things you must do yourself before opening it** (§"Before you open the PR"):
+write your own comment in the marked block, and tick the template's verification
+checkbox only if it is true for you. I have deliberately left the checkbox
+**unticked** and the comment block **empty**.
 
 ---
 
-## Title
+# PART 1 — the pull request body
 
-```
-vc_render_tifxyz: take the voxel size from the volume that is open, not from a local file
-```
+Paste this into the PR. It follows villa's `.github/pull_request_template.md`: the
+template's five italic prompts first, then a `## Details` section. The lines the
+template asks you to fill in are answered; the one block that must be yours is
+marked.
 
-## Body — to paste into the PR
+---
 
 **In one sentence:** renders no longer declare a physically wrong voxel size — the
 OME-Zarr `.zattrs` axis units and the TIFF resolution tags now describe the volume
@@ -38,9 +35,9 @@ that was actually rendered.
 **One real example:** starting with the published volume
 `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr` and a mesh
 authored for it (`20250510172639-on-20250521125136-8.64um.tifxyz`), I ran
-`vc_render_tifxyz` on the current `main` and it wrote `.zattrs` declaring the voxel
-size as `1` in **nanometres**; the same command after this patch writes
-`8.64` in **micrometres**.
+`vc_render_tifxyz` on `main` and it wrote `.zattrs` declaring the voxel size as `1`
+in **nanometres**; the same command with this patch writes `8.64` in
+**micrometres**.
 
 **Before:** the render attaches a physically wrong scale to everything it produces.
 On that volume the declared physical voxel size is wrong by **×8640**; on others we
@@ -66,15 +63,17 @@ out.zarr/.zattrs -> axes unit "micrometer", scale [8.64, 8.64, 8.64]
 out.tif/00.tif   -> XResolution 2939.81 px/inch  ( == 25400 / 8.64 )
 ```
 
-**Proof:** run
-[35247583260](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35247583260)
-builds `main` **and** `main + this patch` from the same commit and runs both on two
-public volumes, `PHerc0009B` (8.64 µm) and `PHerc0172` (7.91 µm). Look at:
+**Proof:** an evidence figure built from the real artifacts of
+[this run](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299) is
+attached — it shows the declared metadata, the two rendered images side by side, and
+a difference panel that is empty. The run builds `main` **and** `main + this
+patch` from the same commit and runs both on two public volumes, `PHerc0009B`
+(8.64 µm) and `PHerc0172` (7.91 µm). What to look at:
 
 * the `.zattrs` unit and scale;
 * the TIFF `XResolution`, read twice — once with Pillow, once with `tiffinfo`;
-* the decoded-pixel digests, which are **identical** between the two binaries, so
-  the images are unchanged and only the physical metadata is corrected.
+* the **decoded-pixel digests, which are identical** between the two binaries: the
+  images are unchanged and only the physical metadata is corrected.
 
 ```
 PHerc0009B  baseline  .zattrs nanometer  scale [1,1,1]      TIFF no resolution tag
@@ -83,15 +82,26 @@ PHerc0172   baseline  .zattrs nanometer  scale [1,1,1]      TIFF no resolution t
             patched   .zattrs micrometer scale [7.91,...]   TIFF 3211.13 px/inch
 
 decoded pixels, baseline vs patched, both volumes: identical
+file bytes differ (14244 -> 14296) because the resolution tag is the fix
 ```
 
 **Why / where this is useful:** anything that measures a render in physical units
 reads these numbers — ink-detection input scaling, mesh/volume frame checks, scale
 bars on published images (a Grand Prize submission requirement), and any downstream
-tool that opens the `.zarr` and trusts its axes. Correcting them makes the outputs
-of `vc_render_tifxyz` comparable with the volumes they came from.
+tool that opens the `.zarr` and trusts its axes. Correcting them makes the output of
+`vc_render_tifxyz` comparable with the volume it came from.
+
+**Why I am sending this** — <!-- THIS BLOCK MUST BE WRITTEN BY YOU, IN YOUR OWN
+WORDS. villa's CONTRIBUTING.md asks that any LLM-assisted PR carry human-written
+commentary explaining why it is relevant. Suggested ground to cover, in your voice:
+what you were doing when you hit this, why a wrong declared voxel size matters for
+your work, and what you want the maintainers to look at. Do not describe it as a
+tooling exercise; say what it cost you. -->
 
 - [ ] I personally verified that the example and proof above were produced by this PR on the stated data.
+
+<!-- Leave the box above UNTICKED until you have personally run the comparison.
+     Tick it only if you have. -->
 
 ## Details
 
@@ -195,8 +205,7 @@ level 0 and through the pyramid. This is not hypothetical: an earlier revision o
 this patch wrote the converted micrometre number under the caller's unit label,
 which declared 8.64 nm for `--voxel-size 8640 --voxel-unit nanometer`. It was
 caught by CI checks that convert `.zattrs` and the TIFF tags to micrometres and
-compare both against the requested size. That history is in `RESULTS.md` §10 of the
-linked repository; the tests stay.
+compare both against the requested size.
 
 ### The size is unknown: nothing is declared
 
@@ -210,7 +219,7 @@ The patch makes a non-positive `baseVoxelSize` mean "unknown" and omits the
 `multiscales` block entirely, and the renderer passes 0 in that case. The TIFF is
 unchanged: `tifDpi` stays 0, which already means "do not set the resolution tags".
 The stderr warning says the scale is unknown and that none will be declared, and it
-now names the unit a caller must supply (`--voxel-size <value> --voxel-unit
+names the unit a caller must supply (`--voxel-size <value> --voxel-unit
 micrometer`) — the flag defaults to `nanometer`, so the previous advice would have
 produced a self-consistent 1000× error.
 
@@ -224,18 +233,19 @@ change, no change to the rendered pixels, no change to any option's meaning.
 
 ### Evidence, and how to reproduce it
 
-Reproducible from a public repository without the dependency closure:
-
-* **Workflow:** `.github/workflows/renderer-validation.yml` in
-  <https://github.com/BioMarco/VoxelScaleGuard>. It clones `ScrollPrize/villa` at a
-  chosen commit, builds `vc_render_tifxyz` twice from the same tree (once clean,
-  once with the patch applied by `git apply`), checks the applied diff is
-  byte-identical to the committed patch, and runs both binaries on public catalog
-  data with identical arguments.
-* **Run:** [35247583260](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35247583260)
-  (build + before/after + physical-size checks).
-* **What was measured**, on `PHerc0009B` at `-g 0 --scale 1`, 128×128 crop, one
-  slice, streamed from the public Open Data bucket:
+* **Fork branch:** <https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume>
+* **Evidence repository:** <https://github.com/BioMarco/VoxelScaleGuard> — the
+  workflow, the reporter scripts, the run logs and the test harness.
+* **Workflow:** `.github/workflows/renderer-validation.yml`. It clones
+  `ScrollPrize/villa` at a chosen commit, builds `vc_render_tifxyz` twice from the
+  same tree (once clean, once with the patch applied by `git apply`), checks the
+  applied diff is byte-identical to the committed patch, and runs both binaries on
+  public catalog data with identical arguments.
+* **Run:** [35249590299](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299)
+  (build + before/after + physical-size checks). Toolchain in that run: gcc 13.3.0,
+  cmake 3.31.6, ninja 1.13.2, `ubuntu-24.04`.
+* **Measured**, on `PHerc0009B` at `-g 0 --scale 1`, 128×128 crop, one slice,
+  streamed from the public Open Data bucket:
 
   | | baseline (`main`) | patched |
   |---|---|---|
@@ -254,11 +264,11 @@ Reproducible from a public repository without the dependency closure:
   8.64 µm, with `.zattrs` and the TIFF agreeing in every case.
 * **Unusable input** (`--voxel-size 0`, `-3`, `nan`, unknown unit) exits non-zero
   and writes no physical scale, matching `main`'s behaviour.
-* **Unknown size**, driven end to end with the real binary by keeping the volume
-  closed (no `--remote-url`, no cached marker, no local document): the render
-  declares **no** `multiscales` block and **no** TIFF resolution tag, and says so on
-  stderr. The same run on `main` declares `nanometer`/`[1,1,1]`, i.e. 1 nm — the
-  fabricated measurement this removes.
+* **Unknown size**, driven end to end with the real binary by rendering a local-only
+  store with no metadata document: the render declares **no** `multiscales` block
+  and **no** TIFF resolution tag, and says so on stderr. The same run on `main`
+  declares `nanometer`/`[1,1,1]`, i.e. 1 nm — the fabricated measurement this
+  removes.
 
 ### Limitations, stated plainly
 
@@ -296,58 +306,57 @@ fixed upstream**. This contribution does not claim it.
 `apps/VC3D/SegmentationCommandHandler.cpp:2076-2078` suppresses `--voxel-size` for
 a native-resolution remote volume, so this CLI fix is not reachable from VC3D — the
 route most users take. That changes GUI behaviour and its predicate has a lapsed
-history (#1228), so it is proposed separately rather than bundled here. The exact
-edit is in `FEASIBILITY.md` §8 of the linked repository.
+history (#1228), so it is proposed separately rather than bundled here.
 
 ---
 
-## How this gets submitted — procedure and the authorisation it needs
+# PART 2 — before you open the PR
 
-`VoxelScaleGuard` is a **standalone repository, not a fork of `villa`**, so a pull
-request cannot be opened from a branch of it. GitHub requires the head branch to
-live in a repository related to the base — in practice a fork.
+## What you must do yourself
 
-Checked [live] 2026-09-17: the authenticated account is **BioMarco**, and it owns
-**no fork** of `ScrollPrize/villa`.
+1. **Write the "Why I am sending this" block** in Part 1. `CONTRIBUTING.md`:
+   *"Any LLM generated PR must be accompanied by human-written commentary explaining
+   why this PR is relevant or useful"*, and it expects the work to come out of
+   *"a human interacting with the codebase in an attempt to work on the scroll
+   data"*. Say what you were doing and why the wrong declared size mattered. I
+   cannot write this for you and have not tried to.
+2. **Tick the checkbox** `- [ ] I personally verified that the example and proof
+   above were produced by this PR on the stated data.` — only if you have. The
+   honest reading: the evidence was produced by the CI workflow on the stated data,
+   and you should satisfy yourself of that before ticking. If you would rather
+   verify it directly, the workflow takes a commit as input and can be dispatched
+   from the Actions tab.
+3. **Decide about the evidence image.** `CONTRIBUTING.md` asks for before/after
+   evidence *"in metric form and also in the form of images or videos"*, and notes
+   that *"Any bugfix PR must be accompanied by a screenshot of the error (either
+   terminal or within the tool), and the script/tool running without error
+   afterward"*. `DOCS/evidence/before-after.png` covers the metadata, the two
+   rendered images and the difference panel; the terminal logs are in
+   `DOCS/CI_VALIDATION.md`. If you want a conventional terminal screenshot as well,
+   take one from the run log and attach it too.
+4. **Confirm the two open PRs on the same file are not a problem for you:**
+   [#1797](https://github.com/ScrollPrize/villa/pull/1797) and
+   [#1717](https://github.com/ScrollPrize/villa/pull/1717) both touch
+   `vc_render_tifxyz.cpp`. Neither fixes this defect, and the applied diff is
+   identical to the committed patch, but a maintainer may ask you to rebase if one
+   of them lands first.
 
-The path that works, once authorised:
+## What I have already done
 
-1. **Fork `ScrollPrize/villa`** into the account (creates
-   `BioMarco/villa`). *Not done — needs authorisation, because it publishes a new
-   repository.*
-2. **Add the patch as a branch there, containing only the three patched files.**
-   Nothing from `VoxelScaleGuard` — no harness, no CI, no documents, no data, no
-   generated images — goes into the fork:
-   ```bash
-   git clone https://github.com/BioMarco/villa.git villa-fork
-   cd villa-fork
-   git checkout -b fix/render-voxel-size-from-open-volume main
-   git apply --check /path/to/VoxelScaleGuard/patch/vc_render_tifxyz.patch   # must exit 0
-   git apply /path/to/VoxelScaleGuard/patch/vc_render_tifxyz.patch
-   git add volume-cartographer/apps/src/vc_render_tifxyz.cpp \
-           volume-cartographer/core/src/Zarr.cpp \
-           volume-cartographer/core/include/vc/core/util/Zarr.hpp
-   git commit   # the patch's own commit message
-   git push -u origin fix/render-voxel-size-from-open-volume
-   ```
-   Verify before pushing: `git show --stat` must list **exactly three files**, and
-   nothing else may be staged.
-3. **Open the PR** from `BioMarco:fix/render-voxel-size-from-open-volume` into
-   `ScrollPrize/villa:main`, pasting the body above and ticking the template's
-   verification checkbox. *Not done — needs authorisation.*
+* fork created: **<https://github.com/BioMarco/villa>** (public, `fork: true`,
+  parent `ScrollPrize/villa`);
+* branch pushed: **`fix/render-voxel-size-from-open-volume`** @
+  `d419dece6af51e0e015f6dc1df92c0312be76075`;
+* verified via the GitHub API that the commit contains **exactly three files**
+  (`vc_render_tifxyz.cpp` +235/−65, `Zarr.hpp` +5/−0, `Zarr.cpp` +10/−0) and that
+  the branch is **0 behind / 1 ahead** of `ScrollPrize/villa` `main`;
+* nothing from VoxelScaleGuard is in the fork: no harness, no CI, no documents, no
+  data, no images. The fork's branch differs from upstream `main` by those three
+  files and nothing else.
 
-Alternative, if a fork is not wanted: ask a villa maintainer for permission to push
-a branch to `ScrollPrize/villa` directly (collaborator access), or send the patch by
-email. Both need the maintainers, not only this project.
+## Open the PR
 
-Two things worth settling before the PR goes out, because villa's CONTRIBUTING.md
-is strict about them:
+<https://github.com/BioMarco/villa/pull/new/fix/render-voxel-size-from-open-volume>
 
-* it asks for before/after evidence **including an image or video**, and for the fix
-  to come from someone running the tool on real scroll data. This PR has real
-  volumetric data, real before/after terminal output and real `.zattrs`/TIFF dumps
-  from public catalog volumes, but **no image pair**. Rendering one slice pair as
-  PNG is cheap (the workflow already writes the TIFFs) and would close that gap.
-* the body must be accompanied by **human-written** commentary explaining why the
-  change is useful, per the AI guidelines. The text above is a draft for that: it
-  should be reviewed and, if needed, rewritten in your own words before posting.
+Base: `ScrollPrize/villa` `main`. **Do not merge anything into VoxelScaleGuard's
+`main`**; that instruction stands.
