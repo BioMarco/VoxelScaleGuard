@@ -1302,7 +1302,7 @@ against §12's state, and the file still reverse-applies.
 | Check | Result |
 |---|---|
 | `LICENSE-GPL-3.0.txt` identical to the upstream source | yes — SHA-256 match, 35,832 bytes |
-| Patch unchanged from the previous commit | `git diff` empty for `patch/` |
+| Patch unchanged from the previous commit | `git diff` empty for `patch/`; worktree blob `c4c1a99` = HEAD blob |
 | Patch still reverse-applies to the pinned revision | exit 0 |
 | Patch still touches exactly 3 files | `git apply --numstat` → 3 paths |
 | `ci/preflight_workflow.py` | **PRE-FLIGHT OK**, including the 3-file assertion |
@@ -1311,6 +1311,7 @@ against §12's state, and the file still reverse-applies.
 | GPL header present on all four derived files | audited: `GPL-3.0-or-later`, `NOT MIT` and a `NOTICE.md` reference in the first 25 lines of each |
 | No generated upstream files tracked | `git ls-files` shows no `harness/src/villa/**`, no `harness/third_party/**`, no `villa/**` |
 | **Harness rebuilt and re-run** | `cl.exe` build exit 0; upstream control **13/13**, project suite **27/27 (208 assertions)**, probe **4 documents / 3 divergences** |
+| GitHub's licence detection | **not observable, and the negative result recorded below** |
 | Figure generators | **not modified** this session, so their self-tests were not re-run; they were last run green in §12 |
 
 **Rebuilt even though the header edits were comment-only, and that was the right
@@ -1318,6 +1319,32 @@ call**: the four files are compiled translation units, so "it was only a comment
 a claim about the compiler that is cheaper to check than to assert. The rebuild is
 what makes it a measurement. **No render and no full CI run**: the changes cannot
 affect either, and §9's results stand from run `35249590299` / `35374993168`.
+
+#### The GitHub licence-detection probe — a negative result, and what it did and did not establish
+
+`https://api.github.com/repos/BioMarco/VoxelScaleGuard` reports
+`"license": null`, and `/license` returns **404**. That is worth explaining rather
+than leaving as a mystery, so it was probed: a throwaway branch
+`probe/licence-detection` was pushed carrying a **pure, canonical MIT** `LICENSE`
+(no exclusions clause), and `/license?ref=probe/licence-detection` also returned
+**404**.
+
+**What that establishes:** the detection API is not available for a non-default
+branch, so *no experiment of this kind can distinguish the two cases here*. It does
+**not** establish that the trailing exclusions clause defeats detection, and it does
+**not** establish that it does not.
+
+**What it does not change:** this repository's `main` is still the old
+`f2945b9` — the licence work lives on `ci/renderer-validation` — so GitHub's
+detection result *could not* have changed yet regardless of the file's content. No
+conclusion is drawn, and none should be.
+
+**The probe was fully reverted**: the remote branch deleted, the local branch
+deleted, `LICENSE` restored and verified byte-identical to HEAD
+(`git diff --stat -- LICENSE` empty), working tree clean. The only surviving trace
+is this paragraph. The file kept is the one **with** the exclusions clause, because
+legibility to a human arriving at the repository matters more than a badge whose
+behaviour cannot be tested from here.
 
 ### 14.4 What remains open after this session
 
