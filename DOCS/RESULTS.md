@@ -1145,9 +1145,10 @@ the GPL project, so contributing to it is contributing under its own terms.
 
 One thing the same inventory established in the project's favour, **by accident
 rather than design**: `harness/setup.ps1` re-creates the eight upstream files, and
-they are **not tracked in git** — `.gitignore:13`'s `villa/` pattern (no leading
+they are **not tracked in git** — `.gitignore`'s `villa/` pattern (no leading
 slash) ignores a `villa` directory at any depth. So a clone redistributes no GPL
-source. Recorded so it can be made deliberate.
+source. Recorded so it can be made deliberate; it has since been, by a comment above
+the pattern naming this reason.
 
 ### 12.3 The prize rules were misread in two places [live]
 

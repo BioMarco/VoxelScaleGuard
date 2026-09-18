@@ -130,10 +130,13 @@ a legal question this document does not settle. It is flagged in §7.
 
 **What is *not* a problem, and was expected to be:** the eight upstream files
 `harness/setup.ps1` copies into `harness/src/villa/**` are **not tracked in git**.
-`.gitignore:11-13` ignores `villa/`, and because the pattern has no leading slash it
-matches a directory named `villa` at *any* depth — so `harness/src/villa/**` is
-excluded too. `git check-ignore -v harness/src/villa/Json.cpp` →
-`.gitignore:13:villa/`. A `git clone` of this repository therefore acquires **none**
+`.gitignore`'s `villa/` pattern has no leading slash, so it matches a directory named
+`villa` at *any* depth — and therefore excludes `harness/src/villa/` too.
+`git check-ignore -v harness/src/villa/Json.cpp` →
+`.gitignore:villa/	harness/src/villa/Json.cpp` (the rule was at `.gitignore:13` when
+this inventory was taken; it is now at line 22, because a comment explaining exactly
+this was added above it on 2026-09-18). A `git clone` of this repository therefore
+acquires **none**
 of that GPL source. (The comment above the pattern was written for the root clone,
 so the exclusion of `harness/src/villa/` reads as accidental rather than designed —
 but the effect is the licensing-clean one. See §5.)
