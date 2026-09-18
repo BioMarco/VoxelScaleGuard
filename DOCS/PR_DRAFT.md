@@ -34,15 +34,20 @@ that was actually rendered.
 
 **One real example:** starting with the published volume
 `PHerc0009B/volumes/20250521125136-8.640um-1.2m-116keV-masked.zarr` and a mesh
-authored for it (`20250510172639-on-20250521125136-8.64um.tifxyz`), I ran
-`vc_render_tifxyz` on `main` and it wrote `.zattrs` declaring the voxel size as `1`
+authored for it (`20250510172639-on-20250521125136-8.64um.tifxyz`),
+`vc_render_tifxyz` built from `main` wrote `.zattrs` declaring the voxel size as `1`
 in **nanometres**; the same command with this patch writes `8.64` in
 **micrometres**.
 
+<!-- Both binaries were built and run on a GitHub-hosted runner by the CI workflow
+     in the evidence repository, with identical inputs; see "Evidence" below. Do not
+     change this to a first-person claim unless you have run the comparison
+     yourself. -->
+
 **Before:** the render attaches a physically wrong scale to everything it produces.
-On that volume the declared physical voxel size is wrong by **×8640**; on others we
-measured ×2400 and ×45532. The rendered pixels are fine — every physical number
-attached to them is not, and the TIFF gets no resolution tag at all.
+On that volume the declared physical voxel size is wrong by **×8640**; on others it
+was measured to be wrong by ×2400 and ×45532. The rendered pixels are fine — every
+physical number attached to them is not, and the TIFF gets no resolution tag at all.
 
 ```
 $ vc_render_tifxyz -v cache/ -s seg.tifxyz -g 0 --scale 1 -n 1 \
@@ -341,22 +346,27 @@ history (#1228), so it is proposed separately rather than bundled here.
    identical to the committed patch, but a maintainer may ask you to rebase if one
    of them lands first.
 
-## What I have already done
+## What is already in place
 
-* fork created: **<https://github.com/BioMarco/villa>** (public, `fork: true`,
+State of the world, so nothing has to be re-done or re-checked before you open the PR.
+None of this is a claim about *you* having run anything — the builds and renders were
+done by the CI workflow in the evidence repository, and these bullets describe the
+resulting repository state.
+
+* the fork exists: **<https://github.com/BioMarco/villa>** (public, `fork: true`,
   parent `ScrollPrize/villa`);
-* branch pushed: **`fix/render-voxel-size-from-open-volume`** @
+* the branch is pushed: **`fix/render-voxel-size-from-open-volume`** @
   `d419dece6af51e0e015f6dc1df92c0312be76075`;
-* verified via the GitHub API that the commit contains **exactly three files**
-  (`vc_render_tifxyz.cpp` +235/−65, `Zarr.hpp` +5/−0, `Zarr.cpp` +10/−0) and that
+* checked via the GitHub API that the commit contains **exactly three files**
+  (`vc_render_tifxyz.cpp` +235/−65, `Zarr.hpp` +5/−0, `Zarr.cpp` +10/−0), and that
   the branch is **0 behind / 1 ahead** of `ScrollPrize/villa` `main`;
 * nothing from VoxelScaleGuard is in the fork: no harness, no CI, no documents, no
-  data, no images. The fork's branch differs from upstream `main` by those three
-  files and nothing else.
+  data, no images. The branch differs from upstream `main` by those three files and
+  nothing else.
 
 ## Open the PR
 
 <https://github.com/BioMarco/villa/pull/new/fix/render-voxel-size-from-open-volume>
 
-Base: `ScrollPrize/villa` `main`. **Do not merge anything into VoxelScaleGuard's
-`main`**; that instruction stands.
+Base: `ScrollPrize/villa` `main`. Opening it is your action, not this repository's.
+**Do not merge anything into VoxelScaleGuard's `main`**; that instruction stands.

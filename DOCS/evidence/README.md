@@ -66,3 +66,46 @@ It asserts that both panels embedded in the committed figure are byte-identical 
 panels rebuilt from the real TIFFs, that a fresh generation puts those same panels
 in the same place, and that **no** differing pixel lies inside a raster panel — i.e.
 that the difference between the two files is annotation, never data.
+
+## `terminal-before-after.png`
+
+The same run, printed. Header, baseline and patched render logs, the comparison
+report and the summary section, laid out as a terminal frame.
+
+**It is not an interactive session, and the image says so in its own header.** It is
+GitHub Actions output: `ci/build_terminal_evidence.py` draws the lines it is given,
+and every line it draws is checked verbatim against the run's own logs by
+`ci/selftest_terminal_evidence.py` — 10 lines from each render log and 52 from
+`comparison.txt`. The last section of the image is the generator's own labelled
+summary, and it is labelled *as* a summary so it cannot be mistaken for log output.
+
+```bash
+python ci/build_terminal_evidence.py \
+    --artifact <unzipped artifact dir> \
+    --comparison <unzipped artifact dir>/ci-out/comparison.txt \
+    --out DOCS/evidence/terminal-before-after.png
+python ci/selftest_terminal_evidence.py \
+    --artifact <unzipped artifact dir> \
+    --comparison <unzipped artifact dir>/ci-out/comparison.txt
+```
+
+The self-test takes no `--figure`: it re-derives every line from the logs and checks
+the *generator's* line list, rather than comparing images. The figure path is fixed
+inside the generator, so there is nothing to pass. (An earlier revision of this file
+documented a `--figure` argument that does not exist; corrected 2026-09-18 after the
+command exited 2.)
+
+## Provenance and licence of the data shown
+
+Everything rendered above comes from Vesuvius Challenge Open Data bucket volumes
+(`PHerc0009B`, `PHerc0172`). The published datasets are **CC BY-NC 4.0** unless
+otherwise noted — see `scrollprize.org/docs/02_data.md`, and `DOCS/RESEARCH.md` §1.
+The bucket metadata documents committed under `research/raw_metadata/` are verbatim
+copies of those published documents.
+
+So this directory contains **derived works of third-party, non-commercial-licensed
+data**, and the attribution that licence requires — source, terms, and the fact that
+the panels are rendered derivatives — needs to be stated in the repository's own
+`NOTICE`/`LICENSE` material. It is currently recorded only in
+`DOCS/LICENSING_PROPOSAL.md` §4, which flags it as a gap. This note is not a
+substitute for that; it is the pointer to it.

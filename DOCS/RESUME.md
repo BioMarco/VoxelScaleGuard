@@ -53,8 +53,15 @@ source volume remotely and is holding the correct value**. For three of four
 published volumes probed, it therefore falls back to a scale of `1.0` declared as
 **nanometres**, making the declared physical voxel size wrong by **×2400, ×8640 or
 ×45532**. The rendered pixels are correct; every physical number attached to them
-is not. The fix is one file, +176/−63, and is written but **has never been
-compiled or run**.
+is not. The fix is **three files, +250/−65**; it was written, then **compiled and
+run in CI on two real published volumes**, and the rendered pixels were verified
+byte-identical (`RESULTS.md` §9).
+
+*This paragraph said "one file, +176/−63 … has never been compiled or run" until
+2026-09-18. Both halves were stale: the patch grew two Zarr files, and it has been
+compiled and run since 2026-09-16. It is the same staleness that produced the
+regeneration-command defect in `RESULTS.md` §12.1, kept visible here as a reminder
+that the summaries drift faster than the evidence.*
 
 ## 3. Read these, in this order
 
@@ -81,16 +88,23 @@ boundaries, environment traps.
   The URL-fragment hazard is real in `joinRemoteUrlPath` and reachable via the
   GUI's `remoteLocator()`; the invalid-local-metadata concern is real and *worse*
   than the review described (the reader returns `0.0` and `-3.0` as measurements).
-* **The patch**, `patch/vc_render_tifxyz.patch`, one file, applies exactly to
-  `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980`.
+* **The patch**, `patch/vc_render_tifxyz.patch`, **three files, +250/−65**, applies
+  exactly to `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980`.
+  *This line said "one file" until 2026-09-18; the patch grew a second and third
+  file on 2026-09-17 (`core/src/Zarr.cpp`, `core/include/vc/core/util/Zarr.hpp`) and
+  the summary was not updated. The same stale belief was in `AGENTS.md` §4's
+  regeneration command, where it was not cosmetic: see `RESULTS.md` §12.1.*
 * **The harness**, which compiles the pinned revision's real
   `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte, plus a
   verbatim copy of the pre-patch reader, plus tests: 27 cases / 208 assertions, with
   upstream's own 13-case suite compiled unmodified as the control.
 * **The before/after demonstration on four real published volumes**, with a
   deliberate control (the one legacy-shaped volume that already worked, and which
-  is the volume upstream's only live-S3 test pins).
-* **Eleven documents** and a public repository.
+  is the volume upstream's only live-S3 test pins) — and from 2026-09-16, **two real
+  compiled binaries rendering two real volumes in CI** (`RESULTS.md` §9).
+* **Fifteen documents**, two evidence figures and a public repository. The
+  documentation set gained `LICENSING_PROPOSAL.md` and
+  `raw_metadata/PROVENANCE.md` on 2026-09-18.
 
 ## 5. The next step — **this section is history; the gap it describes is closed**
 
@@ -289,7 +303,9 @@ Full list in `AGENTS.md` §7. The ones that will cost you an hour:
 | VC3D GUI predicate: pass the size whenever it is known, not only when rebased | `DOCS/FEASIBILITY.md` §8, `DOCS/PR_DRAFT.md` (exact edit included) |
 | Point `core/test/test_volume_live_s3.cpp` at a modern `metadata.json` volume as well as `PHerc0172` | `DOCS/TEST_PLAN.md` §4.5 — the test that would have caught this |
 | `vc_zarr_to_tiff.cpp:69-86` has the same schema gap (local-only, top-level key only) | `DOCS/FEASIBILITY.md` §8.3 |
-| Open the PR to `villa`; submit for a Progress Prize | `DOCS/PR_DRAFT.md`, `DOCS/SUBMISSION_DRAFT.md`. **Next deadline confirmed [live] 2026-09-16: 11:59pm Pacific, 30 Sep 2026** — 14 days out. Earlier revisions of `RESUME.md`, `README.md`, `PRIZE_REQUIREMENTS.md` and `SUBMISSION_DRAFT.md` wrongly said it had passed; corrected in place and recorded in `DOCS/RESULTS.md` §8 |
+| Open the PR to `villa`; submit for a Progress Prize | `DOCS/PR_DRAFT.md`, `DOCS/SUBMISSION_DRAFT.md`, `DOCS/PROGRESS_PRIZE_CHECKLIST.md` §4.1. **Deadline re-confirmed [live] 2026-09-18: 11:59pm Pacific, 30 Sep 2026** — 12 days out. Earlier revisions of `RESUME.md`, `README.md`, `PRIZE_REQUIREMENTS.md` and `SUBMISSION_DRAFT.md` wrongly said it had passed; corrected in place and recorded in `DOCS/RESULTS.md` §8 |
+| Decide the repository licence, and add the third-party Open Data attribution | `DOCS/LICENSING_PROPOSAL.md` — the `volume-cartographer/` subtree is **GPL-3.0-or-later**, not MIT, so five documents' licence reasoning had to be corrected (`RESULTS.md` §12.2). The attribution item is required by the data's own terms and is **not** optional; the licence choice is |
+| Keep the patch artefact honest | `AGENTS.md` §4's regeneration command now names all three paths, and CI asserts the touched-file count. Both exist because the old command silently produced a 2/3 patch (`RESULTS.md` §12.1) |
 
 ## 10. Conventions
 

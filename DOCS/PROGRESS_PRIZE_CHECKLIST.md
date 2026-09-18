@@ -60,13 +60,24 @@ Beyond that, typically `$20,000, $10,000, $5,000, $2,500, $1,000, $500 or $250`.
    tifxyz quadmeshes, triangular meshes), maintain consistent output formats, be
    designed for modular integration.
 
-**Participation requirement, quoted:** *"To qualify, you must have registered on the
-[Vesuvius Challenge Discord] at the time of the submission."*
+**Participation requirement, quoted — and it is *not* a Progress Prize rule.**
+*(Corrected 2026-09-18. This file previously presented the sentence below as a
+Progress Prize requirement. On re-reading the live page, it sits under the **2027
+Grand Prize**'s "Additional terms", while the Progress Prizes section states no
+registration requirement and the Progress Prizes form asks only, optionally, for a
+Discord display name. It is kept here because registering can only help and the
+form does ask.)*
 
-**How to submit:** the page links a Google form —
+> *"To qualify, you must have registered on the [Vesuvius Challenge Discord] at the
+> time of the submission."* — 2027 Grand Prize, Additional terms
+
+**How to submit:** a Google form, titled for the month it belongs to. The Progress
+Prizes form read on 2026-09-18 is
 <https://docs.google.com/forms/d/e/1FAIpQLScNBMj25FMnphngRG1Ciryv_2_Mkdq2YPJOD9WqPfZExII2iQ/viewform>.
-(Prize award is at the sole discretion of Scroll Prize, Inc.; the page also carries
-full Terms and Conditions. Read them there rather than relying on this summary.)
+Its six required fields, the one optional field, and the Terms text it embeds are
+transcribed in `PRIZE_REQUIREMENTS.md` §2.4-2.5, and each is mapped to prepared
+content in §4.1 below. (Prize award is at the sole discretion of Scroll Prize, Inc.;
+read the full Terms on the page or in the form rather than relying on this summary.)
 
 ---
 
@@ -74,8 +85,15 @@ full Terms and Conditions. Read them there rather than relying on this summary.)
 
 These are the items I cannot check for you:
 
-- [ ] **Discord registration.** The rule is verbatim above. Whether you are
-      registered is not something I can see.
+- [ ] **Discord registration.** The rule is verbatim above.
+      **User-provided declaration, 2026-09-18: registered on the Vesuvius Challenge
+      Discord; username and display name supplied.** This is recorded as the user's
+      own statement — **not independently verified**, because nothing in this
+      project can see a Discord account. The box stays unticked for that reason, not
+      because the answer is unknown. The username is deliberately **not** written
+      here or anywhere else in this repository, and must not appear in the PR or in
+      the technical documents; the submission form is where it belongs, if the form
+      asks for it at all.
 - [ ] **Whether you want to submit at all**, and in which month. The evaluation is
       monthly, so waiting costs a month but not the contribution.
 - [ ] **The submission form's own fields** — name, contact, and any attestation it
@@ -101,7 +119,7 @@ Everything below already exists. Nothing needs to be written from scratch.
 | Documentation and usage examples | `README.md`; `DOCS/INDEX.md` (reading order); `harness/` builds and runs in minutes |
 | Reproduction, no paid services | `.github/workflows/renderer-validation.yml` — public apt packages on a free runner, no private registry |
 | Standard formats | OME-Zarr `.zattrs` and TIFF resolution tags are exactly what the patch corrects; the outputs stay in those formats |
-| Open source, permissive | repository is public; the patch derives from `villa`, which is **MIT** |
+| Open source, under the page's licence wording | repository is public; **the patch derives from `volume-cartographer/`, which is GPL-3.0-or-later, not MIT** — so this row is an *open question*, not a satisfied one. See §2.3 of `PRIZE_REQUIREMENTS.md` and `LICENSING_PROPOSAL.md` §4 |
 | Advantages over existing solutions | `DOCS/FEASIBILITY.md` §7 — the comparison with #1417 and the other lapsed attempts |
 | The artifact itself | `patch/vc_render_tifxyz.patch`; the fork branch <https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume> |
 
@@ -109,6 +127,26 @@ Everything below already exists. Nothing needs to be written from scratch.
 currently *prepared and pushed, not opened*. A submission that says so is stronger
 than one a reviewer can catch in a minute. If you open the PR first, the statement
 becomes "PR #NNNN open".
+
+### 4.1 Field-by-field: what goes in each box
+
+The form read on 2026-09-18 has six required fields, one optional field and one
+consent checkbox (`PRIZE_REQUIREMENTS.md` §2.4). Every one of them already has
+prepared content, so nothing has to be written from scratch at submission time.
+
+| Form field | What to put in it | Source |
+|---|---|---|
+| `Email` | your own address | only you have it |
+| `Your full name` | your own name | only you have it |
+| `Team description — individual or team…` | one line: submitting as an individual | — |
+| `If you are a member of our Discord server, what is your display name there?` **(optional)** | your Discord display name, if you want to give it. The field is optional and conditional, so leaving it blank is allowed. **Do not put it in the repository or the PR** | your own statement, §3 |
+| `URL of your open source / publicly available contribution…` | `https://github.com/BioMarco/VoxelScaleGuard` — add the fork branch `https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume` as a second URL, and the run `https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299` as a third if the field allows more than one | `SUBMISSION_DRAFT.md` §How to reproduce |
+| `What is your contribution? (1)…(4)` | paste the four answers under **"Answers to the submission form's four questions"** in `SUBMISSION_DRAFT.md`, in the form's own order | `SUBMISSION_DRAFT.md`, that section |
+| `Yes, I agree` (Terms) | tick, having read the embedded Terms — they are transcribed in `PRIZE_REQUIREMENTS.md` §2.5 | — |
+
+Two things the form does **not** have, so do not wait for them: no file upload, and
+no place for the figures. The contribution URL is what carries the evidence, which is
+why the repository has to be readable before the form is sent.
 
 ---
 
@@ -139,13 +177,27 @@ without them would not survive reproduction.
 
 ## 6. Suggested order
 
+Nothing below has been done. Steps 1 and 5 need your explicit authorisation; step 2
+is a decision only you can make.
+
+0. **Decide the licence and attribution question** — `LICENSING_PROPOSAL.md` §8. The
+   third-party Open Data attribution (its §4) is required by the data's own terms
+   whether or not a prize is ever claimed, so it is the one item here that is not
+   optional. This does not block submitting: the form's Terms make the licence a
+   condition of *accepting* a prize, not of entry (`PRIZE_REQUIREMENTS.md` §2.5).
 1. Open the PR against villa (needs your comment and your checkbox tick — see
    `PR_DRAFT.md` Part 2). Maintainer feedback before a prize submission is only an
-   advantage.
-2. Confirm your Discord registration.
+   advantage. **This is the item `README.md` lists as still open, and it has not been
+   authorised.**
+2. Note your Discord registration. It is **not** a Progress Prize requirement (that
+   correction is in §2 above); the form only asks, optionally, for a display name.
 3. Re-read <https://scrollprize.org/prizes> for the current deadline before
-   submitting; do not rely on the date in this file.
-4. Fill in the submission form, attaching or linking the materials in §4.
+   submitting; do not rely on the date in this file. The form is recreated per month
+   and its title names the month, so open it from the page rather than from a saved
+   link.
+4. Fill in the submission form using §4.1 field by field. There is no upload field:
+   the contribution URL carries the evidence, so the repository must be readable and
+   its links must resolve **before** the form is sent.
 5. Only then, if you want, consider the follow-up work that would strengthen a
    later entry: the VC3D GUI predicate (`FEASIBILITY.md` §8), and rendering more
    volumes.

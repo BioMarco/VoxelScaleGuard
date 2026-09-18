@@ -90,6 +90,23 @@ proc = subprocess.run(
 )
 check("patch reverse-applies against villa/", proc.returncode == 0, proc.stderr.strip()[:200])
 
+# 3b. The patch touches exactly the three files the workflow asserts. This is the
+#     guard against AGENTS.md section 4's old bug: its regeneration command named
+#     only the renderer, so following it produced a 2/3 patch that reverse-applied
+#     cleanly and would still have passed the check above. RESULTS.md section 12.1.
+EXPECTED_PATCH_FILES = 3
+proc = subprocess.run(
+    ["git", "-c", "safe.directory=*", "-C", str(ROOT / "villa"),
+     "apply", "--numstat", str(patch)],
+    capture_output=True, text=True,
+)
+paths = [line.split("\t")[-1] for line in proc.stdout.splitlines() if line.strip()]
+check(
+    f"patch touches exactly {EXPECTED_PATCH_FILES} files",
+    proc.returncode == 0 and len(paths) == EXPECTED_PATCH_FILES,
+    f"exit={proc.returncode}, {len(paths)} path(s): {', '.join(paths) or proc.stderr.strip()[:200]}",
+)
+
 # 4. Step ORDER, for the tools that a later step needs. This has already gone
 #    wrong once: the Pillow install was placed after the edge-case step that reads
 #    TIFF tags, so that step silently reported "no resolution" for every case.

@@ -446,6 +446,14 @@ The patch diffstat was re-derived from the committed artefact rather than quoted
 (`volume-cartographer/apps/src/vc_render_tifxyz.cpp`), which matches `RESUME.md` §2
 and `PROJECT_STATUS.md`.
 
+**Corrected 2026-09-18: this measurement is a point-in-time record, not the current
+state.** The patch became **three files, +250/−65** on 2026-09-17 (§11.5). The
+paragraph above is left as written because it is what was measured on 2026-09-16,
+and because the three documents it says "match" were still propagating the one-file
+figure on 2026-09-18 — including `AGENTS.md` §4, where it was load-bearing (§12.1).
+Where a number and the committed artefact disagree, the artefact wins:
+`git -C villa apply --numstat ../patch/vc_render_tifxyz.patch`.
+
 ### 8.2 A documentation error: the Progress Prize deadline had not passed
 
 Four documents (`README.md`, `DOCS/PRIZE_REQUIREMENTS.md` §1.1 and §4.1,
@@ -1070,7 +1078,128 @@ are byte-identical between the pinned revision and upstream `main` at `2dcfaf6`
 
 ---
 
-## 12. Bottom line
+## 12. Session of 2026-09-18 — the licence inventory, and four documentation defects it found
+
+No code changed in this session. It was the documentation and evidence pass before a
+submission, and it produced **one substantive correction and three procedural ones**,
+all found by executing checks rather than by reading prose.
+
+### 12.1 The patch-regeneration command in `AGENTS.md` §4 was wrong, and would have corrupted the artefact [exec]
+
+`AGENTS.md` §4 documented:
+
+```
+git -c safe.directory='*' diff --output=../patch/vc_render_tifxyz.patch \
+    -- volume-cartographer/apps/src/vc_render_tifxyz.cpp
+```
+
+That pathspec names **one** file. The patch has covered **three** since §11.5. Run
+from inside `villa/`, exactly as documented, it wrote a **18,480-character** patch
+whose only `diff --git` header is the renderer's — against the committed artefact's
+**20,559 characters** (blob `c4c1a99`, 20,564 bytes) and three headers. It then
+*reverse-applied cleanly*, because it correctly described the two thirds it
+mentioned. So the documented verification would have reported success while having
+replaced the committed patch with a 2/3 patch.
+
+| Invocation | Characters | `diff --git` headers |
+|---|---|---|
+| As documented (one path) | 18,480 | 1 |
+| All three paths | 20,559 | 3 — byte-identical to the row below (`git hash-object` both `c4c1a99`) |
+| Committed `patch/vc_render_tifxyz.patch` | 20,559 | 3 |
+
+Fixed by naming all three paths, with the correction and its date recorded inline.
+The workflow now also asserts `PATCH_FILES == 3`
+(`.github/workflows/renderer-validation.yml`, "Apply patch to the pinned revision"),
+so this cannot regress silently even if the comment drifts again. While adding that,
+a second gap in the same step was closed: `PATCH_IDENTICAL=no` was only **printed**,
+never asserted, so a mismatch between the applied diff and the committed patch would
+have left a green run whose "patched" binary was built from a different change. Both
+are now `exit 1`, and `ci/preflight_workflow.py` checks the committed artefact's file
+count on every run.
+
+An earlier probe of this same command appeared to produce **0** files: that run
+passed `--output=../patch/...` to `git -C villa`, which resolves the output path
+against the *current* directory, not against `-C`'s. The documented form is
+`cd villa` first, which is what was reproduced above. Both facts are worth keeping
+because they are two different ways the same check can lie.
+
+### 12.2 "`villa` is MIT" was false for every file this project touches [read]
+
+The licence inventory read the checkouts and found:
+
+| Path | Licence |
+|---|---|
+| `villa/LICENSE` (root) | MIT, Copyright (c) 2024 Vesuvius Challenge |
+| `villa/volume-cartographer/LICENSE` | **GNU GPL version 3**, Copyright (C) 2023 EduceLab |
+| `villa/volume-cartographer/NOTICE` | GPL-3.0-or-later |
+| `villa/volume-cartographer/Dockerfile:10` | `LABEL org.opencontainers.image.licenses="GPL-3.0"` |
+
+All three patched files, all eight files `harness/setup.ps1` copies, and the three
+subprojects `harness/src/vsguard/` links against are inside that subtree. `README.md`,
+`AGENTS.md`, `DOCS/PRIZE_REQUIREMENTS.md`, `DOCS/RESEARCH.md` and
+`DOCS/PROGRESS_PRIZE_CHECKLIST.md` all asserted or relied on "villa is MIT", and
+`PRIZE_REQUIREMENTS.md` used it to argue the prize's licence condition was satisfied.
+Each is corrected where it stood, with the correction dated; the full inventory is
+`LICENSING_PROPOSAL.md`. **This does not affect the patch or the PR** — upstream *is*
+the GPL project, so contributing to it is contributing under its own terms.
+
+One thing the same inventory established in the project's favour, **by accident
+rather than design**: `harness/setup.ps1` re-creates the eight upstream files, and
+they are **not tracked in git** — `.gitignore:13`'s `villa/` pattern (no leading
+slash) ignores a `villa` directory at any depth. So a clone redistributes no GPL
+source. Recorded so it can be made deliberate.
+
+### 12.3 The prize rules were misread in two places [live]
+
+The prizes page and the submission form were both re-fetched on 2026-09-18.
+
+* The deadline *"11:59pm Pacific, September 30th, 2026"* is still current, and the
+  Grand Prize deadline is June 25th 2027. Confirmed, not assumed.
+* The sentence *"To qualify, you must have registered on the Vesuvius Challenge
+  Discord at the time of the submission"* sits under the **2027 Grand Prize**'s
+  Additional terms, not under the Progress Prizes. `PROGRESS_PRIZE_CHECKLIST.md` had
+  presented it as a Progress Prize requirement.
+* The Terms say *"you have to make it open source under a permissive license to
+  accept the prize"* — a condition of **accepting** an award, not of submitting. The
+  GPL question in §12.2 therefore does not block an entry.
+* The Progress Prizes form has **six required fields, one optional field and a
+  consent checkbox**, and **no upload**. The four-part question in its long field is
+  now answered in `SUBMISSION_DRAFT.md` section by section, and mapped in
+  `PROGRESS_PRIZE_CHECKLIST.md` §4.1.
+
+### 12.4 Third-party data is redistributed without its required attribution [read]
+
+Four Open Data bucket metadata documents are committed verbatim under
+`research/raw_metadata/`, and `DOCS/evidence/before-after.png` embeds renders of two
+bucket volumes. The published datasets are **CC BY-NC 4.0** unless otherwise noted,
+which requires attribution on redistribution. No file in the repository stated this.
+`research/raw_metadata/PROVENANCE.md` now records each document's URL, byte count and
+SHA-256 and the terms; `DOCS/evidence/README.md` states the same beside the figures;
+`LICENSING_PROPOSAL.md` §4 lists it as an open action item. **It is still not in a
+`NOTICE`/`LICENSE`**, because the repository has no licence file yet by decision.
+
+### 12.5 One code change, and it was forced by a new file
+
+Adding `research/raw_metadata/PROVENANCE.md` (§12.4) changed the probe's output: it
+iterated the whole directory, so the new Markdown file became a fifth "document" and
+printed `SKIP: not valid JSON`, and the summary read **"documents examined: 5"**
+where every document in the set says four. `harness/tools/probe_render_voxel_size.cpp`
+now filters to `*.json` regular files and reports **4 documents, 3 divergences**
+again — re-built and re-run, exit 0 [exec].
+
+That is the whole of this session's code change. Nothing in the patch, the workflow's
+build steps, or the test suites was touched.
+
+### 12.6 What this session did not do
+
+It did not open a PR, did not submit anything, did not add a `LICENSE`, and did not
+change the patch. Two workflow assertions were **strengthened**, not relaxed:
+`PATCH_FILES == 3`, and `PATCH_IDENTICAL=no` now fails the step instead of printing
+a line and continuing (§12.1).
+
+---
+
+## 13. Bottom line
 
 | Question | Answer |
 |---|---|
@@ -1083,5 +1212,5 @@ are byte-identical between the pinned revision and upstream `main` at `2dcfaf6`
 | Does the patch compile? | **Yes** — but it did **not** before this session. The committed patch could never have built (§9.1). That is the single most important result in this document |
 | Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |
 | Can the patched binary be built on this machine? | **No** locally (§8.4), which is why the build runs on GitHub Actions (§9) |
-| Ready to submit as-is? | **Closer, but not yet.** The renderer fix is now binary-verified; §7.4 (GUI reachability) remains open by decision, and no PR has been opened |
-| Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-16. Earlier revisions wrongly said it had passed; see §8.2 |
+| Ready to submit as-is? | **The technical evidence is; the paperwork is not.** The licence decision and the third-party attribution are open (§12.2, §12.4), and no PR has been opened |
+| Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-18. Earlier revisions wrongly said it had passed; see §8.2 |

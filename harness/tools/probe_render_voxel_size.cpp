@@ -73,8 +73,15 @@ int main(int argc, char** argv)
                          "no documents given and no research/raw_metadata directory found\n");
             return 2;
         }
-        for (const auto& entry : fs::directory_iterator(dir))
-            documents.push_back(entry.path());
+        // Only the fetched documents: the directory also holds PROVENANCE.md,
+        // which records where they came from. Without this filter the probe
+        // counted it as a fifth "document" and reported "SKIP: not valid JSON",
+        // so its summary line read "documents examined: 5" instead of the four
+        // that were actually probed. Found 2026-09-18 when that file was added.
+        for (const auto& entry : fs::directory_iterator(dir)) {
+            if (entry.is_regular_file() && entry.path().extension() == ".json")
+                documents.push_back(entry.path());
+        }
     }
 
     std::printf("VoxelScale Guard - vc_render_tifxyz voxel-size resolution\n");

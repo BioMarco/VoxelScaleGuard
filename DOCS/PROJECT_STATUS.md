@@ -113,11 +113,14 @@ not compile.** See `RESULTS.md` §9.
 | **The patch as first committed did not compile** | **FOUND AND FIXED.** The new resolution block used variables declared ~60 lines below it. This is the most valuable single result in the project: a small, reviewed, "logic-verified" change that could never have built. The harness now tests for the class of defect (`RESULTS.md` §9.2) |
 | **The `harness` "pristine" copy was actually patched** | **FOUND AND FIXED.** `setup.ps1` copied from the patched working tree, so the before/after comparison compared the patch with itself. It now uses `git show <commit>:<path>` |
 | **The GUI path remains broken** | **Open by decision.** `SegmentationCommandHandler.cpp:2076` is deliberately a separate commit, because it changes GUI behaviour and its predicate has a lapsed history (#1228). Exact edit in `FEASIBILITY.md` §8 |
-| **The "no usable voxel size" branch** | **Unit-tested only.** Driving it end to end would mean severing a volume from its own metadata; with a real volume the patched binary finds the value, which is the fix |
+| **The "no usable voxel size" branch** | **CLOSED 2026-09-17.** It is driven end to end against a local-only store with no metadata document, asserting on the emitted files that nothing is declared. This row said "unit-tested only" until 2026-09-18; that was stale. Getting the check to exercise the branch took two attempts that passed vacuously — `RESULTS.md` §11.1 |
 | **Coverage is two volumes, one crop, one slice** | **Open.** Enough to demonstrate the correction and the absence of a pixel regression; not a survey |
 | **The `vc_zarr_to_tiff` schema gap** | **Open.** Same class of defect (local-only, top-level key only), but no remote path and not needed for the reported problem. Documented as a candidate, not developed |
 | **The live-S3 test still pins the legacy volume** | **Open.** Changing an existing live test's fixture is a maintainer decision. Proposed in `PR_DRAFT.md` |
-| **No submission and no PR** | By instruction. The evidence needed for one now mostly exists |
+| **No repository licence is applied, and the licence reasoning was wrong** | **Open, and now correctly stated.** `villa`'s root is MIT but every file this project patches or copies is under `volume-cartographer/`, which is **GPL-3.0-or-later** (© 2023 EduceLab). Five documents relied on the false "villa is MIT" premise; all are corrected, and `LICENSING_PROPOSAL.md` holds the inventory and the decision. `RESULTS.md` §12.2 |
+| **Third-party Open Data attribution is missing from the repository's own licence material** | **Open, and required by the data's terms** whether or not a prize is claimed: four bucket metadata documents are committed verbatim and the before/after figure embeds renders of two volumes, all under CC BY-NC 4.0 unless otherwise noted. Recorded in `research/raw_metadata/PROVENANCE.md` and `LICENSING_PROPOSAL.md` §4; not yet in a `NOTICE` |
+| **The documented patch-regeneration command was wrong** | **FOUND AND FIXED 2026-09-18.** `AGENTS.md` §4 named one path where the patch covers three, so following it produced an 18,480-byte patch that reverse-applied cleanly while having dropped both Zarr hunks. Fixed, and CI now asserts the touched-file count. `RESULTS.md` §12.1 |
+| **No submission and no PR** | By instruction. The evidence needed for one now exists; the paperwork is the remaining work |
 
 **The patch is binary-verified as of 2026-09-16.** It compiles, runs on real
 published volumes, corrects the declared physical scale in both output formats, and
@@ -142,12 +145,15 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | `DOCS/TEST_PLAN.md` | executed vs. blocked, and what would falsify each claim |
 | `DOCS/RESULTS.md` | everything executed, with exit codes; and §7, what was not |
 | `DOCS/PR_DRAFT.md` | pull request draft, **not submitted** |
-| `DOCS/SUBMISSION_DRAFT.md` | Progress Prize draft, **not submitted** |
+| `DOCS/SUBMISSION_DRAFT.md` | Progress Prize draft, including the form's four questions answered in the form's own order; **not submitted** |
+| `DOCS/PROGRESS_PRIZE_CHECKLIST.md` | the submission, field by field, and what only the author can attest |
+| `DOCS/LICENSING_PROPOSAL.md` | licence and attribution inventory; **proposal, nothing applied** |
 | `README.md` | landing page: description, layout, build and run |
 | `AGENTS.md` | operating rules, verification requirements, attribution, environment traps |
 | `patch/vc_render_tifxyz.patch` | the fix |
 | `harness/` | the reproducer and its tests |
 | `research/` | the live catalog probe, the raw documents it fetched, and the probe summary |
+| `research/raw_metadata/PROVENANCE.md` | URL, hash and terms for each fetched document |
 | `tools/git.ps1` | git wrapper carrying the transient `safe.directory` flag |
 
 ## 8. Environment notes worth keeping
@@ -206,3 +212,15 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | `DOCS/RESUME.md` written: state-verification commands, the next step with acceptance criteria, the decisions already made and why, the environment traps, and a ready-to-paste continuation prompt |
 | Reconnaissance for the handoff: found that the published prebuilt Windows package is built from the **pinned commit** and bundles the `vc_*` CLI tools, which makes the *before* half of the demonstration obtainable without a build |
 | Remaining: build the patched binary and produce artifact-level evidence — **blocked, needs authorisation**. Procedure in `DOCS/RESUME.md` §5 |
+| Build-and-run moved to GitHub Actions; run 35249590299 builds baseline and patched from one commit and renders on two public volumes (`RESULTS.md` §9) |
+| Patched pixels verified byte-identical; the regression check hashes decoded pixels, not files (`RESULTS.md` §9.5) |
+| ×1000 unit regression found in the patch's own explicit-size path, fixed and pinned by tests (`RESULTS.md` §10) |
+| Pre-PR adversarial review: fabricated `scale` on the unknown-size branch, misleading warning text, and the local/open-volume tier order — all fixed (`RESULTS.md` §11) |
+| Terminal-evidence figure generated from verbatim CI logs, with a self-test asserting every displayed line (`DOCS/evidence/README.md`) |
+| Licence and attribution inventory: `volume-cartographer/` is GPL-3.0-or-later, not MIT; five documents corrected, `DOCS/LICENSING_PROPOSAL.md` written, third-party data provenance recorded (`RESULTS.md` §12) |
+| `AGENTS.md` §4's patch-regeneration command corrected (it named one path where the patch covers three) and CI given a touched-file-count assertion (`RESULTS.md` §12.1) |
+| `PATCH_IDENTICAL=no` promoted from a printed line to a step failure, in the same pass (`RESULTS.md` §12.1) |
+| Probe tool narrowed to `*.json` so the new `PROVENANCE.md` is not counted as a probed document; rebuilt and re-run, still 4 documents / 3 divergences (`RESULTS.md` §12.5) |
+| `.gitignore`'s accidental-but-correct exclusion of `harness/src/villa/**` documented as deliberate (`DOCS/LICENSING_PROPOSAL.md` §5) |
+| Prize rules and submission form re-read; the form's fields and Terms transcribed, and the four form questions answered in `DOCS/SUBMISSION_DRAFT.md` (`RESULTS.md` §12.3) |
+| Still not done, by instruction: no PR opened, no submission sent, no `LICENSE` applied, no merge to `main` |

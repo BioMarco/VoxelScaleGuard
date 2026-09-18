@@ -87,7 +87,15 @@ than fatal. No private registry, no credentials beyond the automatic
 3. `git apply --check` then `git apply patch/vc_render_tifxyz.patch` on that same
    detached tree. The patch is applied by `git apply`; **no villa source is edited
    by hand.** The resulting `git diff` is compared byte-for-byte with the
-   committed patch: `PATCH_IDENTICAL=yes`.
+   committed patch: `PATCH_IDENTICAL=yes`. Additionally, `git diff --name-only` must
+   list **exactly 3** files (`PATCH_FILES=3`).
+
+   *Both of those are now asserted rather than logged, corrected 2026-09-18.* Until
+   then a `PATCH_IDENTICAL=no` only printed a line, so a mismatch would have left a
+   green run whose "patched" binary came from something other than the committed
+   patch; and the file-count check did not exist, which is how `AGENTS.md` §4's
+   one-path regeneration command could have gone unnoticed (`RESULTS.md` §12.1).
+   `ci/preflight_workflow.py` now checks the committed artefact's file count too.
 4. Configure and build → `build/patched/bin/vc_render_tifxyz`.
 
 The binaries are **not** copied out of their build trees. Upstream links the `vc_*`
@@ -122,9 +130,13 @@ logic change. Diffstat moved from +177/−65 to +176/−63; `git apply --check
 --reverse` exits 0 and a reverse-then-forward round trip reproduces the same file
 byte-for-byte.
 
-*(§8.1 later changed the same region again, so the patch's current diffstat is
-**+218/−64**. The figures above are the state at the time this defect was fixed and
-are kept as the record.)*
+*(§8.1 later changed the same region again, so this document at that point recorded
+**+218/−64**. Both figures above are the state at the time each defect was fixed and
+are kept as the record. **The patch's current diffstat is three files, +250/−65**
+— `RESULTS.md` §11.5 added `core/src/Zarr.cpp` and `core/include/vc/core/util/Zarr.hpp`.
+Corrected here 2026-09-18; the previous note stopped at +218/−64 and so understated
+the patch's file count, which is the same staleness that produced the defect in
+`RESULTS.md` §12.1.)*
 
 The harness could not have caught this, and in fact hid it: `harness/setup.ps1`
 was copying the file from `villa/`'s working tree, which is patched in place, so

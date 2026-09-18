@@ -32,16 +32,18 @@ of Scroll Prize, Inc., and no submission has been made.
 
 The page states: *"The next deadline is 11:59pm Pacific, September 30th, 2026."*
 
-**Re-checked [live] on 2026-09-16** against <https://scrollprize.org/prizes>: the
-sentence above is still verbatim current, and the deadline is **14 days away, not
-past**. This section previously claimed the date "has passed as of this work" and
-that the next deadline was unconfirmed. **That was a documentation error, not a
-change on the page**: the page has not moved, the reading of it was wrong. It is
-corrected here and recorded in `RESULTS.md` §8.
+**Re-checked [live] on 2026-09-18** against <https://scrollprize.org/prizes>: the
+sentence above is still verbatim current, the Grand Prize deadlines on the same page
+read June 25th 2027, and the Progress Prize deadline is **12 days away, not past**.
+This section previously claimed the date "has passed as of this work" and that the
+next deadline was unconfirmed. **That was a documentation error, not a change on the
+page**: the page has not moved, the reading of it was wrong. It is corrected here and
+recorded in `RESULTS.md` §8.
 
 An earlier entry in this file implied the work was done after 2026-09-30. No such
 date is asserted anywhere now; the date of this correction is **2026-09-16**, and
-every "today"/"now" in this document set means that date unless it says otherwise.
+every "today"/"now" in this document set means the latest verification date stated
+in the section at hand.
 
 ---
 
@@ -81,23 +83,84 @@ The page lists what it favours. The four that bear on this project:
 
 Prizes are conditioned on open-sourcing: *"You agree to make your method open
 source if you win a prize… you have to make it open source under a permissive
-license to accept the prize."* `villa` itself is MIT (Copyright (c) 2024 Vesuvius
-Challenge), so a patch under the same terms satisfies this. Nothing has been
-published.
+license to accept the prize."*
 
-### 2.4 How submissions are made
+**This section was wrong until 2026-09-18 and the error is load-bearing.** It read:
+*"`villa` itself is MIT (Copyright (c) 2024 Vesuvius Challenge), so a patch under the
+same terms satisfies this."* `villa`'s **root** is MIT, but the three files the
+patch modifies live under `villa/volume-cartographer/`, which is
+**GPL-3.0-or-later**, Copyright (C) 2023 EduceLab
+(`volume-cartographer/LICENSE` + `NOTICE`; corroborated by
+`volume-cartographer/Dockerfile:10`). A patch against GPL-3.0-or-later code is a
+derivative of it, and cannot be relicensed MIT. The conclusion therefore does not
+follow from the premise, and the premise was false.
+
+What *is* true: this repository's **own** work — the investigation, harness, CI,
+evidence and documentation, which is the larger and more original part of the
+submission — can be licensed permissively without difficulty. The conflict is
+narrow and specific: the prize text names *"an open source license (e.g. MIT)"* in
+one place and *"a permissive license"* in another, and GPL-3.0-or-later is open
+source by the OSI definition but **not** permissive. That is a question for the
+organisers, not one to resolve in this document. Full inventory and the two
+defensible framings: `LICENSING_PROPOSAL.md` §1 and §4.
+
+Nothing has been published.
+
+### 2.4 How submissions are made, and the form's actual fields
 
 Via the linked Google Form, not by email (the email route is for Grand
 Prize-class results). **No submission has been made and none will be without
 authorisation.**
 
+The form was fetched and read on 2026-09-18. Its title confirms which month the
+entry belongs to, and it has **six required fields** — no more, and no upload:
+
+| # | Field (verbatim) | Required |
+|---|---|---|
+| 1 | `Email` | yes |
+| 2 | `Your full name` | yes |
+| 3 | `Team description — are you submitting as an individual or as a team, and who is on your team? (If on a team, the team leader should be the one filling out this form)` | yes |
+| 4 | `If you are a member of our Discord server, what is your display name there?` | **no** — the label is conditional, so the field is optional |
+| 5 | `URL of your open source / publicly available contribution, e.g. GitHub repo or PR (you can add multiple)` | yes |
+| 6 | `What is your contribution? Please mention (1) Which scroll data did you work on for this submission? (2) How does it substantially increase the probability of yourself or someone else reading those scrolls or others? (3) What does it enable that was not possible before? (4) What evidence have you provided for this?` | yes |
+
+Plus one required checkbox: `Yes, I agree` to the Terms and Conditions, which are
+**reproduced in full inside the form** — the same text as §2.5.
+
+Field 6 is a four-part question, so the prepared prose in `SUBMISSION_DRAFT.md` is
+mapped to it explicitly in `PROGRESS_PRIZE_CHECKLIST.md` §4.1. Field 4 is the only
+place a Discord display name belongs: **it is optional, and the username is not
+recorded anywhere in this repository** deliberately.
+
 ### 2.5 Terms and conditions that apply
 
-* Award at the sole discretion of Scroll Prize, Inc.; more or fewer awards may be
-  issued.
-* For milestone prizes, submissions close once a winner is announced — not
-  applicable here.
-* Prize winner must provide payment information within 30 days of announcement.
+Verbatim from the form itself (2026-09-18), which matters because it is the text the
+submitter actually agrees to:
+
+> *"You agree to make your method open source if you win a prize. It does not have to
+> be open source at the time of submission, but you have to make it open source under
+> a permissive license to accept the prize."*
+
+Three consequences, stated because two earlier readings of this project got them
+wrong:
+
+* **"permissive" here is a condition of *accepting a prize*, not of submitting.**
+  The submission may be closed-source at the time of entry. So the GPL-3.0-or-later
+  question in §2.3 does **not** block an entry; it conditions the *award*.
+* **The Grand Prize section states the permissive requirement directly**, not only
+  in the general Terms: *"Pipeline fully reproducible and code shared under an open
+  source license (e.g. MIT), published publicly on GitHub. It does not have to be
+  open source at the time of submission, but you have to make it open source under a
+  permissive license, publicly on GitHub, to accept the prize."*
+* **Discord registration is not stated for the Progress Prizes.** The quoted
+  *"To qualify, you must have registered on the Vesuvius Challenge Discord at the
+  time of the submission"* is under the **2027 Grand Prize's** Additional terms.
+  `PROGRESS_PRIZE_CHECKLIST.md` previously presented it as a Progress Prize rule;
+  that is corrected there. Registration is still recorded as a user declaration
+  because it can only help and the form asks for a display name.
+* Apart from that: award at the sole discretion of Scroll Prize, Inc., more or fewer
+  awards may be issued; milestone submissions close once the winner is announced
+  (not applicable here); the winner must provide payment information within 30 days.
 
 ---
 
@@ -110,14 +173,14 @@ for the wrong rubric.
 
 | Requirement | Status |
 |---|---|
-| Open source under a permissive licence, if a prize is won | **Satisfiable** — patch is a derivative of MIT `villa`; nothing published yet |
+| Open source under a permissive licence, **if a prize is won** | **Open question, and it is a real one** — the patch is a derivative of **GPL-3.0-or-later** code (`volume-cartographer/`), not of MIT code; this repository's own work can be permissively licensed, but the prize text says "permissive" in the Terms and "open source (e.g. MIT)" in the Grand Prize conditions. It does **not** block submitting (§2.5). Ask the organisers. See §2.3 and `LICENSING_PROPOSAL.md` §4 |
 | Problem identification and solution, with a demonstration of its use | **Partial** — problem identified and demonstrated at the metadata-resolution level (`RESULTS.md` §2); a *use* demonstration needs a real render |
 | Significant advantage over existing solutions | **Demonstrated against alternatives** — `FEASIBILITY.md` §7 compares concretely with the lapsed PR #1417 |
 | Comprehensive documentation and usage examples | **Yes** — this file set |
 | Standard formats (OME-Zarr / Zarr / tifxyz) | **Yes** — the fix is about OME-Zarr `.zattrs` and TIFF resolution tags; no format change |
 | Maintain consistent output formats | **Yes** — no interface or format change; `writeZarrAttrs`'s signature is untouched |
 | Modular integration | **Yes** — reuses `vc::metadata::resolveLocalStoreVoxelSize` from `core` |
-| Evaluation monthly via the form | **Pending** — date unconfirmed, not submitted |
+| Evaluation monthly via the form | **Pending** — the deadline is confirmed and current (11:59pm Pacific, 30 September 2026); the form's fields are recorded in §2.4; **not submitted** and will not be without authorisation |
 
 ### 3.2 Judged useful, not required
 

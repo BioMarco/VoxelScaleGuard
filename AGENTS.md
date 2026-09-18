@@ -99,16 +99,37 @@ to tick is not the same as treating it as a thing to find out.
   committed artefact is `patch/vc_render_tifxyz.patch`, not the clone.
 * `villa/` is git-ignored here on purpose: it is an upstream checkout with its own
   `.git`, and must not be absorbed into this repository.
-* After any change to `villa/`, regenerate the patch and re-verify it:
+* After any change to `villa/`, regenerate the patch and re-verify it. The patch
+  touches **three** files, so all three must appear in the pathspec:
   ```
   cd villa
-  git -c safe.directory='*' diff --output=../patch/vc_render_tifxyz.patch -- volume-cartographer/apps/src/vc_render_tifxyz.cpp
+  git -c safe.directory='*' diff --output=../patch/vc_render_tifxyz.patch -- \
+      volume-cartographer/apps/src/vc_render_tifxyz.cpp \
+      volume-cartographer/core/include/vc/core/util/Zarr.hpp \
+      volume-cartographer/core/src/Zarr.cpp
   git -c safe.directory='*' apply --check --reverse ../patch/vc_render_tifxyz.patch   # must exit 0
   ```
   A reverse-apply that succeeds proves the patch is well-formed **and** describes
   the working tree exactly. Do this before claiming a patch is current.
-* `villa` is MIT (Copyright (c) 2024 Vesuvius Challenge). Keep it that way. Do not
-  copy `villa` code into this repository without its licence header and a note.
+  **This instruction was wrong until 2026-09-18**: it named only
+  `vc_render_tifxyz.cpp`, so following it silently produced a 2/3 patch that
+  dropped both Zarr hunks (18,480 characters against the committed 20,559, i.e.
+  20,564 bytes) while still reverse-applying cleanly to the two thirds it described.
+  Corrected against the committed artefact with `git apply --numstat`, which reports
+  all three paths; `ci/preflight_workflow.py` and the CI workflow both now assert
+  the count.
+* `villa`'s **root** is MIT (Copyright (c) 2024 Vesuvius Challenge), but the
+  subtree this project patches is not: `villa/volume-cartographer/` is
+  **GPL-3.0-or-later**, Copyright (C) 2023 EduceLab, per
+  `volume-cartographer/LICENSE` and `NOTICE` (corroborated by
+  `volume-cartographer/Dockerfile:10`,
+  `org.opencontainers.image.licenses="GPL-3.0"`). All three patched files and all
+  eight files `harness/setup.ps1` copies live in that GPL subtree, and none of
+  them carries a per-file licence header — the obligation flows from the
+  directory-level `LICENSE`/`NOTICE`. Until 2026-09-18 this bullet asserted
+  "`villa` is MIT", which is true of the monorepo root and false of the patched
+  subtree. See `DOCS/LICENSING_PROPOSAL.md`; the licence of *this* repository is
+  an open decision, not a settled one.
 
 ## 5. Attribution — non-negotiable
 

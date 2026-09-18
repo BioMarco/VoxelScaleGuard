@@ -310,6 +310,11 @@ says:
 > [.github/workflows/vc3d-windows.yml](../.github/workflows/vc3d-windows.yml) for
 > the package list), then:"
 
+*(That link is verbatim from upstream's `volume-cartographer/README.md:42` and is
+relative to **villa's** repository root, so it does not resolve from this one. The
+file is `villa/.github/workflows/vc3d-windows.yml`; it is git-ignored here, like the
+rest of the clone. Left as-is rather than repaired, because it is a quotation.)*
+
 — but that workflow file **contains no package list**; it points at the
 `vc3d-deps` archive instead. The README's pointer is therefore stale/incorrect as
 of this commit. The packages are implicitly whatever the `vc3d-deps` image

@@ -10,12 +10,12 @@ survive contact with the source.
 
 | Source | Revision / date | Licence | How consulted |
 |---|---|---|---|
-| `https://github.com/ScrollPrize/villa` | `757f70c0140a4cfbbbd44975ef09558444b96980` (`main`), cloned shallow to depth 50 | MIT (`villa/LICENSE`, "Copyright (c) 2024 Vesuvius Challenge") | read the source at that commit; git commands run with a transient `-c safe.directory='*'` |
-| `https://scrollprize.org/prizes` | fetched during this session | site content CC BY-NC 4.0 unless stated | full text read |
+| `https://github.com/ScrollPrize/villa` | `757f70c0140a4cfbbbd44975ef09558444b96980` (`main`), cloned shallow to depth 50 | **root MIT** (`villa/LICENSE`, "Copyright (c) 2024 Vesuvius Challenge"), **but** the `volume-cartographer/` subtree — every file this project patches or copies — is **GPL-3.0-or-later**, Copyright (C) 2023 EduceLab (`volume-cartographer/LICENSE` + `NOTICE`). Corrected 2026-09-18; this row previously said "MIT" for the whole repo. See `LICENSING_PROPOSAL.md` §1 | read the source at that commit; git commands run with a transient `-c safe.directory='*'` |
+| `https://scrollprize.org/prizes` | fetched during this session | site **content** CC BY-NC 4.0 unless stated (the site's *code* is MIT — a different thing) | full text read |
 | `https://scrollprize.org/data` | see `PRIZE_REQUIREMENTS.md` | — | via the prizes page and the live bucket |
-| `https://vesuvius-challenge-open-data.s3.amazonaws.com/…` | live, anonymous | Open Data | GET of 8 candidate documents, 4 found |
-| `ScrollPrize/villa` issues #1403, #1226 | full text + all comments | MIT (repo) | GitHub REST API |
-| `ScrollPrize/villa` PRs #1417, #1228, #1229, #1313, #1541, #1797 | metadata, bodies, review comments, diffs | MIT (repo) | GitHub REST API |
+| `https://vesuvius-challenge-open-data.s3.amazonaws.com/…` | live, anonymous | Open Data, CC BY-NC 4.0 unless otherwise noted. **Four of these documents are committed verbatim into `research/raw_metadata/`, and the figure in `DOCS/evidence/` is derived from the same material; the attribution that licence requires is not yet recorded beside them — `LICENSING_PROPOSAL.md` §4** | GET of 8 candidate documents, 4 found |
+| `ScrollPrize/villa` issues #1403, #1226 | full text + all comments | root MIT (repo) | GitHub REST API |
+| `ScrollPrize/villa` PRs #1417, #1228, #1229, #1313, #1541, #1797 | metadata, bodies, review comments, diffs | root MIT (repo); the diffs touch `volume-cartographer/`, which is GPL-3.0-or-later | GitHub REST API |
 
 **Access limitation, recorded honestly:** `git log` on the shallow clone covers
 only the last 50 commits, so full-file history queries were answered through the
@@ -194,6 +194,24 @@ structural reason the defect stayed invisible.
 reports 56 of 71 catalog volumes as reachable only through the gated
 `samplePixelSize` fallback. **That survey is cited as corroboration with
 attribution, not reproduced here** — four volumes is not seventy-one.
+
+### Provenance and terms of the files in `research/raw_metadata/`
+
+The `.json` files in that directory are **verbatim copies of third-party published
+documents**, downloaded anonymously from the public Open Data bucket. They are not
+this project's data and they are not covered by whatever licence this project
+chooses for its own work:
+`research/raw_metadata/PROVENANCE.md` names every file, its URL and its SHA-256, and
+states the terms (published Vesuvius Challenge datasets are **CC BY-NC 4.0** unless
+otherwise noted — `scrollprize.org/docs/02_data.md`; Scorlls 1-4 / Fragments 1-6
+scanned at DLS before 2025 are EduceLab-Scrolls, © EduceLab / The University of
+Kentucky, with additional citation requirements). `research/metadata_probe.json` is
+a summary this project assembled over them; its inputs are third-party.
+
+The same terms apply to `DOCS/evidence/before-after.png`, whose raster panels are
+renders of those volumes. `LICENSING_PROPOSAL.md` §4 records that the required
+attribution is **not yet carried in the repository's own licence material**, only in
+these pointers.
 
 ---
 

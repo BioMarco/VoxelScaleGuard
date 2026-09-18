@@ -25,9 +25,11 @@ already made, and the environment traps.
 | Document | Contents |
 |---|---|
 | [`RESEARCH.md`](RESEARCH.md) | Sources, exact commits and licences; the architecture of the Villa monorepo; and §4, the assumptions in the original brief that did not survive contact with the source |
-| [`PRIZE_REQUIREMENTS.md`](PRIZE_REQUIREMENTS.md) | The Progress Prize rules as published, separated from what this project merely considers useful; and where this project stands against each criterion |
+| [`PRIZE_REQUIREMENTS.md`](PRIZE_REQUIREMENTS.md) | The Progress Prize rules as published — including the submission form's actual fields and Terms, §2.4-2.5 — separated from what this project merely considers useful; and where this project stands against each criterion |
+| [`PROGRESS_PRIZE_CHECKLIST.md`](PROGRESS_PRIZE_CHECKLIST.md) | What is prepared for a submission, field by field, and what only the author can attest |
+| [`LICENSING_PROPOSAL.md`](LICENSING_PROPOSAL.md) | Licence and attribution inventory of this repository and of `villa`; the GPL-3.0-or-later finding that corrects several documents; the third-party Open Data attribution still missing; and the decision it needs. **No licence has been applied** |
 | [`PR_DRAFT.md`](PR_DRAFT.md) | Pull request draft. **Not submitted.** |
-| [`SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md) | Progress Prize submission draft. **Not submitted.** |
+| [`SUBMISSION_DRAFT.md`](SUBMISSION_DRAFT.md) | Progress Prize submission draft, including the form's four questions answered in its own order. **Not submitted.** |
 
 ## Evidence and artefacts
 
@@ -38,7 +40,10 @@ already made, and the environment traps.
 | `../harness/tests/test_render_voxel_size.cpp` | **27 cases / 208 assertions**, including five that reproduce the defect and three that check the patch as an artefact |
 | `../harness/tools/probe_render_voxel_size.cpp` | The before/after demonstrator over the real published documents |
 | `../research/fetch_volume_metadata.mjs` | Read-only live catalog probe |
-| `../research/raw_metadata/` | The raw published documents it fetched |
+| `../research/raw_metadata/` | The raw published documents it fetched; `PROVENANCE.md` there gives each one's URL, SHA-256 and terms |
+| `evidence/before-after.png` | The before/after figure: console output, `.zattrs` scale and unit, TIFF resolution tag, and a panel showing the decoded pixels are identical |
+| `evidence/terminal-before-after.png` | The run's log lines, drawn verbatim by `../ci/build_terminal_evidence.py`; the header states it is GitHub Actions output, not an interactive session |
+| `evidence/README.md` | Where every value in both figures comes from, how to regenerate them, and the licence of the underlying data |
 | `../.github/workflows/renderer-validation.yml` | Builds the baseline and the patched renderer from the pinned revision, runs both on public volumes, compares them |
 | `CI_VALIDATION.md` | The record of that run: environment, revision, commands, and results |
 

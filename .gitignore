@@ -10,6 +10,15 @@ harness/tools/ninja.exe
 
 # The upstream clone is a read-only working copy with its own .git; it must not be
 # absorbed into this repository. The committed artefact is patch/.
+#
+# NOTE: this pattern has no leading slash, so it also excludes `harness/src/villa/`
+# — the eight upstream files `harness/setup.ps1` copies in, which live under
+# `villa/volume-cartographer/` and are therefore GPL-3.0-or-later (Copyright (C)
+# 2023 EduceLab). That exclusion was accidental when it was written, but it is the
+# licensing-clean behaviour: a clone of this repository redistributes none of that
+# source, and `setup.ps1` re-creates it locally from a `villa` checkout. Made
+# deliberate here on 2026-09-18 rather than changed. See DOCS/LICENSING_PROPOSAL.md
+# sections 2 and 5.
 villa/
 
 # The fork working copy (BioMarco/villa), used to stage the PR branch. Same rule as

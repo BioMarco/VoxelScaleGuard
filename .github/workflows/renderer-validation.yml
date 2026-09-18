@@ -291,7 +291,10 @@ jobs:
           ls -l build/baseline/bin/vc_render_tifxyz | tee -a ../../ci-out/build-baseline.log
 
       # ---------------------------------------------------------------------
-      # Patched: the same commit with our one-file patch applied by git apply.
+      # Patched: the same commit with our three-file patch applied by git apply.
+      # (PATCH_FILES below asserts the count, so this comment cannot drift again:
+      #  it read "one-file" until 2026-09-18, while the patch touched the
+      #  renderer plus Zarr.hpp and Zarr.cpp.)
       # The revision is detached and clean, so --check proves the patch applies.
       # ---------------------------------------------------------------------
       - name: Apply patch to the pinned revision
@@ -304,12 +307,32 @@ jobs:
             "$GITHUB_WORKSPACE/patch/vc_render_tifxyz.patch"
           git -C villa-src diff --stat | tee -a ci-out/apply-patch.log
           git -C villa-src diff --output="$GITHUB_WORKSPACE/ci-out/applied.diff"
+          # Count the touched files explicitly. The committed artefact covers
+          # three: the renderer plus Zarr.hpp and Zarr.cpp. This assertion is
+          # here because the patch-regeneration command documented in AGENTS.md
+          # §4 named only one path until 2026-09-18, which silently produced a
+          # patch that dropped both Zarr hunks while still round-tripping.
+          PATCH_FILES="$(git -C villa-src diff --name-only | wc -l)"
+          echo "PATCH_FILES=$PATCH_FILES" | tee -a ci-out/apply-patch.log
+          if [ "$PATCH_FILES" -ne 3 ]; then
+            echo "PATCH_FILE_COUNT_UNEXPECTED: expected 3, got $PATCH_FILES" \
+              | tee -a ci-out/apply-patch.log
+            exit 1
+          fi
           # The applied diff must be byte-identical to the committed artefact.
+          # This compares the artefact with what the pinned revision produces when
+          # the patch is applied, and it is asserted rather than merely logged:
+          # until 2026-09-18 it only printed the verdict, so a mismatch would have
+          # produced a green run whose "patched" binary was built from something
+          # other than the committed patch.
           if cmp -s "$GITHUB_WORKSPACE/ci-out/applied.diff" \
                     "$GITHUB_WORKSPACE/patch/vc_render_tifxyz.patch"; then
             echo "PATCH_IDENTICAL=yes" | tee -a ci-out/apply-patch.log
           else
             echo "PATCH_IDENTICAL=no" | tee -a ci-out/apply-patch.log
+            echo "FATAL: the applied diff differs from patch/vc_render_tifxyz.patch." \
+              "Everything below would be evidence about a different change."
+            exit 1
           fi
 
       - name: Configure (patched)
