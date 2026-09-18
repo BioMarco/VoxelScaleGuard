@@ -20,9 +20,11 @@ Runs:
 * <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520> — the
   first green run, which established §7.
 
-The push carrying `953d5f6` did not start a run of its own; `35374993168` was
-dispatched manually against that commit. Recorded because "the run is green" and
-"the run was triggered the way you would expect" are different claims.
+Two runs on that commit were cancelled before this one, and neither indicates a
+problem: the workflow sets `concurrency: … cancel-in-progress: true` for the branch,
+so the push-triggered run (`35374933203`) was cancelled by the first manual dispatch,
+and that dispatch (`35374813151`) was in turn cancelled by the second. Only the last
+run on a branch survives under that setting. `RESULTS.md` §12.7 has the table.
 
 It closes `RESULTS.md` §7.1–7.3. `RESULTS.md` §10 records the later unit regression
 and its fix. §7.4 and §7.5 remain open.

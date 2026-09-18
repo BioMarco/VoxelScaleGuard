@@ -1216,11 +1216,38 @@ The unit-variant cases all resolved to the requested physical size
 (`8640 nanometer`, `8.64 micrometer`, `0.00864 millimeter`, `8.64e-06 meter`,
 `7910 nanometer`), and `physical-size failures: 0`.
 
-The push that carried this commit **did not start a run**, which is recorded rather
-than glossed: the run above was dispatched by hand. The earlier evidence run
-`35249590299` is unchanged and remains what the figures were built from.
+### 12.7 Two runs were cancelled first, and the reason is in the workflow [live]
 
-### 12.7 What this session did not do
+The push *did* trigger a run — `35374933203`, on `953d5f6` — and it was **cancelled**,
+as was the first manual dispatch I made (`35374813151`, cancelled 90 seconds in,
+during the apt step). Neither was a failure of the code. The workflow declares:
+
+```yaml
+concurrency:
+  group: renderer-validation-${{ github.ref }}
+  cancel-in-progress: true
+```
+
+so any new run on the same branch cancels the one in flight. The sequence was:
+
+| Run | Trigger | Outcome |
+|---|---|---|
+| `35374933203` | push of `953d5f6` | cancelled — by my first manual dispatch, which started moments later |
+| `35374813151` | first manual dispatch | cancelled — by my second dispatch, because `cancel-in-progress` does not exempt manual runs |
+| `35374993168` | second manual dispatch | **success**, 25/25 steps |
+
+Two lessons worth keeping. First, `cancel-in-progress: true` means "dispatch a run"
+is not a way to get a *second* observation of the same branch — it silences the one
+already running. Second, an initial reading of this session's evidence said flatly
+that "the push did not start a run"; the API says it did, and the difference matters
+because it changes the diagnosis from *GitHub not triggering the workflow* (a real
+defect, worth investigating) to *my own dispatch cancelling it* (expected behaviour).
+The first reading was wrong and is recorded here rather than deleted.
+
+The earlier evidence run `35249590299` is unchanged and remains what the figures
+were built from.
+
+### 12.8 What this session did not do
 
 It did not open a PR, did not submit anything, did not add a `LICENSE`, and did not
 change the patch. Two workflow assertions were **strengthened**, not relaxed:
