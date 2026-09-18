@@ -77,6 +77,21 @@ def tif_facts(path: Path):
         }
 
 
+def value_box(draw, x, y, text, fnt, colour, pad=6):
+    """Draw `text` inside a rounded outline, and return the text width used.
+
+    Used to mark the pair of values that constitute the finding, so a reader can
+    see at a glance which two numbers are being compared. Annotation only: the
+    text drawn is exactly the text it would otherwise draw unboxed.
+    """
+    w = draw.textlength(text, font=fnt)
+    h = fnt.size + 6
+    draw.rounded_rectangle([x - pad, y - 3, x + w + pad, y + h + 1],
+                           radius=5, outline=colour, width=2)
+    draw.text((x, y), text, font=fnt, fill=colour)
+    return w
+
+
 def parse_comparison(text: str):
     """Pull the real .zattrs per-level unit/scale pairs out of the run's report."""
     out = {}
@@ -142,9 +157,13 @@ def main():
            "-g 0 --scale 1 -n 1 --crop-x 3145 --crop-y 3412 --crop-width 128 --crop-height 128",
            font=F_MONO, fill=MUTED)
     y += 26
-    if args.run_url:
-        d.text((M, y), f"source: {args.run_url}", font=F_SMALL, fill=MUTED)
-        y += 20
+    # Always emit this line, so the layout does not shift when --run-url is
+    # omitted. Without it a default invocation produced a figure whose panels sat
+    # 20 px higher than the committed one, which made "regenerate it" ambiguous.
+    source = (f"source: {args.run_url}" if args.run_url
+              else "source: pass --run-url to record the run this was built from")
+    d.text((M, y), source, font=F_SMALL, fill=MUTED)
+    y += 20
     d.line([(M, y), (W - M, y)], fill=RULE, width=1)
     y += 18
 
@@ -154,6 +173,31 @@ def main():
     d.text((M, y),
            "This is the whole change. The rendered image is not affected — see panel 2 below.",
            font=F_BODY, fill=MUTED)
+
+    # The single headline a reader should take away, right-aligned on the same
+    # line. Both numbers come from the run's report; only the wording is chosen
+    # here.
+    #
+    # The left side is the number the store declared, stated in NANOMETRES: the
+    # finding is that the .zattrs pair reads "1" with unit "nanometer", so writing
+    # it as 0.001 um would hide the very thing being shown. The right side is the
+    # same quantity in micrometres, because that is the unit the stores use.
+    zb0 = zattrs.get("0009B-baseline", [])
+    zp0 = zattrs.get("0009B-patched", [])
+    if zb0 and zp0:
+        b_unit, b_scale = zb0[0][1][0], zb0[0][2]
+        p_unit, p_scale = zp0[0][1][0], zp0[0][2]
+        NM_PER_UNIT = {"nanometer": 1.0, "nanometre": 1.0, "nm": 1.0,
+                       "micrometer": 1000.0, "micrometre": 1000.0, "um": 1000.0,
+                       "millimeter": 1e6, "millimetre": 1e6, "mm": 1e6}
+        UM_PER_UNIT = {"nanometer": 0.001, "nanometre": 0.001, "nm": 0.001,
+                       "micrometer": 1.0, "micrometre": 1.0, "um": 1.0,
+                       "millimeter": 1000.0, "millimetre": 1000.0, "mm": 1000.0}
+        b_nm = b_scale[0] * NM_PER_UNIT.get(b_unit, 1.0)
+        p_um = p_scale[0] * UM_PER_UNIT.get(p_unit, 1.0)
+        claim = f"{b_nm:g} nm declared  \u2192  {p_um:g} \u00b5m actual"
+        cw = d.textlength(claim, font=F_H2)
+        d.text((W - M - cw, y), claim, font=F_H2, fill=GOOD)
     y += 24
 
     col_x = [M, M + 350, M + 700, M + 1050]
@@ -163,12 +207,16 @@ def main():
             d.text((col_x[i], y), h, font=F_MONO_B, fill=INK)
     y += 22
 
-    def row(label, b_val, p_val, verdict, good=True):
+    def row(label, b_val, p_val, verdict, good=True, box=False):
         nonlocal y
         d.rectangle([M - 8, y - 4, W - M + 8, y + 22], fill=PANEL)
         d.text((M, y), label, font=F_MONO, fill=MUTED)
-        d.text((col_x[1], y), b_val, font=F_MONO, fill=BAD)
-        d.text((col_x[2], y), p_val, font=F_MONO, fill=GOOD)
+        if box:
+            value_box(d, col_x[1], y, b_val, F_MONO, BAD)
+            value_box(d, col_x[2], y, p_val, F_MONO, GOOD)
+        else:
+            d.text((col_x[1], y), b_val, font=F_MONO, fill=BAD)
+            d.text((col_x[2], y), p_val, font=F_MONO, fill=GOOD)
         d.text((col_x[3], y), verdict, font=F_SMALL, fill=GOOD if good else BAD)
         y += 28
 
@@ -180,13 +228,15 @@ def main():
             bu, bs = zb[0][1][0], zb[0][2]
             pu, ps = zp[0][1][0], zp[0][2]
             row(".zattrs axis unit", bu, pu, "corrected")
+            # Box the volume under test; the control volume stays unboxed so the
+            # comparison is not implied to be two findings.
             row(".zattrs scale, level 0", f"[{', '.join(f'{v:g}' for v in bs)}]",
                 f"[{', '.join(f'{v:g}' for v in ps)}]",
-                "physically meaningful")
+                "physically meaningful", box=(fam == "0009B"))
         fb, fp = facts[f"{fam}-baseline"], facts[f"{fam}-patched"]
         row("TIFF XResolution",
-            "absent" if fb["xres"] is None else f"{float(fb['xres']):.4f}",
-            "absent" if fp["xres"] is None else f"{float(fp['xres']):.4f}",
+            "absent" if fb["xres"] is None else f"{float(fb['xres']):.4f} px/inch",
+            "absent" if fp["xres"] is None else f"{float(fp['xres']):.4f} px/inch",
             "tag now written" if fb["xres"] is None else "unchanged")
         y += 8
 
@@ -231,6 +281,14 @@ def main():
     diff = diff.resize((panel_w, panel_h), Image.NEAREST)
     img.paste(diff, (xd, y))
     d.rectangle([xd - 1, y - 1, xd + panel_w, y + panel_h], outline=RULE)
+    # Say the result inside the empty panel, so the blank area cannot be misread
+    # as a missing figure.
+    msg1 = "No pixel differences"
+    mw1 = d.textlength(msg1, font=F_H2)
+    d.text((xd + (panel_w - mw1) / 2, y + panel_h / 2 - 16), msg1, font=F_H2, fill=INK)
+    msg2 = "(all zeros)"
+    mw2 = d.textlength(msg2, font=F_BODY)
+    d.text((xd + (panel_w - mw2) / 2, y + panel_h / 2 + 8), msg2, font=F_BODY, fill=MUTED)
     d.text((xd, y + panel_h + 6), "absolute difference", font=F_MONO, fill=INK)
     d.text((xd, y + panel_h + 22), "all zeros = no pixel changed", font=F_TINY, fill=GOOD)
     d.text((xd, y + panel_h + 38), "decoded-pixel SHA-256:", font=F_TINY, fill=MUTED)
