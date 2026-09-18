@@ -7,11 +7,22 @@ commands, and results.
 
 Runs:
 
-* **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35151048117>** — the
-  current green run: full build, before/after render, physical-size checks of §8,
+* **<https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35374993168>** — the
+  newest green run (2026-09-18, commit `953d5f6`, 25 steps, none failed). Same
+  build-and-render checks, plus the two assertions added that day:
+  `PATCH_FILES=3` and a `PATCH_IDENTICAL` verdict that now fails the step rather
+  than printing a line. First run in which those executed.
+* <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299> — the run
+  the evidence figures were built from; cited throughout as the reference run.
+* <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35151048117> — the
+  earlier green run: full build, before/after render, physical-size checks of §8,
   and the ×1000 fix recorded in §8.1.
 * <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35137825520> — the
   first green run, which established §7.
+
+The push carrying `953d5f6` did not start a run of its own; `35374993168` was
+dispatched manually against that commit. Recorded because "the run is green" and
+"the run was triggered the way you would expect" are different claims.
 
 It closes `RESULTS.md` §7.1–7.3. `RESULTS.md` §10 records the later unit regression
 and its fix. §7.4 and §7.5 remain open.

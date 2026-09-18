@@ -1190,7 +1190,37 @@ again — re-built and re-run, exit 0 [exec].
 That is the whole of this session's code change. Nothing in the patch, the workflow's
 build steps, or the test suites was touched.
 
-### 12.6 What this session did not do
+### 12.6 The assertions were executed, not just written [exec]
+
+Run **35374993168** (2026-09-18, `workflow_dispatch`, commit `953d5f6`,
+conclusion **success**, 25 steps, none failed) is the first run on the strengthened
+step. Its log contains, verbatim:
+
+```
+PATCH_FILES=3
+PATCH_IDENTICAL=yes
+physical-size failures: 0
+      DECODED PIXELS IDENTICAL: YES   <-- the regression check   (×2)
+```
+
+with no `FATAL` line anywhere, and the render lines reading
+
+```
+Voxel size: 1.0 (no metadata found; override with --voxel-size)      # baseline
+Voxel size (remote volume metadata): 8.64 micrometer                 # patched
+Voxel size: 1.0 (no metadata found; override with --voxel-size)      # baseline
+Voxel size (remote volume metadata): 7.91 micrometer                 # patched
+```
+
+The unit-variant cases all resolved to the requested physical size
+(`8640 nanometer`, `8.64 micrometer`, `0.00864 millimeter`, `8.64e-06 meter`,
+`7910 nanometer`), and `physical-size failures: 0`.
+
+The push that carried this commit **did not start a run**, which is recorded rather
+than glossed: the run above was dispatched by hand. The earlier evidence run
+`35249590299` is unchanged and remains what the figures were built from.
+
+### 12.7 What this session did not do
 
 It did not open a PR, did not submit anything, did not add a `LICENSE`, and did not
 change the patch. Two workflow assertions were **strengthened**, not relaxed:

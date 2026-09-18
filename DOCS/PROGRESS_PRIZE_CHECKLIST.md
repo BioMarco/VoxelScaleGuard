@@ -114,8 +114,8 @@ Everything below already exists. Nothing needs to be written from scratch.
 | What the page asks for | Where it is |
 |---|---|
 | Problem identification, implementation path | `DOCS/ROOT_CAUSE_ANALYSIS.md` (cause at file:line); `DOCS/ARCHITECTURE.md` (the fix's shape and the alternatives rejected) |
-| Demonstration of use on real data | `DOCS/CI_VALIDATION.md`; `DOCS/evidence/before-after.png`; run <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299> |
-| Metrics / before-after evidence | `DOCS/RESULTS.md` §9 (compiled and run), §10 (the unit regression and its fix), §11 (the pre-PR review); `CI_VALIDATION.md` §7 |
+| Demonstration of use on real data | `DOCS/CI_VALIDATION.md`; `DOCS/evidence/before-after.png` and `DOCS/evidence/terminal-before-after.png`; reference run <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299> (the run the figures were built from) and verification run <https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35374993168> (commit `953d5f6`, 2026-09-18) |
+| Metrics / before-after evidence | `DOCS/RESULTS.md` §9 (compiled and run), §10 (the unit regression and its fix), §11 (the pre-PR review), §12 (the licence and documentation defects); `CI_VALIDATION.md` §7 |
 | Documentation and usage examples | `README.md`; `DOCS/INDEX.md` (reading order); `harness/` builds and runs in minutes |
 | Reproduction, no paid services | `.github/workflows/renderer-validation.yml` — public apt packages on a free runner, no private registry |
 | Standard formats | OME-Zarr `.zattrs` and TIFF resolution tags are exactly what the patch corrects; the outputs stay in those formats |
@@ -140,7 +140,7 @@ prepared content, so nothing has to be written from scratch at submission time.
 | `Your full name` | your own name | only you have it |
 | `Team description — individual or team…` | one line: submitting as an individual | — |
 | `If you are a member of our Discord server, what is your display name there?` **(optional)** | your Discord display name, if you want to give it. The field is optional and conditional, so leaving it blank is allowed. **Do not put it in the repository or the PR** | your own statement, §3 |
-| `URL of your open source / publicly available contribution…` | `https://github.com/BioMarco/VoxelScaleGuard` — add the fork branch `https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume` as a second URL, and the run `https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299` as a third if the field allows more than one | `SUBMISSION_DRAFT.md` §How to reproduce |
+| `URL of your open source / publicly available contribution…` | `https://github.com/BioMarco/VoxelScaleGuard` — add the fork branch `https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume` as a second URL, and either run `https://github.com/BioMarco/VoxelScaleGuard/actions/runs/35249590299` or `…/35374993168` as a third if the field allows more than one | `SUBMISSION_DRAFT.md` §How to reproduce |
 | `What is your contribution? (1)…(4)` | paste the four answers under **"Answers to the submission form's four questions"** in `SUBMISSION_DRAFT.md`, in the form's own order | `SUBMISSION_DRAFT.md`, that section |
 | `Yes, I agree` (Terms) | tick, having read the embedded Terms — they are transcribed in `PRIZE_REQUIREMENTS.md` §2.5 | — |
 

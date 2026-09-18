@@ -222,5 +222,6 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | `PATCH_IDENTICAL=no` promoted from a printed line to a step failure, in the same pass (`RESULTS.md` §12.1) |
 | Probe tool narrowed to `*.json` so the new `PROVENANCE.md` is not counted as a probed document; rebuilt and re-run, still 4 documents / 3 divergences (`RESULTS.md` §12.5) |
 | `.gitignore`'s accidental-but-correct exclusion of `harness/src/villa/**` documented as deliberate (`DOCS/LICENSING_PROPOSAL.md` §5) |
+| Run 35374993168 (commit `953d5f6`, 25/25 steps) exercised the two new workflow assertions in CI: `PATCH_FILES=3`, `PATCH_IDENTICAL=yes`, `physical-size failures: 0`, decoded pixels identical (`RESULTS.md` §12.6) |
 | Prize rules and submission form re-read; the form's fields and Terms transcribed, and the four form questions answered in `DOCS/SUBMISSION_DRAFT.md` (`RESULTS.md` §12.3) |
 | Still not done, by instruction: no PR opened, no submission sent, no `LICENSE` applied, no merge to `main` |
