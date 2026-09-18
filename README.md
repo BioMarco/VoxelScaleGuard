@@ -278,9 +278,10 @@ own work yet.
   [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) §1.*
 * The harness copies eight `volume-cartographer/` translation units
   byte-for-byte. Those are GPL-3.0-or-later by provenance, but they are
-  **not tracked in git** (`.gitignore:13` matches `villa/` at any depth), so a
-  clone of this repository redistributes none of them; `harness/setup.ps1`
-  re-creates them locally. See the proposal §2 and §5.
+  **not tracked in git** (`.gitignore`'s `villa/` pattern has no leading slash, so
+  it matches a `villa` directory at any depth), so a clone of this repository
+  redistributes none of them; `harness/setup.ps1` re-creates them locally. See the
+  proposal §2 and §5.
 * `nlohmann/json` (MIT) and `doctest` (MIT) are fetched at build time, not
   vendored.
 * `scrollprize.org` content is CC BY-NC 4.0 unless otherwise specified; quoted prize
