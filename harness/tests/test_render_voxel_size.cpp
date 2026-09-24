@@ -298,14 +298,48 @@ TEST_CASE("REVIEW: the legacy schema agrees with the deployed reader on the same
     CHECK(*d.shared == doctest::Approx(7.91));
 }
 
-TEST_CASE("REVIEW: an acquisition record wins over a legacy scan voxelsize")
+TEST_CASE("REVIEW: a legacy scan voxelsize keeps priority over an acquisition record")
 {
-    // A `scan` carrying `tomo` is the modern shape and has its own exact path, so
-    // the legacy fallback must not shadow it.
+    // The historical precedence, and the reason this test replaced one that
+    // asserted the opposite. The pre-patch reader was:
+    //
+    //     tryFile(meta.json,     nullptr)   // meta.json root `voxelsize`
+    //     tryFile(metadata.json, "scan")    // <- root["scan"]["voxelsize"]
+    //     tryFile(metadata.json, nullptr)   // metadata.json root `voxelsize`
+    //
+    // with no acquisition-record branch at all. So when a document carried both
+    // `scan.voxelsize` and `scan.tomo...samplePixelSize`, the historical answer --
+    // and therefore the previously supported local metadata the review asked to
+    // preserve -- is `scan.voxelsize`.
+    //
+    // Distinct numbers (7.91 vs 8.64) so the assertion cannot pass by accident.
     const fs::path store = makeStore(
-        "modern_wins", "",
-        R"({"scan": {"voxelsize": 99.0,
+        "legacy_scan_beats_acquisition", "",
+        R"({"scan": {"voxelsize": 7.91,
                      "tomo": {"acquisition": {"detector": {"samplePixelSize": 0.00864}}}}})");
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(7.91));
+}
+
+TEST_CASE("REVIEW: a top-level voxelsize still outranks the scan-wrapped one")
+{
+    // The first historical candidate keeps its own priority.
+    const fs::path store = makeStore(
+        "top_level_wins", R"({"voxelsize": 2.4})",
+        R"({"scan": {"voxelsize": 7.91}})");
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(2.4));
+}
+
+TEST_CASE("REVIEW: the acquisition record still resolves when nothing else states a size")
+{
+    // Reordering must not disable the modern schema: it is reached whenever no
+    // explicit or scan-wrapped size is present.
+    const fs::path store = makeStore(
+        "acquisition_only", "",
+        R"({"scan": {"tomo": {"acquisition": {"detector": {"samplePixelSize": 0.00864}}}}})");
     const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
     REQUIRE(resolved.has_value());
     CHECK(*resolved == doctest::Approx(8.64));

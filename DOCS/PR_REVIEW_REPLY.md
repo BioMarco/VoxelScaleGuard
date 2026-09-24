@@ -64,17 +64,28 @@ micrometres; and if it weren't, the legacy volume would have had a wrong TIFF
 resolution on exactly the path the live-S3 test covers. I've written that
 reasoning into the function so it's checkable rather than asserted.
 
-The path match is exact — `scan.voxelsize`, and only when `scan` carries no `tomo`
-acquisition record, so the modern shape keeps its own path. There are tests for
-four near-misses (metadata.scan.voxelsize, source.scan.voxelsize,
-properties.voxelsize, scan.properties.voxelsize) which must all still resolve
+The path match is exact — `scan.voxelsize`, nothing deeper. There are tests for five
+near-misses (metadata.scan.voxelsize, source.scan.voxelsize, properties.voxelsize,
+scan.properties.voxelsize, and `scan` as an array) which must all still resolve
 nothing.
 
-Tests: 4 new resolver cases plus 8 in my own harness, including negative controls
-that fail if either the fall-through or the legacy schema is removed. I also
-inverted my CI check that had asserted the old behaviour — it required the
+One thing worth stating explicitly, because I got it wrong on the first pass and
+your "preserve previously supported local metadata" is what made me check: the old
+reader had three candidates and no acquisition-record branch at all, so a document
+carrying both `scan.voxelsize` and `scan.tomo...samplePixelSize` returned
+`scan.voxelsize`. My first version added a `tomo` guard that let the newer field win
+instead. That's a reinterpretation, not a preservation. The guard is gone and the
+order is now top-level `voxelsize` > `scan.voxelsize` > acquisition record >
+`source`, which is the historical order for every shape the old reader could read.
+The regression test uses 7.91 for the legacy field and 8.64 for the acquisition
+record so it can't pass by coincidence.
+
+Tests: 5 new resolver cases plus 10 in my own harness, including negative controls
+that fail if the fall-through, the legacy schema, or the precedence is changed back.
+I also inverted my CI check that had asserted the old behaviour — it required the
 multiscales block to be absent for an unknown size, which is the defect you found;
-it now asserts the block is present, unitless, and correctly relatively scaled.
+it now asserts the block is present, unitless, and correctly relatively scaled. That
+check passes in the current CI run against the real patched binary.
 
 One thing I should flag rather than leave you to find: that check passing was
 itself the reason this got through. Every assertion I had asked "does anything
@@ -94,17 +105,61 @@ commands and outcomes. Specifically:
 * the relative factors match `createPyramidDatasets()`, which halves only Y/X;
 * the OME-NGFF 0.4 sentence is quoted from the published spec, not paraphrased;
 * the unit reasoning cites `vc_render_tifxyz.cpp:1397-1412` at `757f70c`;
-* the test counts are the ones actually run (`35/242` project, `17/87` control,
-  `13/13` physical-size self-test).
+* the test counts are the ones actually run (`37/249` project, `18/90` control,
+  `13/13` physical-size self-test);
+* the resolver precedence claim is the historical one, because the reply says the
+  legacy field is preserved "exactly" — see the precedence section below.
+
+## What CI has and has not established
+
+**What has run and passed:** [run 36028271482](https://github.com/BioMarco/VoxelScaleGuard/actions/runs/36028271482)
+completed **successfully**, 25/25 steps, none failed. That run:
+
+* built **both** the baseline and the patched renderer from the same pinned
+  revision, applied `patch/vc_render_tifxyz.patch`, and confirmed the applied diff
+  is byte-identical to the committed artefact (`PATCH_FILES=3`,
+  `PATCH_IDENTICAL=yes`);
+* rendered `PHerc0009B` and `PHerc0172` with identical arguments, resolving
+  **8.64 µm** and **7.91 µm** respectively;
+* reported `DECODED PIXELS IDENTICAL: YES` for both volumes;
+* drove the **unknown-size branch through the real patched CLI**, printing the
+  `multiscales` structure — axes `['z','y','x']`, all three units `None`, six
+  levels, relative scales `[1, 2^l, 2^l]`;
+* reported `physical-size failures: 0` across the nm/µm/mm/m unit cases.
+
+**What has *not* run:** the VoxelScaleGuard workflow builds `villa` at the *pinned*
+commit and applies `patch/`. It does **not** build the 7-file PR branch itself. So:
+the patch's behaviour is CI-verified end to end; the seven-file branch has been
+verified locally (fork unit tests, harness suites, resolver negative controls) plus
+a merge dry-run against current upstream `main`. That distinction is stated in the
+reply rather than blurred.
+
+## Resolver precedence: corrected after a first attempt got it wrong
+
+The reply claims the legacy field is preserved exactly, so the code has to earn
+that. An initial implementation added a `tomo` guard and put the acquisition record
+ahead of `scan.voxelsize`. That was wrong. The pre-patch reader was three
+`tryFile` candidates with **no acquisition-record branch at all**, so a document
+carrying both `scan.voxelsize` and `scan.tomo...samplePixelSize` resolved to
+`scan.voxelsize` historically. Both the guard and the ordering were removed;
+effective precedence is now
+
+```
+top-level `voxelsize`  >  `scan.voxelsize`  >  acquisition record  >  source
+```
+
+A regression test asserts `7.91` (legacy field) against `8.64` (acquisition record)
+— distinct numbers, so it cannot pass by coincidence — and one earlier test that
+asserted the opposite was replaced.
 
 ## What the draft deliberately does not do
 
-* It does not claim CI is green: **no GitHub Actions run had happened when this was
-  written**, because CI triggers on push. The author should either push first and
-  check the run, or say the push is imminent.
-* It does not claim the renderer was re-run: this machine cannot build
-  volume-cartographer, so no new render was produced, and none is needed (the
-  renderer diff is comments only).
+* It does not claim a full build of the 7-file branch, because there has not been
+  one. The CI result above is about the patch applied to the pinned revision, and
+  the reply says so.
+* It does not claim the renderer produces different pixels, or that any render was
+  re-run: the renderer diff is comments only, and neither finding can reach the two
+  evidence volumes.
 * It does not ask for a re-review timing or make any commitment about the prize.
 * It does not thank the reviewer for anything beyond the review itself, and does
   not over-apologise: the point is the fix, not the contrition.

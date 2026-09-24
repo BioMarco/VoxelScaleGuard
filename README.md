@@ -119,7 +119,7 @@ reader handles, and it is the volume `core/test/test_volume_live_s3.cpp` pins.
 
 ### Tests
 
-**35 cases / 242 assertions**, plus the resolver suite **17 cases / 87 assertions**
+**37 cases / 249 assertions**, plus the resolver suite **18 cases / 90 assertions**
 compiled unmodified as a control. Transcripts in
 [`DOCS/RESULTS.md`](DOCS/RESULTS.md).
 
@@ -228,7 +228,7 @@ pwsh -File harness/build.ps1 -Configuration Release
 # 3. tests
 cd harness/build/Release
 ./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: 13/13
-./test_render_voxel_size.exe              # this project's: 35/35
+./test_render_voxel_size.exe              # this project's: 37/37
 
 # 4. the before/after demonstration over the real documents in research/raw_metadata
 ./probe_render_voxel_size.exe

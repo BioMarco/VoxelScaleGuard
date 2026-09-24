@@ -252,8 +252,8 @@ pwsh -File harness/build.ps1 -Configuration Release
 
 # tests
 cd harness/build/Release
-./test_upstream_voxel_size_metadata.exe   # upstream's suite as the PR extends it: 17/17
-./test_render_voxel_size.exe              # this project's: must stay 35/35
+./test_upstream_voxel_size_metadata.exe   # upstream's suite as the PR extends it: 18/18
+./test_render_voxel_size.exe              # this project's: must stay 37/37
 ./probe_render_voxel_size.exe             # before/after over the real documents
 ```
 
@@ -276,8 +276,12 @@ pristine copy is asserted unpatched by `test_render_voxel_size.exe`.
 3. A few files are modified by the **open PR** ahead of the patch
    (`VoxelSizeMetadata.{cpp,hpp}`, `test_voxel_size_metadata.cpp`). Those come from
    `tools/fork` on branch `fix/render-voxel-size-from-open-volume`, because the
-   pinned commit predates them and they are part of the change under test. The PR
-   revision is printed by `setup.ps1` and recorded in `harness/PR_REVISION.txt`.
+   pinned commit predates them and they are part of the change under test.
+   `setup.ps1` prints the branch and commit and writes `harness/PR_REVISION.txt`
+   with the commit, the branch, whether the fork's working tree was dirty, and a
+   blob hash per copied file. **The dirty flag matters**: the copies come from the
+   working tree, so when the fork has uncommitted edits the recorded commit does not
+   contain the bytes under test, and those hashes are what identify them.
 
 A file must never be listed under both (2) and (3): it is either what the patch adds
 on top of the pinned revision, or it is already changed on the branch. Copying a

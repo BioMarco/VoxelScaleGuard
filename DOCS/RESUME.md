@@ -27,8 +27,8 @@ pwsh -File harness/setup.ps1
 node harness/fetch_deps.mjs
 pwsh -File harness/build.ps1 -Configuration Release
 cd harness\build\Release
-.\test_upstream_voxel_size_metadata.exe            # expect: 17 cases / 87 assertions, all pass
-.\test_render_voxel_size.exe                       # expect: 35 cases / 242 assertions, all pass
+.\test_upstream_voxel_size_metadata.exe            # expect: 18 cases / 90 assertions, all pass
+.\test_render_voxel_size.exe                       # expect: 37 cases / 249 assertions, all pass
 .\probe_render_voxel_size.exe                      # expect: 3 divergences out of 4 volumes
 cd ..\..\..
 
@@ -96,7 +96,7 @@ boundaries, environment traps.
   regeneration command, where it was not cosmetic: see `RESULTS.md` §12.1.*
 * **The harness**, which compiles the pinned revision's real
   `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte, plus a
-  verbatim copy of the pre-patch reader, plus tests: 35 cases / 242 assertions, with
+  verbatim copy of the pre-patch reader, plus tests: 37 cases / 249 assertions, with
   upstream's own 13-case suite compiled unmodified as the control.
 * **The before/after demonstration on four real published volumes**, with a
   deliberate control (the one legacy-shaped volume that already worked, and which

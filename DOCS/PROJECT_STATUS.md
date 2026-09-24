@@ -91,8 +91,8 @@ described in `RESULTS.md` §9. Applies exactly to the pinned revision
 
 **Harness** — `harness/`, which compiles the pinned revision's real
 `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte and runs:
-the resolver suite (**17 cases / 87 assertions**, as a control) plus
-this project's tests (**35 cases / 242 assertions**), plus a before/after probe.
+the resolver suite (**18 cases / 90 assertions**, as a control) plus
+this project's tests (**37 cases / 249 assertions**), plus a before/after probe.
 The suite also asserts that the pristine `vc_render_tifxyz.cpp` copy really is
 unpatched, and that the patch declares every name its new block reads before using
 it — the defect the first real compile exposed (§9).

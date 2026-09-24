@@ -82,7 +82,7 @@ reviewer has opened anything yet.
 > and unit, the TIFF resolution tag and a **blank** pixel-difference panel — the
 > decoded pixels are verified identical, digests compared, so the change provably
 > touches only what was wrong; a second figure carrying the run's log lines verbatim;
-> the run's own comparison report; a 35-case unit suite (242 assertions) including
+> the run's own comparison report; a 37-case unit suite (249 assertions) including
 > tests that fail if either the original defect or a ×1000 unit regression is
 > reintroduced; and the full record of what was and was not verified, including two
 > earlier attempts of my own that were wrong. All links are in the repository below.

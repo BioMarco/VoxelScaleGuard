@@ -53,8 +53,8 @@ not touch.
 Built and run with `pwsh -File harness/build.ps1 -Configuration Release`, then:
 
 ```
-harness/build/Release/test_upstream_voxel_size_metadata.exe   17 cases / 87 assertions
-harness/build/Release/test_render_voxel_size.exe              35 cases / 242 assertions
+harness/build/Release/test_upstream_voxel_size_metadata.exe   18 cases / 90 assertions
+harness/build/Release/test_render_voxel_size.exe              37 cases / 249 assertions
 harness/build/Release/probe_render_voxel_size.exe             before/after on 4 real stores
 ```
 

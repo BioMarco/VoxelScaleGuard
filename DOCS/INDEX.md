@@ -40,7 +40,7 @@ already made, and the environment traps.
 |---|---|
 | `../patch/vc_render_tifxyz.patch` | The proposed fix: **3 files, +358/−102**, against `villa` @ `757f70c` |
 | `../harness/` | The reproducer. Compiles the pinned revision's real translation units, plus a verbatim copy of the pre-patch reader, plus tests |
-| `../harness/tests/test_render_voxel_size.cpp` | **35 cases / 242 assertions**, including the defect reproductions, the patch-as-artefact checks, and eight review cases for the fall-through and legacy-schema behaviour |
+| `../harness/tests/test_render_voxel_size.cpp` | **37 cases / 249 assertions**, including the defect reproductions, the patch-as-artefact checks, and the review cases for fall-through, the legacy schema and its precedence |
 | `../harness/tools/probe_render_voxel_size.cpp` | The before/after demonstrator over the real published documents |
 | `../research/fetch_volume_metadata.mjs` | Read-only live catalog probe |
 | `../research/raw_metadata/` | The raw published documents it fetched; `PROVENANCE.md` there gives each one's URL, SHA-256 and terms |

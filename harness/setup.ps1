@@ -79,6 +79,14 @@ Write-Host "[setup] source: $(if ($haveLocal) { "local clone at $villaDir" } els
 # --- PR-branch source: tools/fork at the branch the proposal targets ---------
 # Resolved once, and printed, so a harness run says which revision of the
 # proposed change it exercised rather than leaving that implicit.
+#
+# HEAD alone is not enough: the copies are taken from the WORKING TREE, so a fork
+# checkout with uncommitted edits produces files that no commit contains. That is
+# a normal state while a fix is being validated before it is pushed, and recording
+# the commit hash as if it described those bytes would be wrong -- the same class
+# of mislabelling that setup.ps1 exists to prevent. So a dirty tree is reported,
+# and PR_REVISION.txt records the commit, the dirty flag, and a SHA-256 over the
+# copied files.
 $prDir = [System.IO.Path]::GetFullPath((Join-Path $here '..\tools\fork'))
 $prCommit = $null
 if (Test-Path (Join-Path $prDir 'volume-cartographer/CMakeLists.txt')) {
@@ -88,7 +96,13 @@ if (Test-Path (Join-Path $prDir 'volume-cartographer/CMakeLists.txt')) {
     }
     $prCommit = $prCommit.Trim()
     $prBranch = (& git -c safe.directory='*' -C $prDir rev-parse --abbrev-ref HEAD).Trim()
-    Write-Host "[setup] PR branch: $prBranch @ $($prCommit.Substring(0,7))"
+    $prDirty = @(& git -c safe.directory='*' -C $prDir status --porcelain).Count -gt 0
+    if ($prDirty) {
+        Write-Host "[setup] PR branch: $prBranch @ $($prCommit.Substring(0,7)) + UNCOMMITTED EDITS"
+        Write-Host "[setup]   the copies below are the fork's WORKING TREE, which no commit describes" -ForegroundColor Yellow
+    } else {
+        Write-Host "[setup] PR branch: $prBranch @ $($prCommit.Substring(0,7))"
+    }
 } else {
     throw ("tools/fork is missing. The harness needs it for the files the proposed " +
            "change modifies ahead of the patch. Clone BioMarco/villa there at " +
@@ -132,9 +146,20 @@ foreach ($pair in $pairs) {
     Write-Host ("  {0,-72} -> {1}" -f $rel, $destRel)
 }
 
-# Record the PR revision next to the copies it produced, so a harness run and its
-# uploaded artefacts can be tied to a specific commit of the proposed change.
-Set-Content -Path (Join-Path $here 'PR_REVISION.txt') -Value $prCommit -NoNewline
+# Record what the copies actually are, next to the copies. A harness run and its
+# uploaded artefacts can then be tied to a specific state of the proposed change --
+# and when the fork is dirty, that state is identified by content hash rather than
+# by a commit that does not contain it.
+$prDigest = (& git -c safe.directory='*' -C $prDir hash-object `
+                'volume-cartographer/core/src/VoxelSizeMetadata.cpp' `
+                'volume-cartographer/core/include/vc/core/util/VoxelSizeMetadata.hpp' `
+                'volume-cartographer/core/test/test_voxel_size_metadata.cpp' 2>$null) -join ' '
+Set-Content -Path (Join-Path $here 'PR_REVISION.txt') -Value @"
+commit: $prCommit
+branch: $prBranch
+working_tree_dirty: $(if ($prDirty) { 'yes (copies are the working tree, not this commit)' } else { 'no' })
+pr_files_blob_hashes: $($prDigest.Trim())
+"@ -NoNewline
 
 # --- 2. Header-only dependencies, fetched at build time ---------------------
 $deps = @(

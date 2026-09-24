@@ -1499,13 +1499,35 @@ that reason, not for effort.
   because it parsed but carried no recognised schema, or because it would not parse —
   advances to the next. A missing file was always skipped.
 * `legacyScanVoxelSize()` restores `metadata.json → scan.voxelsize`, matched at that
-  **exact path**, only when `scan` holds no `tomo` acquisition record. Order is the
-  pre-patch order: top-level `voxelsize`, then the acquisition record, then
-  `scan.voxelsize`, then the `source` walk. The `tomo` guard keeps the modern shape on
-  its own path and stops the fallback shadowing it.
-* Exact-path matching is deliberate, and tested against four near-misses:
-  `metadata.scan.voxelsize`, `source.scan.voxelsize`, `properties.voxelsize` and
-  `scan.properties.voxelsize` all still resolve nothing.
+  **exact path**. Effective precedence is
+  **top-level `voxelsize` → `scan.voxelsize` → acquisition record → `source`**.
+* Exact-path matching is deliberate, and tested against five near-misses:
+  `metadata.scan.voxelsize`, `source.scan.voxelsize`, `properties.voxelsize`,
+  `scan.properties.voxelsize` and `scan` as an array all still resolve nothing.
+
+**A first attempt at this got the precedence wrong, and the correction is worth
+recording.** It rejected `scan.voxelsize` whenever `scan` also held `tomo`, and it
+put the acquisition record ahead of it. That is not what the historical reader did.
+The reader was:
+
+```
+tryFile(meta.json,     nullptr)   // meta.json root `voxelsize`
+tryFile(metadata.json, "scan")    // root["scan"]["voxelsize"]   <- the restored field
+tryFile(metadata.json, nullptr)   // metadata.json root `voxelsize`
+```
+
+with **no acquisition-record branch at all**. So a document carrying both
+`scan.voxelsize` and `scan.tomo...samplePixelSize` resolved to `scan.voxelsize`
+historically, and the review's "preserve previously supported local metadata" means
+preserving that choice rather than replacing it with the newer field. Both the guard
+and the ordering were removed, `scan.voxelsize` now comes before
+`detectorVoxelSize()`, and the regression test asserts `7.91` (the legacy field)
+against `8.64` (the acquisition record) so it cannot pass by coincidence. One test
+that asserted the opposite — `"an acquisition record wins over a legacy scan
+voxelsize"` — was **replaced**, not deleted silently.
+
+The `tomo` guard would have been wrong in the other direction too: it let the newer
+schema silently override a document's own explicit statement of its size.
 
 **Units for the restored field, determined from the history rather than assumed.**
 `readVolumeVoxelSize()` returned this number with **no conversion of any kind**, and
@@ -1516,7 +1538,8 @@ same reader produced both `meta.json`'s top-level `voxelsize` (micrometres: the
 published 7.91 matches the volume's own `-7.910um-` name) and `scan.voxelsize`, and a
 single code path cannot have meant two units, `scan.voxelsize` is micrometres. Had it
 been anything else, the legacy volume would have produced a wrong TIFF resolution on
-exactly the path the repository's live-S3 test exercises.
+exactly the path the repository's live-S3 test exercises. **Unchanged by this
+correction.**
 
 ### 16.3 What was actually executed, and what was not
 
@@ -1528,14 +1551,14 @@ differently, and the distinction matters.
 
 | Check | Command / artefact | Result |
 |---|---|---|
-| The fork's resolver suite, compiled for real | `scratch/run_resolver_test.ps1` — MSVC 14.34.31933 on the fork's `VoxelSizeMetadata.cpp` + `Json.cpp` + `test_voxel_size_metadata.cpp` | **17 cases / 87 assertions pass** |
+| The fork's resolver suite, compiled for real | `scratch/run_resolver_test.ps1` — MSVC 14.34.31933 on the fork's `VoxelSizeMetadata.cpp` + `Json.cpp` + `test_voxel_size_metadata.cpp` | **18 cases / 90 assertions pass** |
 | Negative control: revert the fall-through | same, with the old `return` restored | **1 case fails** (`an unusable meta.json falls through`) |
 | Negative control: remove the legacy schema | same, with the `legacyScanVoxelSize()` call removed | **2 cases fail** (legacy schema, and the resolver/reader agreement case) |
 | The real `buildMultiscales()`, executed | `scratch/build_zattrs_driver.ps1` — compiles the fork's `Zarr.cpp` unmodified against the real `utils::Json`, with a `cv::Mat`/`cv::Size` stand-in and empty `VcDataset` bodies supplied by `scratch/` | **all structural checks pass**; output quoted in §16.1 |
 | Negative control: the reviewed behaviour | same driver, `buildMultiscales()` returning an empty object when the size is unknown | **structure reported MISSING**, non-zero exit |
 | Harness, rebuilt | `harness/build.ps1` | build OK |
-| Harness, upstream control | `test_upstream_voxel_size_metadata.exe` | **17 cases / 87 assertions pass** (was 13/54; the PR's tests travel with it) |
-| Harness, project suite | `test_render_voxel_size.exe` | **35 cases / 242 assertions pass** (was 27/208; +8 review cases) |
+| Harness, upstream control | `test_upstream_voxel_size_metadata.exe` | **18 cases / 90 assertions pass** (was 13/54; the PR's tests travel with it) |
+| Harness, project suite | `test_render_voxel_size.exe` | **37 cases / 249 assertions pass** (was 27/208; the review round added 10 harness cases and 5 resolver cases) |
 | Harness, probe | `probe_render_voxel_size.exe` | 4 documents, 3 divergences — unchanged |
 | Physical-size checker self-test | `ci/selftest_physical_size.py` | **13/13 pass** (was 11/11; the unknown-size cases were rewritten) |
 | Workflow pre-flight | `ci/preflight_workflow.py` | **PRE-FLIGHT OK**, including `bash -n` on the edited step |
@@ -1623,7 +1646,7 @@ made before 2026-09-23 is superseded by this section; for everything else, run
 | Reproduced? | **Yes**, against the live catalog: the pre-patch reader resolves 1 of 4 real published volumes |
 | Demonstrated before/after? | **Yes**, twice over: on the resolution logic against live metadata, **and now from two real compiled binaries on a real published volume** (§9) |
 | Tested on real data? | **Yes** — real published metadata documents, **and a real render** of `PHerc0009B` and `PHerc0172` through the real binaries (§9.4) |
-| Regression tests? | 35 cases / 242 assertions; upstream's 17 cases / 87 assertions pass unmodified as a control. (Was 27/208 and 13/54 before the review round added 8 harness cases and 4 resolver cases — §16.3) |
+| Regression tests? | 37 cases / 249 assertions; upstream's 18 cases / 90 assertions pass unmodified as a control. (Was 27/208 and 13/54 before the review round added 10 harness cases and 5 resolver cases — §16.3) |
 | Binary-verified? | **Yes** since 2026-09-16: both binaries compile in CI and were run on public data (§9.3–9.4) |
 | Does the patch compile? | **Yes** — but it did **not** before this session. The committed patch could never have built (§9.1). That is the single most important result in this document |
 | Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |
