@@ -1,5 +1,5 @@
 diff --git a/volume-cartographer/apps/src/vc_render_tifxyz.cpp b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
-index 9d0c2b8..cf4e2a2 100644
+index 9d0c2b8..af756d8 100644
 --- a/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 +++ b/volume-cartographer/apps/src/vc_render_tifxyz.cpp
 @@ -11,6 +11,7 @@
@@ -191,7 +191,7 @@ index 9d0c2b8..cf4e2a2 100644
      // clang-format on
  
      po::options_description all("Usage");
-@@ -1370,62 +1499,103 @@ int main(int argc, char *argv[])
+@@ -1370,62 +1499,106 @@ int main(int argc, char *argv[])
      }
  
      // --- Resolve voxel size for OME-Zarr metadata ---
@@ -317,9 +317,11 @@ index 9d0c2b8..cf4e2a2 100644
 +            tifDpi = voxelSizeToDpi(umPerOutputPixel);
 +        } else {
 +            // There is no measurement to declare. Passing 0 tells writeZarrAttrs
-+            // to omit the multiscales block rather than to publish a scale of
-+            // 1.0, and a zero tifDpi leaves the TIFF resolution tags unset. Both
-+            // outputs therefore say "unknown" instead of inventing a size.
++            // that the physical size is unknown: it then writes no axis unit and
++            // encodes only the relative pyramid scaling, keeping the multiscales
++            // discovery metadata intact. A zero tifDpi leaves the TIFF resolution
++            // tags unset. Both outputs therefore say "unknown" instead of
++            // inventing a size, and neither loses the image structure.
 +            logPrintf(stderr,
 +                      "Warning: this volume publishes no usable voxel size, so its "
 +                      "physical scale is unknown and none will be declared. Pass "
@@ -334,7 +336,8 @@ index 9d0c2b8..cf4e2a2 100644
 +        // adjacent layers sit --slice-step level-g voxels apart (buildOffsetList).
 +        // writeZarrAttrs derives the per-axis .zattrs scale from this base value,
 +        // so this argument MUST be in the same unit as zarr_voxel_unit -- and 0
-+        // when there is no size to declare.
++        // when there is no size to declare, which is the flag that switches
++        // writeZarrAttrs from a physical scale to a relative one.
 +        render_level_voxel_size = ds_scale > 0
 +            ? zarr_voxel_value / double(ds_scale)
 +            : zarr_voxel_value;
@@ -342,7 +345,7 @@ index 9d0c2b8..cf4e2a2 100644
  
      int rotQuadGlobal = -1;
      if (std::abs(rotate_angle) > 1e-6) {
-@@ -1580,7 +1750,7 @@ int main(int argc, char *argv[])
+@@ -1580,7 +1753,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
@@ -351,7 +354,7 @@ index 9d0c2b8..cf4e2a2 100644
                  return true;
              } else if (numParts > 1) {
                  if (!std::filesystem::exists(std::filesystem::path(zarrOutputArg) / "0" / ".zarray")) {
-@@ -1788,7 +1958,7 @@ int main(int argc, char *argv[])
+@@ -1788,7 +1961,7 @@ int main(int argc, char *argv[])
                  if (rotQuad >= 0 && (rotQuad % 2) == 1) std::swap(attrXY.width, attrXY.height);
                  writeZarrAttrs(outFilePath, vol_path, group_idx, baseZ, slice_step, accum_step,
                                 accum_type_str, accumOffsets.size(), attrXY, baseZ, CH, CW,
@@ -361,39 +364,216 @@ index 9d0c2b8..cf4e2a2 100644
          }
          return true;
 diff --git a/volume-cartographer/core/include/vc/core/util/Zarr.hpp b/volume-cartographer/core/include/vc/core/util/Zarr.hpp
-index 0239efa..34a698f 100644
+index 0239efa..0624a4c 100644
 --- a/volume-cartographer/core/include/vc/core/util/Zarr.hpp
 +++ b/volume-cartographer/core/include/vc/core/util/Zarr.hpp
-@@ -88,6 +88,11 @@ void createPyramidDatasets(const std::filesystem::path& outFile,
- // Write OME-Zarr .zattrs multiscales JSON. The declared scale is per-axis:
- // Z = baseVoxelSize * sliceStep, Y/X = baseVoxelSize / pixelsPerVoxel
- // (baseVoxelSize describes one source voxel at the rendered level).
+@@ -9,6 +9,10 @@
+ #include <opencv2/core/mat.hpp>
+ 
+ namespace vc { class VcDataset; }
++// Declared, not included: this header is deliberately free of the JSON wrapper
++// so that including it does not pull a JSON implementation into every user.
++// Callers of buildMultiscales() include utils/Json.hpp themselves.
++namespace utils { class Json; }
+ 
+ // Map a tile index through rotation + flip (pure integer tile coordinate transform).
+ // Used by both zarr and tif writers.
+@@ -85,9 +89,37 @@ void createPyramidDatasets(const std::filesystem::path& outFile,
+                            int compressionLevel = -1,
+                            const std::string& dimensionSeparator = ".");
+ 
+-// Write OME-Zarr .zattrs multiscales JSON. The declared scale is per-axis:
+-// Z = baseVoxelSize * sliceStep, Y/X = baseVoxelSize / pixelsPerVoxel
+-// (baseVoxelSize describes one source voxel at the rendered level).
++// The value of the OME-NGFF "multiscales" attribute, as one descriptor object.
 +//
-+// baseVoxelSize <= 0 means the physical size is unknown: the multiscales block
-+// is then omitted entirely instead of writing a scale of 1.0. A
-+// coordinateTransformations scale with no meaningful unit is a physical
-+// measurement that was never made, and a reader cannot tell it from a real one.
++// Split out of writeZarrAttrs so the representation can be tested without a
++// filesystem or a Volume: the rules about units and relative scaling described
++// below are the part that went wrong, and they are pure JSON construction.
++[[nodiscard]] utils::Json buildMultiscales(double baseVoxelSize,
++                                           const std::string& voxelUnit,
++                                           double sliceStep,
++                                           double pixelsPerVoxel);
++
++// Write OME-Zarr .zattrs multiscales JSON.
++//
++// The multiscales block is always written: it is the image's discovery metadata
++// (axes, dataset paths, coordinateTransformations), and a reader that cannot find
++// it does not recognise the output as a multiscale image at all.
++//
++// The two things a `scale` can mean are kept separate:
++//
++//   * Physical scale, when `baseVoxelSize > 0`. The declared scale is physical
++//     units per axis -- Z = baseVoxelSize * sliceStep, Y/X = baseVoxelSize /
++//     pixelsPerVoxel (baseVoxelSize describes one source voxel at the rendered
++//     level) -- and `axes[*].unit` carries `voxelUnit`.
++//
++//   * Relative pyramid scale, when `baseVoxelSize <= 0`, meaning the physical
++//     size is unknown. No unit is declared anywhere, and each dataset's scale
++//     states the factor between that level and level 0, as OME-NGFF 0.4 requires
++//     when a physical scale is unavailable: level 0 is [1, 1, 1] and Y/X double
++//     per level because the pyramid halves only Y/X (see createPyramidDatasets).
++//     Nothing in the document is a physical length, so a reader cannot mistake
++//     the numbers for one -- which is what a bare scale of 1.0 with no unit
++//     allowed.
  void writeZarrAttrs(const std::filesystem::path& outFile,
                      const std::filesystem::path& volPath, int groupIdx,
                      size_t baseZ, double sliceStep, double accumStep,
 diff --git a/volume-cartographer/core/src/Zarr.cpp b/volume-cartographer/core/src/Zarr.cpp
-index 703b2fd..212f588 100644
+index 703b2fd..1d742a5 100644
 --- a/volume-cartographer/core/src/Zarr.cpp
 +++ b/volume-cartographer/core/src/Zarr.cpp
-@@ -367,6 +367,16 @@ void writeZarrAttrs(const std::filesystem::path& outDir,
-     }
-     attrs["note_axes_order"] = "ZYX (slice, row, col)";
+@@ -336,42 +336,47 @@ void createPyramidDatasets(const std::filesystem::path& outDir,
+ }
  
-+    // A non-positive baseVoxelSize means "unknown", not "1.0 units". Writing a
-+    // scale of 1.0 in that case invents a physical measurement: readers cannot
-+    // distinguish it from a real one, and the absence of a unit does not stop
-+    // them multiplying by it. Omit the multiscales block instead -- the caller
-+    // is responsible for having said so on stderr.
-+    if (!(std::isfinite(baseVoxelSize) && baseVoxelSize > 0.0)) {
-+        vc::writeZarrAttributes(outDir, attrs);
-+        return;
-+    }
-+
+ // ============================================================
+-// writeZarrAttrs
++// buildMultiscales
+ // ============================================================
+ 
+-void writeZarrAttrs(const std::filesystem::path& outDir,
+-                    const std::filesystem::path& volPath, int groupIdx,
+-                    size_t baseZ, double sliceStep, double accumStep,
+-                    const std::string& accumTypeStr, size_t accumSamples,
+-                    const cv::Size& canvasSize, size_t CZ, size_t CH, size_t CW,
+-                    double baseVoxelSize, const std::string& voxelUnit,
+-                    double pixelsPerVoxel)
++// The OME-NGFF "multiscales" attribute value.
++//
++// Always written: it is the discovery metadata for the image -- axes, the
++// ordered list of resolution levels, and each level's
++// coordinateTransformations. A reader that cannot find it does not recognise the
++// output as a multiscale image at all.
++//
++// The physical size and the level-to-level scaling are separate concerns and are
++// encoded separately:
++//
++//   * `axes[*].unit` carries the physical unit. It is written only when the
++//     physical size is known -- a unit without a measurement is the thing we must
++//     never invent.
++//   * each dataset's `scale` is a coordinate transformation. With a known size it
++//     is that size in physical units per axis. Without one it is the *relative*
++//     factor between that level and level 0, which is exactly what OME-NGFF 0.4
++//     asks for when a physical scale is unavailable:
++//
++//       "If scaling information is not available or applicable for one of the
++//        axes, the value MUST express the scaling factor between the current
++//        resolution and the first resolution for the given axis, defaulting to
++//        1.0 if there is no downsampling along the axis."
++//       -- https://ngff.openmicroscopy.org/0.4/#multiscale-md
++//
++//     So level 0 is [1, 1, 1] and is the reference; there is no absolute length
++//     anywhere in the document. A reader can still place the levels relative to
++//     each other, and cannot mistake the numbers for micrometres.
++Json buildMultiscales(double baseVoxelSize, const std::string& voxelUnit,
++                      double sliceStep, double pixelsPerVoxel)
+ {
+-    Json attrs;
+-    attrs["source_zarr"] = volPath.string();
+-    attrs["source_group"] = groupIdx;
+-    attrs["num_slices"] = baseZ;
+-    attrs["slice_step"] = sliceStep;
+-    if (accumSamples > 0) {
+-        attrs["accum_step"] = accumStep;
+-        attrs["accum_type"] = accumTypeStr;
+-        attrs["accum_samples"] = int(accumSamples);
+-    }
+-    {
+-        Json cs = Json::array(); cs.push_back(canvasSize.width); cs.push_back(canvasSize.height);
+-        attrs["canvas_size"] = std::move(cs);
+-    }
+-    {
+-        Json ck = Json::array(); ck.push_back(int(CZ)); ck.push_back(int(CH)); ck.push_back(int(CW));
+-        attrs["chunk_size"] = std::move(ck);
+-    }
+-    attrs["note_axes_order"] = "ZYX (slice, row, col)";
++    const bool physicalSizeKnown = std::isfinite(baseVoxelSize) && baseVoxelSize > 0.0;
+ 
      Json ms;
      ms["version"] = "0.4"; ms["name"] = "render";
      auto makeAxis = [&](const char* name) -> Json {
+         Json ax = Json{{"name", name}, {"type", "space"}};
+-        if (!voxelUnit.empty()) ax["unit"] = voxelUnit;
++        // Only a known physical size may carry a unit: see above.
++        if (physicalSizeKnown && !voxelUnit.empty()) ax["unit"] = voxelUnit;
+         return ax;
+     };
+     Json axes = Json::array();
+@@ -380,16 +385,22 @@ void writeZarrAttrs(const std::filesystem::path& outDir,
+     axes.push_back(makeAxis("x"));
+     ms["axes"] = std::move(axes);
+     ms["datasets"] = Json::array();
+-    // The two axes scale independently of each other: in-plane, one output
+-    // pixel spans 1/pixelsPerVoxel base voxels; through-plane, adjacent output
+-    // layers sit sliceStep base voxels apart. Pyramid levels halve only YX.
++    // When the size is known the two axes scale independently of each other:
++    // in-plane, one output pixel spans 1/pixelsPerVoxel base voxels;
++    // through-plane, adjacent output layers sit sliceStep base voxels apart.
++    // Pyramid levels halve only YX (see createPyramidDatasets).
+     const double px = (std::isfinite(pixelsPerVoxel) && pixelsPerVoxel > 0.0)
+         ? pixelsPerVoxel : 1.0;
+     const double step = (std::isfinite(sliceStep) && sliceStep > 0.0)
+         ? sliceStep : 1.0;
+     for (int l = 0; l <= 5; l++) {
+-        const double sYX = baseVoxelSize / px * std::pow(2.0, l);
+-        const double sZ = baseVoxelSize * step;
++        // Relative pyramid factor: levels are built by halving Y/X each step and
++        // keeping Z unchanged, so Y/X double relative to level 0 while Z stays at
++        // its level-0 spacing.
++        const double relativeYX = std::pow(2.0, l);
++        const double sYX = physicalSizeKnown ? baseVoxelSize / px * relativeYX
++                                             : relativeYX;
++        const double sZ = physicalSizeKnown ? baseVoxelSize * step : 1.0;
+         Json scale_arr = Json::array();
+         scale_arr.push_back(sZ); scale_arr.push_back(sYX); scale_arr.push_back(sYX);
+         Json trans_arr = Json::array();
+@@ -403,8 +414,48 @@ void writeZarrAttrs(const std::filesystem::path& outDir,
+         });
+     }
+     ms["metadata"] = Json{{"downsampling_method","mean"}};
++    if (!physicalSizeKnown) {
++        // Say why the scales are unitless, in the document itself, so a reader
++        // (or a person) does not have to infer it from the missing "unit".
++        ms["metadata"]["physical_size"] = "unknown";
++    }
++    return ms;
++}
++
++// ============================================================
++// writeZarrAttrs
++// ============================================================
++
++void writeZarrAttrs(const std::filesystem::path& outDir,
++                    const std::filesystem::path& volPath, int groupIdx,
++                    size_t baseZ, double sliceStep, double accumStep,
++                    const std::string& accumTypeStr, size_t accumSamples,
++                    const cv::Size& canvasSize, size_t CZ, size_t CH, size_t CW,
++                    double baseVoxelSize, const std::string& voxelUnit,
++                    double pixelsPerVoxel)
++{
++    Json attrs;
++    attrs["source_zarr"] = volPath.string();
++    attrs["source_group"] = groupIdx;
++    attrs["num_slices"] = baseZ;
++    attrs["slice_step"] = sliceStep;
++    if (accumSamples > 0) {
++        attrs["accum_step"] = accumStep;
++        attrs["accum_type"] = accumTypeStr;
++        attrs["accum_samples"] = int(accumSamples);
++    }
++    {
++        Json cs = Json::array(); cs.push_back(canvasSize.width); cs.push_back(canvasSize.height);
++        attrs["canvas_size"] = std::move(cs);
++    }
++    {
++        Json ck = Json::array(); ck.push_back(int(CZ)); ck.push_back(int(CH)); ck.push_back(int(CW));
++        attrs["chunk_size"] = std::move(ck);
++    }
++    attrs["note_axes_order"] = "ZYX (slice, row, col)";
++
+     Json multiscales = Json::array();
+-    multiscales.push_back(std::move(ms));
++    multiscales.push_back(buildMultiscales(baseVoxelSize, voxelUnit, sliceStep, pixelsPerVoxel));
+     attrs["multiscales"] = std::move(multiscales);
+ 
+     vc::writeZarrAttributes(outDir, attrs);

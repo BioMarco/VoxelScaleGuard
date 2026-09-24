@@ -27,8 +27,8 @@ pwsh -File harness/setup.ps1
 node harness/fetch_deps.mjs
 pwsh -File harness/build.ps1 -Configuration Release
 cd harness\build\Release
-.\test_upstream_voxel_size_metadata.exe            # expect: 13 cases / 54 assertions, all pass
-.\test_render_voxel_size.exe                       # expect: 27 cases / 208 assertions, all pass
+.\test_upstream_voxel_size_metadata.exe            # expect: 17 cases / 87 assertions, all pass
+.\test_render_voxel_size.exe                       # expect: 35 cases / 242 assertions, all pass
 .\probe_render_voxel_size.exe                      # expect: 3 divergences out of 4 volumes
 cd ..\..\..
 
@@ -53,7 +53,7 @@ source volume remotely and is holding the correct value**. For three of four
 published volumes probed, it therefore falls back to a scale of `1.0` declared as
 **nanometres**, making the declared physical voxel size wrong by **×2400, ×8640 or
 ×45532**. The rendered pixels are correct; every physical number attached to them
-is not. The fix is **three files, +250/−65**; it was written, then **compiled and
+is not. The fix is **three files, +358/−102**; it was written, then **compiled and
 run in CI on two real published volumes**, and the rendered pixels were verified
 byte-identical (`RESULTS.md` §9).
 
@@ -88,7 +88,7 @@ boundaries, environment traps.
   The URL-fragment hazard is real in `joinRemoteUrlPath` and reachable via the
   GUI's `remoteLocator()`; the invalid-local-metadata concern is real and *worse*
   than the review described (the reader returns `0.0` and `-3.0` as measurements).
-* **The patch**, `patch/vc_render_tifxyz.patch`, **three files, +250/−65**, applies
+* **The patch**, `patch/vc_render_tifxyz.patch`, **three files, +358/−102**, applies
   exactly to `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980`.
   *This line said "one file" until 2026-09-18; the patch grew a second and third
   file on 2026-09-17 (`core/src/Zarr.cpp`, `core/include/vc/core/util/Zarr.hpp`) and
@@ -96,7 +96,7 @@ boundaries, environment traps.
   regeneration command, where it was not cosmetic: see `RESULTS.md` §12.1.*
 * **The harness**, which compiles the pinned revision's real
   `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte, plus a
-  verbatim copy of the pre-patch reader, plus tests: 27 cases / 208 assertions, with
+  verbatim copy of the pre-patch reader, plus tests: 35 cases / 242 assertions, with
   upstream's own 13-case suite compiled unmodified as the control.
 * **The before/after demonstration on four real published volumes**, with a
   deliberate control (the one legacy-shaped volume that already worked, and which

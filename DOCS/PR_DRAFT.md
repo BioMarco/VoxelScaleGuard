@@ -172,7 +172,7 @@ local document, when no volume is open → unresolved.
 | `--voxel-size` (+ `--voxel-unit`) | converted to µm for the TIFF tag; the caller's own number for `.zattrs` | the caller's `--voxel-unit` |
 | the open (streamed) volume | `Volume::voxelSize()` | `micrometer` |
 | local `meta.json` / `metadata.json`, when no volume is open | the shared resolver's value | `micrometer` |
-| nothing usable | **nothing declared**: no `multiscales` block, no TIFF resolution tag; warning on stderr | — |
+| nothing usable | **no physical size declared**: no axis unit, no TIFF resolution tag, warning on stderr. The `multiscales` block **is** still written, with relative pyramid scaling — see below | — |
 
 The opened volume is consulted **before** the local document. `--volume` is often a
 chunk cache for a remote source, and such cache directories carry the store's own
@@ -212,7 +212,7 @@ which declared 8.64 nm for `--voxel-size 8640 --voxel-unit nanometer`. It was
 caught by CI checks that convert `.zattrs` and the TIFF tags to micrometres and
 compare both against the requested size.
 
-### The size is unknown: nothing is declared
+### The size is unknown: no physical size is declared, but the image structure stays
 
 `writeZarrAttrs()` wrote the per-axis `scale` unconditionally and only made the
 axis `unit` conditional (`Zarr.cpp:374` vs `:391-394`), so a render with no usable
@@ -220,13 +220,41 @@ size still emitted `coordinateTransformations.scale = [1, 2, 4, …]`. A `scale`
 no unit is a physical measurement that was never made, and a reader cannot tell it
 from a real one.
 
-The patch makes a non-positive `baseVoxelSize` mean "unknown" and omits the
-`multiscales` block entirely, and the renderer passes 0 in that case. The TIFF is
-unchanged: `tifDpi` stays 0, which already means "do not set the resolution tags".
-The stderr warning says the scale is unknown and that none will be declared, and it
-names the unit a caller must supply (`--voxel-size <value> --voxel-unit
-micrometer`) — the flag defaults to `nanometer`, so the previous advice would have
-produced a self-consistent 1000× error.
+The first revision of this patch made a non-positive `baseVoxelSize` mean "unknown"
+and **omitted the whole `multiscales` block** in that case. **Review of #1831
+corrected that** (hendrikschilling, finding 1): the block is the image's discovery
+metadata — axes, the ordered list of resolution levels, each level's
+`coordinateTransformations` — and a reader that cannot find it does not recognise
+the output as a multiscale image at all. Omitting it traded a dubious scale for a
+worse defect.
+
+What the patch does now, on a non-positive `baseVoxelSize`:
+
+* `multiscales`, `axes`, `datasets` and the per-level
+  `coordinateTransformations` are all still written;
+* **no axis carries a `unit`**, so nothing in the document claims a physical
+  measurement;
+* each level's `scale` is the **relative** factor between that level and level 0 —
+  level 0 is `[1, 1, 1]`, and Y/X double per level because the pyramid halves only
+  Y/X (`createPyramidDatasets`) while Z is unchanged. This is exactly what OME-NGFF
+  0.4 asks for when a physical scale is unavailable:
+  *"If scaling information is not available or applicable for one of the axes, the
+  value MUST express the scaling factor between the current resolution and the first
+  resolution for the given axis, defaulting to 1.0 if there is no downsampling along
+  the axis."* — <https://ngff.openmicroscopy.org/0.4/#multiscale-md>
+* `multiscales[0].metadata.physical_size = "unknown"` states why the numbers are
+  unitless, so a reader does not have to infer it from the missing unit.
+
+The TIFF is unchanged: `tifDpi` stays 0, which already means "do not set the
+resolution tags". The stderr warning says the scale is unknown and that none will be
+declared, and it names the unit a caller must supply (`--voxel-size <value>
+--voxel-unit micrometer`) — the flag defaults to `nanometer`, so the previous advice
+would have produced a self-consistent 1000× error.
+
+The physical-size and relative-scale cases are now separate concerns in the code as
+well: `buildMultiscales()` is a pure function of `(baseVoxelSize, voxelUnit,
+sliceStep, pixelsPerVoxel)`, with the known-size branch untouched, and it is unit
+tested directly (`core/test/test_zarr.cpp`).
 
 ### Scope of the change
 
@@ -270,10 +298,13 @@ change, no change to the rendered pixels, no change to any option's meaning.
 * **Unusable input** (`--voxel-size 0`, `-3`, `nan`, unknown unit) exits non-zero
   and writes no physical scale, matching `main`'s behaviour.
 * **Unknown size**, driven end to end with the real binary by rendering a local-only
-  store with no metadata document: the render declares **no** `multiscales` block
-  and **no** TIFF resolution tag, and says so on stderr. The same run on `main`
-  declares `nanometer`/`[1,1,1]`, i.e. 1 nm — the fabricated measurement this
-  removes.
+  store with no metadata document: the render declares **no axis unit** and **no**
+  TIFF resolution tag, and says so on stderr — while still writing the `multiscales`
+  block with relative pyramid scaling. The same run on `main` declares
+  `nanometer`/`[1,1,1]`, i.e. 1 nm — the fabricated measurement this removes.
+  (Before review, this bullet read "declares **no** `multiscales` block"; that was
+  the defect the reviewer found, and the check now asserts the block is present and
+  unitless. See `DOCS/RESULTS.md` §16.)
 
 ### Limitations, stated plainly
 
@@ -358,7 +389,7 @@ resulting repository state.
 * the branch is pushed: **`fix/render-voxel-size-from-open-volume`** @
   `d419dece6af51e0e015f6dc1df92c0312be76075`;
 * checked via the GitHub API that the commit contains **exactly three files**
-  (`vc_render_tifxyz.cpp` +235/−65, `Zarr.hpp` +5/−0, `Zarr.cpp` +10/−0), and that
+  (`vc_render_tifxyz.cpp` +238/−65, `Zarr.hpp` +35/−3, `Zarr.cpp` +85/−34), and that
   the branch is **0 behind / 1 ahead** of `ScrollPrize/villa` `main`;
 * nothing from VoxelScaleGuard is in the fork: no harness, no CI, no documents, no
   data, no images. The branch differs from upstream `main` by those three files and

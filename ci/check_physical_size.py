@@ -128,9 +128,12 @@ def main():
     ap.add_argument("--tolerance", type=float, default=1e-6)
     ap.add_argument(
         "--expect-unknown", action="store_true",
-        help="The size is expected to be UNKNOWN: neither output may declare one. "
-             "Asserts the multiscales block and the TIFF resolution tag are absent, "
-             "which is what the renderer promises on stderr in that case.")
+        help="The size is expected to be UNKNOWN. Asserts that no physical size is "
+             "declared anywhere -- no axis unit, and no TIFF resolution tag -- while "
+             "the OME-Zarr multiscales discovery block is still present with "
+             "relative pyramid scaling, which is what the renderer promises on "
+             "stderr and what OME-NGFF 0.4 requires of a level's scale when no "
+             "physical scale is available.")
     args = ap.parse_args()
 
     if not args.expect_unknown and args.expect_um is None:
@@ -144,10 +147,44 @@ def main():
         if attrs.is_file():
             try:
                 doc = json.loads(attrs.read_text())
-                check("zattrs declares no multiscales block", "multiscales" not in doc,
-                      f"keys: {sorted(doc)}")
             except Exception as exc:  # noqa: BLE001
                 check("zattrs is parseable", False, str(exc))
+            else:
+                # The block must still be there: it is the image's discovery
+                # metadata, and an earlier revision of this patch removed it,
+                # leaving a file no OME reader recognises as a multiscale image.
+                mults = doc.get("multiscales") or []
+                check("zattrs still has a multiscales block", bool(mults),
+                      f"keys: {sorted(doc)}")
+                if mults:
+                    ms = mults[0]
+                    axes = ms.get("axes") or []
+                    check("multiscales still lists its axes", len(axes) == 3,
+                          f"{len(axes)} axis entries")
+                    units = [a.get("unit") for a in axes]
+                    check("no axis declares a physical unit", all(u is None for u in units),
+                          f"units: {units}")
+                    datasets = ms.get("datasets") or []
+                    check("multiscales still lists its levels", len(datasets) == 6,
+                          f"{len(datasets)} level entries")
+                    # Relative pyramid scaling: level 0 is the reference, and the
+                    # in-plane factor doubles per level because the pyramid halves
+                    # only Y/X. Nothing here is an absolute length.
+                    for level, d in enumerate(datasets):
+                        scale = None
+                        for ct in d.get("coordinateTransformations", []) or []:
+                            if ct.get("type") == "scale":
+                                scale = ct.get("scale")
+                        if scale is None:
+                            check(f"level {level} has a scale transformation", False)
+                            continue
+                        expected = 2.0 ** level
+                        ok = (len(scale) == 3
+                              and abs(float(scale[0]) - 1.0) <= 1e-9
+                              and abs(float(scale[1]) - expected) <= 1e-9
+                              and abs(float(scale[2]) - expected) <= 1e-9)
+                        check(f"level {level} carries relative scale "
+                              f"[1, {expected:g}, {expected:g}]", ok, f"got {scale}")
         else:
             check("no .zattrs written at all", True, "nothing that could declare a scale")
 

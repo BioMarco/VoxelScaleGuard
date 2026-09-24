@@ -510,9 +510,17 @@ jobs:
         # The branch that warns and must declare NO physical scale: a volume that
         # opens and renders, but whose voxel size cannot be resolved from anywhere.
         #
-        # Reaching it takes care, and two earlier attempts at this step did not.
-        # An empty cache dir exits before resolution ("cannot detect version"), and
-        # a cache dir carrying .remote_source.json streams the real store, whose
+        # "No physical scale" is not the same as "no metadata". The OME-Zarr
+        # multiscales block must still be written -- it is the image's discovery
+        # metadata, and a reader that cannot find it does not recognise the output
+        # as a multiscale image at all -- with no axis unit and with relative
+        # pyramid scaling. An earlier revision of this patch omitted the whole
+        # block; review caught that, and check_physical_size.py --expect-unknown now
+        # asserts the block is PRESENT, unitless, and correctly relatively scaled.
+        #
+        # Reaching this branch takes care, and two earlier attempts at this step did
+        # not. An empty cache dir exits before resolution ("cannot detect version"),
+        # and a cache dir carrying .remote_source.json streams the real store, whose
         # document states 8.64 um -- so the branch was never entered in either.
         #
         # The working construction is a purely LOCAL store: no .remote_source.json,
@@ -565,8 +573,34 @@ jobs:
           fi
 
           echo
-          echo "--- what each one DECLARED ---"
+          echo "--- the discovery metadata must survive: multiscales, unitless, relative ---"
+          # A separate, plainly-worded summary so a reviewer can see the structure
+          # without reading the checker's assertions, plus an explicit guard that the
+          # reviewed defect (the block removed entirely) has not come back.
           FAILED=0
+          python3 - "$W/out/unknown/patched-unknown.zarr/.zattrs" <<'PY' || FAILED=1
+          import json, sys
+          doc = json.load(open(sys.argv[1]))
+          ms = (doc.get("multiscales") or [None])[0]
+          if not ms:
+              print("    FATAL: no multiscales block -- the reviewed defect is back")
+              sys.exit(1)
+          axes = ms.get("axes") or []
+          units = [a.get("unit") for a in axes]
+          print(f"    axes            : {[a.get('name') for a in axes]}")
+          print(f"    axes units      : {units}")
+          print(f"    levels          : {len(ms.get('datasets') or [])}")
+          for d in ms.get("datasets") or []:
+              for ct in d.get("coordinateTransformations", []) or []:
+                  if ct.get("type") == "scale":
+                      print(f"    level {d.get('path')} scale : {ct.get('scale')}")
+          if any(u is not None for u in units):
+              print("    FATAL: a physical unit was declared with no physical measurement")
+              sys.exit(1)
+          PY
+
+          echo
+          echo "--- what each one DECLARED ---"
           python3 "$W/ci/check_physical_size.py" \
             --zattrs "$W/out/unknown/patched-unknown.zarr/.zattrs" \
             --tiff "$W/out/unknown/patched-unknown.tif" \
@@ -581,7 +615,8 @@ jobs:
             --expect-unknown --label "baseline-unknown" \
             | sed 's/^/    /' || true
           if [ "$FAILED" -ne 0 ]; then
-            echo "FATAL: the unknown-size branch declared a physical scale."
+            echo "FATAL: the unknown-size branch did not declare exactly 'unknown',"
+            echo "       or it lost its OME-Zarr discovery metadata."
             exit 1
           fi
           exit 0

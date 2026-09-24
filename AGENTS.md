@@ -252,8 +252,8 @@ pwsh -File harness/build.ps1 -Configuration Release
 
 # tests
 cd harness/build/Release
-./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: must stay 13/13
-./test_render_voxel_size.exe              # this project's: must stay 27/27
+./test_upstream_voxel_size_metadata.exe   # upstream's suite as the PR extends it: 17/17
+./test_render_voxel_size.exe              # this project's: must stay 35/35
 ./probe_render_voxel_size.exe             # before/after over the real documents
 ```
 
@@ -267,6 +267,23 @@ One exception is deliberate and load-bearing: the file the patch modifies,
 patched in place on purpose, so copying from it would yield the patched file while
 calling it pristine — which is what silently happened until a test caught it. The
 pristine copy is asserted unpatched by `test_render_voxel_size.exe`.
+
+**Three sources of truth, and the distinction is load-bearing:**
+
+1. Most files come from the **pinned commit**, byte-for-byte.
+2. The files the **patch** modifies come from **git at the pinned commit** — the
+   exception above.
+3. A few files are modified by the **open PR** ahead of the patch
+   (`VoxelSizeMetadata.{cpp,hpp}`, `test_voxel_size_metadata.cpp`). Those come from
+   `tools/fork` on branch `fix/render-voxel-size-from-open-volume`, because the
+   pinned commit predates them and they are part of the change under test. The PR
+   revision is printed by `setup.ps1` and recorded in `harness/PR_REVISION.txt`.
+
+A file must never be listed under both (2) and (3): it is either what the patch adds
+on top of the pinned revision, or it is already changed on the branch. Copying a
+branch file into the pristine slot is exactly the contamination the assertion above
+exists to catch, and it caught it during the review round — see `DOCS/RESULTS.md`
+§16.3.
 
 The same suite also checks the patch as an artefact: that every name the new
 resolution block reads is declared above its call site. That check exists because

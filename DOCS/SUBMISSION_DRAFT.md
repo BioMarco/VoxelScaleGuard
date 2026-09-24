@@ -82,7 +82,7 @@ reviewer has opened anything yet.
 > and unit, the TIFF resolution tag and a **blank** pixel-difference panel — the
 > decoded pixels are verified identical, digests compared, so the change provably
 > touches only what was wrong; a second figure carrying the run's log lines verbatim;
-> the run's own comparison report; a 27-case unit suite (208 assertions) including
+> the run's own comparison report; a 35-case unit suite (242 assertions) including
 > tests that fail if either the original defect or a ×1000 unit regression is
 > reintroduced; and the full record of what was and was not verified, including two
 > earlier attempts of my own that were wrong. All links are in the repository below.
@@ -234,7 +234,7 @@ claimed here.
 Everything is public and needs no paid service.
 
 * Evidence repository: <https://github.com/BioMarco/VoxelScaleGuard>
-* The patch: `patch/vc_render_tifxyz.patch` (3 files, +250/−65), applies to
+* The patch: `patch/vc_render_tifxyz.patch` (3 files, +358/−102), applies to
   `villa` `main`.
 * The workflow that builds both binaries from one commit, applies the patch by
   `git apply`, checks the applied diff is byte-identical to the committed patch, and

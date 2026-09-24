@@ -180,11 +180,18 @@ files are the writer contract it needs in order not to publish a fabricated scal
 when the size is unknown.
 
 ```
-volume-cartographer/apps/src/vc_render_tifxyz.cpp       +235 / -65
-volume-cartographer/core/src/Zarr.cpp                   +10 / -0
-volume-cartographer/core/include/vc/core/util/Zarr.hpp   +5 / -0
-                                                         = +250 / -65
+volume-cartographer/apps/src/vc_render_tifxyz.cpp       +238 / -65
+volume-cartographer/core/src/Zarr.cpp                    +85 / -34
+volume-cartographer/core/include/vc/core/util/Zarr.hpp   +35 /  -3
+                                                         = +358 / -102
 ```
+
+The two `core` rows grew when review of #1831 corrected the unknown-size behaviour:
+the first revision removed the whole `multiscales` block, which costs discovery
+metadata (axes, level list, per-level transformations). It now keeps the block and
+removes only the physical claim — no axis unit, relative pyramid scaling — which is
+more code than deleting it, and needs its own function and tests. See `RESULTS.md`
+§16.
 
 * adds `#include "vc/core/util/VoxelSizeMetadata.hpp"`
 * replaces `readVolumeVoxelSize` with `VoxelSizeSource`, `ResolvedVoxelSize`,

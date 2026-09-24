@@ -26,39 +26,74 @@ $villaDir = [System.IO.Path]::GetFullPath($villaDir)
 Write-Host "[setup] pinned villa commit: $VillaCommit"
 
 # --- 1. Translation units and headers reused verbatim from villa -------------
+#
+# Three sources of truth, and the distinction matters:
+#
+#   * Most files come from the pinned commit. Byte-for-byte, unmodified.
+#
+#   * The files the PATCH modifies come from git at the pinned commit, never
+#     from a working tree: the clone under villa/ is deliberately modified in
+#     place to hold the patch (AGENTS.md section 4), so copying from it would
+#     yield the PATCHED file while calling it pristine. That silently made the
+#     before/after comparison compare the patch with itself, and
+#     tests/test_render_voxel_size.cpp now asserts the pristine copy really is
+#     unpatched.
+#
+#   * A few files are ALSO modified by the proposed PR, ahead of the patch. Those
+#     come from the PR branch (tools/fork, branch
+#     fix/render-voxel-size-from-open-volume), because the pinned commit predates
+#     them and they are the change under test. They are listed explicitly with
+#     FromPrBranch so that "which of these differ from upstream, and why" is
+#     answerable from this file alone. Each is pinned by the commit hash printed
+#     below, and the harness records that hash.
 $pairs = @(
     @('volume-cartographer/utils/src/Json.cpp',
       'src/villa/Json.cpp'),
     @('volume-cartographer/utils/include/utils/Json.hpp',
       'src/villa/utils/include/utils/Json.hpp'),
-    @('volume-cartographer/core/src/VoxelSizeMetadata.cpp',
-      'src/villa/vc/core/util/VoxelSizeMetadata.cpp'),
-    @('volume-cartographer/core/include/vc/core/util/VoxelSizeMetadata.hpp',
-      'src/villa/vc/core/util/VoxelSizeMetadata.hpp'),
     @('volume-cartographer/core/src/RemoteUrl.cpp',
       'src/villa/vc/core/util/RemoteUrl.cpp'),
     @('volume-cartographer/core/include/vc/core/util/RemoteUrl.hpp',
       'src/villa/vc/core/util/RemoteUrl.hpp'),
-    @('volume-cartographer/core/test/test_voxel_size_metadata.cpp',
-      'src/villa/test_voxel_size_metadata.cpp'),
-    # =====================================================================
-    # The files the patch modifies MUST come from git at the pinned commit,
-    # never from the working tree.
-    #
-    # The clone under villa/ is deliberately modified in place to hold the
-    # patch (AGENTS.md section 4). Copying from its working tree therefore
-    # yields the PATCHED file while labelling it pristine -- which silently
-    # made the before/after comparison in the harness compare the patch with
-    # itself. tests/test_render_voxel_size.cpp asserts the pristine copy really
-    # is unpatched, which is how this was caught.
-    # =====================================================================
     @{ Rel = 'volume-cartographer/apps/src/vc_render_tifxyz.cpp'
        Dest = 'src/villa/apps/src/vc_render_tifxyz.cpp'
        FromGit = $true }
+    # Changed by the PR as well as by the patch. The PR restores the legacy
+    # `metadata.json -> scan.voxelsize` schema and makes resolveLocalStoreVoxelSize()
+    # continue past a candidate file that yields no usable size; the tests for both
+    # travel with it.
+    @{ Rel = 'volume-cartographer/core/src/VoxelSizeMetadata.cpp'
+       Dest = 'src/villa/vc/core/util/VoxelSizeMetadata.cpp'
+       FromPrBranch = $true }
+    @{ Rel = 'volume-cartographer/core/include/vc/core/util/VoxelSizeMetadata.hpp'
+       Dest = 'src/villa/vc/core/util/VoxelSizeMetadata.hpp'
+       FromPrBranch = $true }
+    @{ Rel = 'volume-cartographer/core/test/test_voxel_size_metadata.cpp'
+       Dest = 'src/villa/test_voxel_size_metadata.cpp'
+       FromPrBranch = $true }
 )
 
 $haveLocal = Test-Path (Join-Path $villaDir 'volume-cartographer/CMakeLists.txt')
 Write-Host "[setup] source: $(if ($haveLocal) { "local clone at $villaDir" } else { $villaRaw })"
+
+# --- PR-branch source: tools/fork at the branch the proposal targets ---------
+# Resolved once, and printed, so a harness run says which revision of the
+# proposed change it exercised rather than leaving that implicit.
+$prDir = [System.IO.Path]::GetFullPath((Join-Path $here '..\tools\fork'))
+$prCommit = $null
+if (Test-Path (Join-Path $prDir 'volume-cartographer/CMakeLists.txt')) {
+    $prCommit = (& git -c safe.directory='*' -C $prDir rev-parse HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or -not $prCommit) {
+        throw "tools/fork is present but not a git checkout; cannot record the PR revision"
+    }
+    $prCommit = $prCommit.Trim()
+    $prBranch = (& git -c safe.directory='*' -C $prDir rev-parse --abbrev-ref HEAD).Trim()
+    Write-Host "[setup] PR branch: $prBranch @ $($prCommit.Substring(0,7))"
+} else {
+    throw ("tools/fork is missing. The harness needs it for the files the proposed " +
+           "change modifies ahead of the patch. Clone BioMarco/villa there at " +
+           "fix/render-voxel-size-from-open-volume.")
+}
 
 foreach ($pair in $pairs) {
     $rel = if ($pair -is [hashtable]) { $pair.Rel } else { $pair[0] }
@@ -66,6 +101,16 @@ foreach ($pair in $pairs) {
     $dest = Join-Path $here $destRel
     $destDir = Split-Path -Parent $dest
     if (-not (Test-Path $destDir)) { New-Item -ItemType Directory -Force -Path $destDir | Out-Null }
+
+    if ($pair -is [hashtable] -and $pair.FromPrBranch) {
+        # From the PR branch's working tree: these files ARE the proposed change,
+        # so they must not come from the pinned commit.
+        $src = Join-Path $prDir ($rel -replace '/', '\')
+        if (-not (Test-Path $src)) { throw "missing PR-branch file: $src" }
+        Copy-Item -Force $src $dest
+        Write-Host ("  {0,-72} -> {1}   [PR @ {2}]" -f $rel, $destRel, $prCommit.Substring(0, 7))
+        continue
+    }
 
     if ($haveLocal) {
         $src = Join-Path $villaDir ($rel -replace '/', '\')
@@ -86,6 +131,10 @@ foreach ($pair in $pairs) {
     }
     Write-Host ("  {0,-72} -> {1}" -f $rel, $destRel)
 }
+
+# Record the PR revision next to the copies it produced, so a harness run and its
+# uploaded artefacts can be tied to a specific commit of the proposed change.
+Set-Content -Path (Join-Path $here 'PR_REVISION.txt') -Value $prCommit -NoNewline
 
 # --- 2. Header-only dependencies, fetched at build time ---------------------
 $deps = @(

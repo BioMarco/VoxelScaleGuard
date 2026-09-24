@@ -145,7 +145,7 @@ byte-for-byte.
 
 *(§8.1 later changed the same region again, so this document at that point recorded
 **+218/−64**. Both figures above are the state at the time each defect was fixed and
-are kept as the record. **The patch's current diffstat is three files, +250/−65**
+are kept as the record. **The patch's current diffstat is three files, +358/−102** (it became +250/−65 on 2026-09-17, and grew again with the review fixes of 2026-09-23)
 — `RESULTS.md` §11.5 added `core/src/Zarr.cpp` and `core/include/vc/core/util/Zarr.hpp`.
 Corrected here 2026-09-18; the previous note stopped at +218/−64 and so understated
 the patch's file count, which is the same staleness that produced the defect in

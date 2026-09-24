@@ -85,14 +85,14 @@ issues #1403 and #1226 in full with comments; PRs #1417, #1228, #1229, #1313,
 executable tests rather than accepted or dismissed. One confirmed and shown
 reachable; one confirmed and shown *worse* than the review described.
 
-**Patch** — `patch/vc_render_tifxyz.patch`, **3 files, +250/−65** after the review fixes
+**Patch** — `patch/vc_render_tifxyz.patch`, **3 files, +358/−102** after the review fixes
 described in `RESULTS.md` §9. Applies exactly to the pinned revision
 (`git apply --check --reverse` succeeds on the patched tree).
 
 **Harness** — `harness/`, which compiles the pinned revision's real
 `VoxelSizeMetadata.cpp` / `RemoteUrl.cpp` / `Json.cpp` byte-for-byte and runs:
-upstream's own suite unmodified (**13 cases / 54 assertions**, as a control) plus
-this project's tests (**27 cases / 208 assertions**), plus a before/after probe.
+the resolver suite (**17 cases / 87 assertions**, as a control) plus
+this project's tests (**35 cases / 242 assertions**), plus a before/after probe.
 The suite also asserts that the pristine `vc_render_tifxyz.cpp` copy really is
 unpatched, and that the patch declares every name its new block reads before using
 it — the defect the first real compile exposed (§9).

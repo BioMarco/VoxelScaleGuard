@@ -1002,9 +1002,17 @@ while the new warning told the operator *"no physical scale will be written"*. T
 message was false, and a placeholder measurement survived.
 
 **Fixed by making "unknown" mean unknown.** A non-positive `baseVoxelSize` now makes
-`writeZarrAttrs()` omit the `multiscales` block, and the renderer passes 0 in that
-case. The TIFF is untouched: `tifDpi` stays 0, which already means "do not set the
+`writeZarrAttrs()` declare no physical size, and the renderer passes 0 in that case.
+The TIFF is untouched: `tifDpi` stays 0, which already means "do not set the
 resolution tags".
+
+> **This fix was itself wrong, and §16 records the correction.** As first written it
+> omitted the entire `multiscales` block. Reviewer finding 1 on
+> [PR #1831](https://github.com/ScrollPrize/villa/pull/1831) showed that this costs
+> the image's discovery metadata, so the block is now kept and only the *physical
+> claim* is removed. The table below is what that revision produced; §16 has the
+> current behaviour. Both rows are kept, because the change from "no multiscales" to
+> "unitless multiscales" is the substance of the correction.
 
 Verified end to end [exec], run 35249590299, by rendering a purely LOCAL store that
 has no `metadata.json` and no remote marker, so nothing can resolve a size:
@@ -1012,10 +1020,12 @@ has no `metadata.json` and no remote marker, so nothing can resolve a size:
 | | `.zattrs` keys | TIFF |
 |---|---|---|
 | baseline | `… multiscales …` with `nanometer` / `[1, 1, 1]` | no resolution tag |
-| patched | `['canvas_size', 'chunk_size', 'note_axes_order', 'num_slices', 'slice_step', 'source_group', 'source_zarr']` — **no multiscales** | no resolution tag |
+| patched (first revision, now superseded) | `['canvas_size', 'chunk_size', 'note_axes_order', 'num_slices', 'slice_step', 'source_group', 'source_zarr']` — **no multiscales** | no resolution tag |
 
 The baseline row is the fabricated measurement: it declares 1 nm. The patched row
-declares nothing.
+declares nothing — but also loses the level list, which is why it was wrong.
+`check_physical_size.py --expect-unknown` now asserts the opposite of what the
+superseded row shows: the block must be **present** and unitless.
 
 Note on getting there: the **first two attempts at that check passed vacuously** and
 were caught by reading the logs. An empty cache directory made the binary exit at
@@ -1372,7 +1382,240 @@ not resolved by re-reading** — which is the reason the question exists.
 
 ---
 
-## 15. Bottom line
+## 16. Session of 2026-09-23 — review of PR #1831, and the correction it forced
+
+The PR opened on 2026-09-19. **hendrikschilling** reviewed it and raised two
+findings. Both were correct, and the first invalidates something this project had
+documented as a deliberate improvement (§11.1 and `PR_DRAFT.md`). That is recorded
+here rather than quietly amended.
+
+The PR itself is unchanged in scope: the same three files, the same one commit
+before this round, no new PR, no rebase.
+
+### 16.1 Finding 1 — the unknown-size branch removed the OME-Zarr pyramid description
+
+Reviewer text, in substance: *unknown physical size removes the entire OME-Zarr
+pyramid description; `Zarr.cpp` around line 375 omits the whole `multiscales` block,
+losing dataset discovery, axes and relative pyramid scaling; OME readers may no
+longer recognise the output as a multiscale image.*
+
+**The reviewer was right, and the mistake was ours in a specific way.** §11.1 fixed a
+real problem — a fabricated `scale = 1.0` with a `nanometer` label — by deleting the
+containing block. That "fixed" the false measurement by also deleting the axes, the
+ordered level list and every level's `coordinateTransformations`. The `multiscales`
+attribute is how a reader discovers an image as multiscale at all; without it the
+output is an anonymous group of arrays. Trading a wrong number for an unrecognisable
+dataset is not a fix, and the block contains far more than the scale.
+
+*Why it was not caught here:* every check this project had asked "does anything
+claim a physical size it should not?" — which is precisely the question the deletion
+satisfied. **No check asked "is the structure still complete?"**, and the reviewer's
+question was the one missing. `check_physical_size.py --expect-unknown` in fact
+*asserted* the block was absent, so the project's own tooling would have rejected the
+correct behaviour. That assertion is now inverted (§16.4).
+
+**The fix.** `buildMultiscales()` — split out of `writeZarrAttrs()` so it is a pure
+function of `(baseVoxelSize, voxelUnit, sliceStep, pixelsPerVoxel)` — now always
+produces a descriptor, and separates the two things a `scale` can mean:
+
+| `baseVoxelSize` | `axes[*].unit` | each level's `scale` |
+|---|---|---|
+| `> 0` (known) | `voxelUnit` | physical units per axis: Z = `baseVoxelSize * sliceStep`, Y/X = `baseVoxelSize / pixelsPerVoxel * 2^level` |
+| `<= 0` or non-finite (unknown) | **absent** | **relative** factor between that level and level 0: Z = 1, Y/X = `2^level` |
+
+Level 0 is the identity, so there is no absolute length anywhere in the document; a
+reader can still place the levels relative to each other and cannot mistake the
+numbers for micrometres. This is what OME-NGFF 0.4 requires of a scale when a
+physical size is unavailable:
+
+> *"If scaling information is not available or applicable for one of the axes, the
+> value MUST express the scaling factor between the current resolution and the first
+> resolution for the given axis, defaulting to 1.0 if there is no downsampling along
+> the axis."* — <https://ngff.openmicroscopy.org/0.4/#multiscale-md> [read]
+
+The relative factors are not invented: `createPyramidDatasets()` keeps Z fixed and
+halves only Y/X at each level, so Y/X double and Z stays at its level-0 spacing. The
+descriptor also carries `metadata.physical_size = "unknown"`, so a reader does not
+have to infer the omission from a missing key. The TIFF is unchanged — `tifDpi`
+stays 0, so no resolution tag is written, which is a separate output format with its
+own rule.
+
+Resulting descriptor for an unknown size, from the real function [exec] — see §16.3
+for how that was produced on a machine that cannot build volume-cartographer:
+
+```json
+{
+  "axes": [ {"name":"z","type":"space"}, {"name":"y","type":"space"}, {"name":"x","type":"space"} ],
+  "datasets": [
+    {"path":"0","coordinateTransformations":[{"type":"scale","scale":[1.0,1.0,1.0]},{"type":"translation","translation":[0.0,0.0,0.0]}]},
+    {"path":"1","coordinateTransformations":[{"type":"scale","scale":[1.0,2.0,2.0]}, …]},
+    … through level 5, Y/X = 2^level, Z always 1.0 …
+  ],
+  "metadata": { "downsampling_method": "mean", "physical_size": "unknown" },
+  "name": "render",
+  "version": "0.4"
+}
+```
+
+**No rendered pixel is affected by any of this**, and neither is the known-size path:
+the branch is only reached when no size could be resolved anywhere.
+
+### 16.2 Finding 2 — switching resolvers lost previously supported local metadata
+
+Reviewer text, in substance: *`resolveLocalStoreVoxelSize()` stops at an existing
+`meta.json` even when that file contains no usable voxel size, instead of continuing
+to `metadata.json`; and it does not preserve the previously supported
+`metadata.json → scan.voxelsize` case. Some existing local inputs lose TIFF
+resolution and, because of finding 1, OME multiscale metadata.*
+
+**Also right, and it was a regression this project introduced.** Both halves are in
+the code as it was:
+
+* `resolveLocalStoreVoxelSize()` returned `voxelSizeFromStoreMetadata(parse(file))`
+  from inside the loop — `return` of a `std::optional`, so a file that parsed but
+  yielded nothing *ended the search*. A `meta.json` holding only dimensions, which
+  many published stores have, hid a perfectly good `metadata.json` beside it. An
+  unparseable file ended the search too, via the `catch` block.
+* The renderer's own pre-patch reader had three candidates
+  (`vc_render_tifxyz.cpp:999-1001` @ `757f70c`):
+
+  ```cpp
+  if (auto v = tryFile(volPath / "meta.json", nullptr))      return v;
+  if (auto v = tryFile(volPath / "metadata.json", "scan"))   return v;   // dropped
+  if (auto v = tryFile(volPath / "metadata.json", nullptr))  return v;
+  ```
+
+  The shared resolver covers the first and third. `metadata.json → scan.voxelsize`
+  was dropped when this patch replaced the private reader with the shared one.
+
+**The fix, in the shared resolver rather than in the renderer** — as the reviewer
+preferred, and for the reason this project already committed to in §11.3:
+`Volume::NewFromUrl()` and `vc_grow_seg_from_segments()` call the same resolver, so a
+renderer-only workaround would let the two disagree about what a store says. The
+narrower alternative (patching around it in `vc_render_tifxyz.cpp`) was rejected for
+that reason, not for effort.
+
+* `resolveLocalStoreVoxelSize()` now falls through: a candidate that yields nothing —
+  because it parsed but carried no recognised schema, or because it would not parse —
+  advances to the next. A missing file was always skipped.
+* `legacyScanVoxelSize()` restores `metadata.json → scan.voxelsize`, matched at that
+  **exact path**, only when `scan` holds no `tomo` acquisition record. Order is the
+  pre-patch order: top-level `voxelsize`, then the acquisition record, then
+  `scan.voxelsize`, then the `source` walk. The `tomo` guard keeps the modern shape on
+  its own path and stops the fallback shadowing it.
+* Exact-path matching is deliberate, and tested against four near-misses:
+  `metadata.scan.voxelsize`, `source.scan.voxelsize`, `properties.voxelsize` and
+  `scan.properties.voxelsize` all still resolve nothing.
+
+**Units for the restored field, determined from the history rather than assumed.**
+`readVolumeVoxelSize()` returned this number with **no conversion of any kind**, and
+its caller treated every number it returned as micrometres — the only input that ever
+received a unit conversion was an explicit `--voxel-size`, guarded by the
+`voxelSizeFromCli` flag (`vc_render_tifxyz.cpp:1397-1412` @ `757f70c`). Since the
+same reader produced both `meta.json`'s top-level `voxelsize` (micrometres: the
+published 7.91 matches the volume's own `-7.910um-` name) and `scan.voxelsize`, and a
+single code path cannot have meant two units, `scan.voxelsize` is micrometres. Had it
+been anything else, the legacy volume would have produced a wrong TIFF resolution on
+exactly the path the repository's live-S3 test exercises.
+
+### 16.3 What was actually executed, and what was not
+
+This machine cannot build volume-cartographer: no OpenCV, no Qt, and none of the
+dependency closure (`README` environment notes). Three things were therefore run
+differently, and the distinction matters.
+
+**Executed [exec]:**
+
+| Check | Command / artefact | Result |
+|---|---|---|
+| The fork's resolver suite, compiled for real | `scratch/run_resolver_test.ps1` — MSVC 14.34.31933 on the fork's `VoxelSizeMetadata.cpp` + `Json.cpp` + `test_voxel_size_metadata.cpp` | **17 cases / 87 assertions pass** |
+| Negative control: revert the fall-through | same, with the old `return` restored | **1 case fails** (`an unusable meta.json falls through`) |
+| Negative control: remove the legacy schema | same, with the `legacyScanVoxelSize()` call removed | **2 cases fail** (legacy schema, and the resolver/reader agreement case) |
+| The real `buildMultiscales()`, executed | `scratch/build_zattrs_driver.ps1` — compiles the fork's `Zarr.cpp` unmodified against the real `utils::Json`, with a `cv::Mat`/`cv::Size` stand-in and empty `VcDataset` bodies supplied by `scratch/` | **all structural checks pass**; output quoted in §16.1 |
+| Negative control: the reviewed behaviour | same driver, `buildMultiscales()` returning an empty object when the size is unknown | **structure reported MISSING**, non-zero exit |
+| Harness, rebuilt | `harness/build.ps1` | build OK |
+| Harness, upstream control | `test_upstream_voxel_size_metadata.exe` | **17 cases / 87 assertions pass** (was 13/54; the PR's tests travel with it) |
+| Harness, project suite | `test_render_voxel_size.exe` | **35 cases / 242 assertions pass** (was 27/208; +8 review cases) |
+| Harness, probe | `probe_render_voxel_size.exe` | 4 documents, 3 divergences — unchanged |
+| Physical-size checker self-test | `ci/selftest_physical_size.py` | **13/13 pass** (was 11/11; the unknown-size cases were rewritten) |
+| Workflow pre-flight | `ci/preflight_workflow.py` | **PRE-FLIGHT OK**, including `bash -n` on the edited step |
+| Patch regeneration and integrity | the corrected `AGENTS.md` §4 command | 3 files, +358/−102, reverse-applies exit 0 |
+| Mergeability against current upstream `main` | `git merge-tree` in a throwaway worktree | **no conflicts**; `main` at `59b454a8` |
+
+Two things the harness caught, both worth recording because they are the guards
+working:
+
+1. **`test_render_voxel_size.cpp` failed** when the harness's *pristine* renderer
+   copy was refreshed from the PR branch: it asserted the pristine copy contains
+   `readVolumeVoxelSize` and not `resolveRenderVoxelSize`, and the PR branch's copy
+   has the opposite. That is the anti-contamination check doing its job — the
+   pristine copy must come from the pinned commit, never from a branch that carries
+   the change. `harness/setup.ps1` was corrected to take the three files the *patch*
+   modifies from `git show` at the pinned commit, and the three files the *PR* changes
+   from the PR branch, with the PR revision printed and recorded in
+   `harness/PR_REVISION.txt`.
+2. **`selftest_physical_size.py` case 7 failed** once the checker was fixed, because
+   the self-test still passed `multiscales=False` as the *expected-accept* case. The
+   expectation, not the code, was stale.
+
+**Not executed, and why:**
+
+* **No full compile of volume-cartographer, and no renderer run.** Not possible here,
+  and not required by the changes: the renderer diff is comments only, and the two
+  `core` files' behaviour is covered by the two harness suites, which do compile and
+  run. `Zarr.cpp` compiles as part of the scratch driver, so its syntax is checked;
+  the parts of it that need OpenCV are not exercised.
+* **No GitHub Actions run for this revision.** CI triggers on push, so it cannot be
+  claimed before the push happens. Everything above is local. When the push lands,
+  run `renderer-validation` on `ci/renderer-validation` is the remote check, and its
+  unknown-size step now asserts the structure is present and unitless rather than
+  absent.
+* **No render on `PHerc0009B` / `PHerc0172`.** Neither finding can change those
+  outputs: PHerc0009B resolves `8.64 µm` and PHerc0172 `7.91 µm` through paths that
+  are untouched, and the unknown-size branch is not reached. The existing PHerc0009B
+  and PHerc0172 evidence therefore stands **unchanged and is not superseded** — no
+  new figure was generated, and none is needed.
+
+### 16.4 What this invalidated in the project's own documentation
+
+Corrected, each with the correction dated:
+
+* `PR_DRAFT.md` §"The size is unknown" — rewritten: it described omitting the block
+  as the fix. It now describes what the block is for and what the corrected branch
+  writes, with the reviewer's finding attributed.
+* `PR_DRAFT.md` §Behaviour of each source — the "nothing usable" row said "no
+  `multiscales` block"; it now says no physical size, block retained.
+* `PR_DRAFT.md` §Evidence — the unknown-size bullet said the render "declares **no**
+  `multiscales` block". Corrected, and the old wording is quoted so the change is
+  visible.
+* `RESULTS.md` §11.1 — annotated: the fix it records was itself wrong, and §16 is the
+  correction. The old table is kept because the change is the point.
+* `ci/check_physical_size.py --expect-unknown` — **inverted**. It asserted the block
+  was absent; it now asserts the block is present, unitless, has all three axes and
+  all six levels, and that each level's relative scale is exactly `[1, 2^l, 2^l]`.
+  This is the check that would have caught the defect, and did not exist.
+* `ci/selftest_physical_size.py` — the unknown-size cases rewritten; a
+  `no_multiscales` fixture is now an expected **reject**, and three further reject
+  cases were added (a unit with no measurement, wrong relative scales, a surviving
+  resolution tag).
+* `.github/workflows/renderer-validation.yml` — the unknown-size step's comment, and
+  a new plainly-worded summary that prints the axes, their units, the level count and
+  every level's scale, plus an explicit guard against the block going missing again.
+* `patch/README.md`, `README.md`, `ARCHITECTURE.md`, `INDEX.md`, `PROJECT_STATUS.md`,
+  `SUBMISSION_DRAFT.md`, `RESUME.md`, `CI_VALIDATION.md` — the patch diffstat
+  (+250/−65 → +358/−102) and the per-file counts, which the review changed.
+* `DOCS/PROGRESS_PRIZE_CHECKLIST.md` — the test counts.
+
+**Nothing about `PHerc0009B` or `PHerc0172` was invalidated**, and no prior evidence
+was replaced.
+
+**Supersession, stated explicitly:** for the *unknown-size branch*, any statement
+made before 2026-09-23 is superseded by this section; for everything else, run
+`35249590299` and its figures remain current.
+
+---
+
+## 17. Bottom line
 
 | Question | Answer |
 |---|---|
@@ -1380,12 +1623,13 @@ not resolved by re-reading** — which is the reason the question exists.
 | Reproduced? | **Yes**, against the live catalog: the pre-patch reader resolves 1 of 4 real published volumes |
 | Demonstrated before/after? | **Yes**, twice over: on the resolution logic against live metadata, **and now from two real compiled binaries on a real published volume** (§9) |
 | Tested on real data? | **Yes** — real published metadata documents, **and a real render** of `PHerc0009B` and `PHerc0172` through the real binaries (§9.4) |
-| Regression tests? | 27 cases / 208 assertions; upstream's 13 cases / 54 assertions pass unmodified as a control |
+| Regression tests? | 35 cases / 242 assertions; upstream's 17 cases / 87 assertions pass unmodified as a control. (Was 27/208 and 13/54 before the review round added 8 harness cases and 4 resolver cases — §16.3) |
 | Binary-verified? | **Yes** since 2026-09-16: both binaries compile in CI and were run on public data (§9.3–9.4) |
 | Does the patch compile? | **Yes** — but it did **not** before this session. The committed patch could never have built (§9.1). That is the single most important result in this document |
 | Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |
 | Can the patched binary be built on this machine? | **No** locally (§8.4), which is why the build runs on GitHub Actions (§9) |
+| Did the review find real defects? | **Yes, two, both now fixed.** The unknown-size branch removed the OME-Zarr `multiscales` block (the image's discovery metadata), and the shared resolver stopped at the first existing metadata file and had dropped the legacy `scan.voxelsize` schema. §16 |
 | Is the repository's licensing settled? | **Yes as an arrangement, no as a question.** The split is applied (`LICENSE`, `LICENSE-GPL-3.0.txt`, `NOTICE.md`, `DATA_ATTRIBUTION.md`) and two legal uncertainties are documented in `NOTICE.md` §2.4. Whether the organisers accept it is asked and unanswered (§14.4) |
 | Is the third-party attribution done? | **Yes** — `DATA_ATTRIBUTION.md`, reachable from the README, the figures' own README and the copied documents' provenance file (§14.1) |
-| Ready to submit as-is? | **The evidence and the paperwork are both in place.** Remaining: the author's decision to open the PR, to send the organisers' question, and to fill in the form |
+| Ready to submit as-is? | **The technical evidence is in place and the PR is open** (#1831). Remaining: the author's decision to send the organisers' question and to fill in the form |
 | Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-18. Earlier revisions wrongly said it had passed; see §8.2 |

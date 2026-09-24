@@ -225,6 +225,108 @@ TEST_CASE("DEFECT: the deployed reader returns a negative voxel size as a value"
     CHECK_FALSE(vc::metadata::resolveLocalStoreVoxelSize(store).has_value());
 }
 
+TEST_CASE("REVIEW: an unusable meta.json falls through to metadata.json")
+{
+    // Reviewer finding 2. resolveLocalStoreVoxelSize() used to return the FIRST
+    // existing document's answer, including "nothing", so a meta.json holding only
+    // dimensions hid a perfectly good metadata.json beside it. Many published
+    // meta.json files are exactly that.
+    const fs::path store = makeStore(
+        "fallthrough",
+        R"({"height": 9100, "width": 6700, "slices": 21000, "type": "vol"})",
+        kModernStoreMetadata);
+
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(8.64));
+}
+
+TEST_CASE("REVIEW: a meta.json with a non-positive size falls through too")
+{
+    // Present but unusable is not an answer. The store does publish a size; it is
+    // just not in the first file.
+    const fs::path store = makeStore("fallthrough_zero", R"({"voxelsize": 0})",
+                                     R"({"scan": {"voxelsize": 8.64}})");
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(8.64));
+}
+
+TEST_CASE("REVIEW: a malformed meta.json falls through to metadata.json")
+{
+    const fs::path store = makeStore("fallthrough_bad", "{not json", kModernStoreMetadata);
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(8.64));
+}
+
+TEST_CASE("REVIEW: an unusable meta.json and a malformed metadata.json still resolve nothing")
+{
+    // Falling through must not invent an answer. One corrupt file no longer hides
+    // a good one; two do.
+    const fs::path store = makeStore("fallthrough_none", "{not json", "also not json");
+    CHECK_FALSE(vc::metadata::resolveLocalStoreVoxelSize(store).has_value());
+}
+
+TEST_CASE("REVIEW: the legacy metadata.json -> scan.voxelsize schema is restored")
+{
+    // The second candidate of the renderer's own pre-patch reader, which the shared
+    // resolver had dropped. Micrometres, like the top-level field it mirrors: the
+    // historical reader applied no unit conversion to any value it returned, and
+    // its caller treated every one of them as micrometres.
+    const fs::path store = makeStore(
+        "legacy_scan", "",
+        R"({"scan": {"voxelsize": 8.64}, "zarr_export": {"z_crop_start": 0}})");
+
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(8.64));
+}
+
+TEST_CASE("REVIEW: the legacy schema agrees with the deployed reader on the same store")
+{
+    // The point of restoring it in the shared resolver rather than in the
+    // renderer: the two must not disagree about what a store says. `scan.voxelsize`
+    // is the one shape both now read.
+    const fs::path store = makeStore(
+        "legacy_scan_agree", "",
+        R"({"scan": {"voxelsize": 7.91}, "height": 9100})");
+    const Divergence d = compare(store);
+    REQUIRE(d.deployed.has_value());
+    REQUIRE(d.shared.has_value());
+    CHECK(*d.deployed == doctest::Approx(*d.shared));
+    CHECK(*d.shared == doctest::Approx(7.91));
+}
+
+TEST_CASE("REVIEW: an acquisition record wins over a legacy scan voxelsize")
+{
+    // A `scan` carrying `tomo` is the modern shape and has its own exact path, so
+    // the legacy fallback must not shadow it.
+    const fs::path store = makeStore(
+        "modern_wins", "",
+        R"({"scan": {"voxelsize": 99.0,
+                     "tomo": {"acquisition": {"detector": {"samplePixelSize": 0.00864}}}}})");
+    const auto resolved = vc::metadata::resolveLocalStoreVoxelSize(store);
+    REQUIRE(resolved.has_value());
+    CHECK(*resolved == doctest::Approx(8.64));
+}
+
+TEST_CASE("REVIEW: an unrelated nested voxelsize is not read as this volume's")
+{
+    // Restoring a nested schema must not become a search for anything
+    // resolution-shaped. Only the exact `scan.voxelsize` path counts.
+    for (const char* document : {
+             R"({"metadata": {"scan": {"voxelsize": 8.64}}})",
+             R"({"source": {"scan": {"voxelsize": 8.64}}})",
+             R"({"properties": {"voxelsize": 8.64}})",
+             R"({"scan": {"properties": {"voxelsize": 8.64}}})",
+         }) {
+        CAPTURE(document);
+        const fs::path store = makeStore("nested_scan", "", document);
+        CHECK_FALSE(vc::metadata::resolveLocalStoreVoxelSize(store).has_value());
+    }
+}
+
 TEST_CASE("a stated but unusable local size is distinguished from none")
 {
     // The document states an unusable size. `statedVoxelSize` records that the

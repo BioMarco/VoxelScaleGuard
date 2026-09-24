@@ -121,12 +121,14 @@ Everything below already exists. Nothing needs to be written from scratch.
 | Standard formats | OME-Zarr `.zattrs` and TIFF resolution tags are exactly what the patch corrects; the outputs stay in those formats |
 | Open source, under the page's licence wording | **Split applied, question open.** `LICENSE` is MIT for the original work, `LICENSE-GPL-3.0.txt` and `NOTICE.md` cover the derived patch material, `DATA_ATTRIBUTION.md` covers the third-party data. Whether the organisers' *"permissive license"* wording accepts a GPL-3.0-or-later patch is asked in `PROGRESS_PRIZE_QUESTION.md` and **not sent** |
 | Advantages over existing solutions | `DOCS/FEASIBILITY.md` §7 — the comparison with #1417 and the other lapsed attempts |
-| The artifact itself | `patch/vc_render_tifxyz.patch`; the fork branch <https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume> |
+| The artifact itself | `patch/vc_render_tifxyz.patch`; **PR [#1831](https://github.com/ScrollPrize/villa/pull/1831)**, open, one review round addressed, not merged |
 
-**Worth deciding before sending:** whether to state the PR status plainly. It is
-currently *prepared and pushed, not opened*. A submission that says so is stronger
-than one a reviewer can catch in a minute. If you open the PR first, the statement
-becomes "PR #NNNN open".
+**Worth deciding before sending:** the PR is **open** and has had a review round that
+found two real defects, both since fixed and both recorded in `RESULTS.md` §16. That
+is a strength to state plainly rather than omit: a submission that says "open, one
+review round, both findings fixed with regression tests" is stronger than one a
+reviewer discovers by reading the PR history. The reply to the reviewer has not been
+posted yet — see the draft in `PR_REVIEW_REPLY.md`.
 
 ### 4.1 Field-by-field: what goes in each box
 

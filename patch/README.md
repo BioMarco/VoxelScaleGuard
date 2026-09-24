@@ -7,9 +7,9 @@
 
 | Upstream file | Change |
 |---|---|
-| `volume-cartographer/apps/src/vc_render_tifxyz.cpp` | +235 / −65 — the fix |
-| `volume-cartographer/core/src/Zarr.cpp` | +10 / −0 — omit the `multiscales` block when the voxel size is unknown, instead of publishing a placeholder scale |
-| `volume-cartographer/core/include/vc/core/util/Zarr.hpp` | +5 / −0 — the documented contract for the above |
+| `volume-cartographer/apps/src/vc_render_tifxyz.cpp` | +238 / −65 — the fix |
+| `volume-cartographer/core/src/Zarr.cpp` | +85 / −34 — when the voxel size is unknown, write no axis unit and encode relative pyramid scaling instead of a placeholder physical scale, while keeping the `multiscales` discovery block |
+| `volume-cartographer/core/include/vc/core/util/Zarr.hpp` | +35 / −3 — the documented contract for the above |
 
 It applies to `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980` and to upstream
 `main` @ `b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18), where all three

@@ -81,18 +81,55 @@ print("check_physical_size.py self-test (synthetic fixtures)")
 print("=" * 72)
 
 
-def run_unknown(label: str, *, multiscales: bool, resolution: bool,
+def run_unknown(label: str, *, zattrs_mode: str, resolution: bool,
                 expect_ok: bool) -> bool:
-    """Exercise --expect-unknown: the branch that emits the warning."""
+    """Exercise --expect-unknown: the branch that emits the warning.
+
+    zattrs_mode selects which .zattrs to synthesise:
+      "unitless_relative" -- the correct output: multiscales present, no units,
+                             relative pyramid scaling.
+      "no_multiscales"    -- the earlier revision's output: the block removed.
+      "fabricated"        -- the original defect: a placeholder 1.0 nanometre.
+      "unit_without_size" -- a unit declared with no physical measurement.
+      "wrong_relative"    -- unitless but the level factors are not the pyramid's.
+    """
     tmp = Path(tempfile.mkdtemp(prefix="vsg-unknown-"))
     try:
         zattrs = tmp / "out.zarr" / ".zattrs"
         tiff = tmp / "out.tif" / "00.tif"
         zattrs.parent.mkdir(parents=True, exist_ok=True)
-        if multiscales:
-            write_zattrs(zattrs, 1.0, "nanometer")   # the fabricated placeholder
+
+        def axes(with_unit: bool):
+            return [{"name": n, "type": "space", **({"unit": "micrometer"} if with_unit else {})}
+                    for n in ("z", "y", "x")]
+
+        def datasets(z_factor):
+            return [{
+                "path": str(l),
+                "coordinateTransformations": [
+                    {"type": "scale",
+                     "scale": [1.0, (2.0 ** l) * z_factor, (2.0 ** l) * z_factor]},
+                ],
+            } for l in range(6)]
+
+        if zattrs_mode == "unitless_relative":
+            doc = {"multiscales": [{"version": "0.4", "name": "render",
+                                    "axes": axes(False), "datasets": datasets(1.0)}]}
+        elif zattrs_mode == "no_multiscales":
+            doc = {"source_zarr": "x", "canvas_size": [4, 4]}
+        elif zattrs_mode == "fabricated":
+            doc = {"multiscales": [{"version": "0.4", "name": "render",
+                                    "axes": axes(True), "datasets": datasets(1.0)}]}
+        elif zattrs_mode == "unit_without_size":
+            doc = {"multiscales": [{"version": "0.4", "name": "render",
+                                    "axes": axes(True), "datasets": datasets(1.0)}]}
+        elif zattrs_mode == "wrong_relative":
+            doc = {"multiscales": [{"version": "0.4", "name": "render",
+                                    "axes": axes(False), "datasets": datasets(3.0)}]}
         else:
-            zattrs.write_text(json.dumps({"source_zarr": "x", "canvas_size": [4, 4]}))
+            raise AssertionError(zattrs_mode)
+        zattrs.write_text(json.dumps(doc))
+
         write_tiff(tiff, 8.64, with_resolution=resolution)
         proc = subprocess.run(
             [sys.executable, str(CHECKER), "--zattrs", str(zattrs), "--tiff", str(tiff),
@@ -139,20 +176,36 @@ results.append(run("TIFF carries no resolution", um=8.64, zarr_value=8640.0,
                    zarr_unit="nanometer", tiff_um=8.64, with_resolution=False,
                    expect_ok=False))
 
-# 7. The UNKNOWN case: no multiscales block, no resolution tag -> accepted.
-#    This is the branch that warns, and the patch now omits the physical scale
-#    instead of writing a placeholder of 1.0.
-results.append(run_unknown("unknown size: nothing declared", multiscales=False,
-                           resolution=False, expect_ok=True))
+# 7. The UNKNOWN case, correct output: no unit anywhere, no resolution tag, and the
+#    multiscales block still present with relative pyramid scaling -> accepted.
+#    (Until the review, this script instead required the multiscales block to be
+#    ABSENT; that expectation was the defect, not the fix.)
+results.append(run_unknown("unknown size: unitless relative scaling, no resolution",
+                           zattrs_mode="unitless_relative", resolution=False,
+                           expect_ok=True))
 
-# 8. An "unknown" size that nonetheless declares a scale must be REJECTED: that
-#    is exactly the fabricated measurement this change removed.
-results.append(run_unknown("unknown size but a scale was written -> rejected",
-                           multiscales=True, resolution=False, expect_ok=False))
+# 8. THE REVIEWED DEFECT: the multiscales block removed entirely -> rejected, because
+#    a reader can no longer discover the image as a multiscale image.
+results.append(run_unknown("unknown size but the multiscales block was removed -> rejected",
+                           zattrs_mode="no_multiscales", resolution=False,
+                           expect_ok=False))
 
-# 9. Likewise if a resolution tag survives.
+# 9. A unit declared with no physical measurement -> rejected. That is the invented
+#    measurement the original patch removed.
+results.append(run_unknown("unknown size but a physical unit was declared -> rejected",
+                           zattrs_mode="unit_without_size", resolution=False,
+                           expect_ok=False))
+
+# 10. Unitless but the level factors are not the pyramid's -> rejected. Relative
+#     scaling has to be the real one, not a placeholder.
+results.append(run_unknown("unknown size but the relative scales are wrong -> rejected",
+                           zattrs_mode="wrong_relative", resolution=False,
+                           expect_ok=False))
+
+# 11. Likewise if a resolution tag survives.
 results.append(run_unknown("unknown size but a resolution tag -> rejected",
-                           multiscales=False, resolution=True, expect_ok=False))
+                           zattrs_mode="unitless_relative", resolution=True,
+                           expect_ok=False))
 
 print()
 if all(results):

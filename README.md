@@ -119,23 +119,30 @@ reader handles, and it is the volume `core/test/test_volume_live_s3.cpp` pins.
 
 ### Tests
 
-**27 cases / 208 assertions** added, plus upstream's own **13 cases / 54 assertions**
+**35 cases / 242 assertions**, plus the resolver suite **17 cases / 87 assertions**
 compiled unmodified as a control. Transcripts in
 [`DOCS/RESULTS.md`](DOCS/RESULTS.md).
 
 ## The patch
 
-`patch/vc_render_tifxyz.patch` — **3 files, +250 / −65**:
+`patch/vc_render_tifxyz.patch` — **3 files, +358 / −102**:
 
 | File | Why |
 |---|---|
 | `volume-cartographer/apps/src/vc_render_tifxyz.cpp` | the fix |
-| `volume-cartographer/core/src/Zarr.cpp` | `writeZarrAttrs()` omits the `multiscales` block when the voxel size is unknown, instead of publishing a placeholder scale |
-| `volume-cartographer/core/include/vc/core/util/Zarr.hpp` | the documented contract for the above |
+| `volume-cartographer/core/src/Zarr.cpp` | when the voxel size is unknown, `writeZarrAttrs()` declares **no physical size** — no axis unit, no fabricated placeholder — while still writing the OME-Zarr `multiscales` block with relative pyramid scaling |
+| `volume-cartographer/core/include/vc/core/util/Zarr.hpp` | the documented contract for the above, and the new `buildMultiscales()` entry point |
 
-It applies cleanly to the pinned revision and to `main` at
-`b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18), where all three files are
-byte-identical to the pinned revision [exec]. The GUI change is **not** included.
+It applies cleanly to the pinned revision, and all three files are byte-identical
+between the pinned revision and `main` at
+`b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18) [exec]. **`main` has since
+moved**, and two of the three files are no longer byte-identical there; the branch
+was re-checked against `main` at `59b454a8` (2026-09-23) and still merges cleanly
+into it, with no rebase required [exec]. The GUI change is **not** included.
+
+The unknown-size behaviour was corrected after review of the open PR — the first
+revision removed the whole `multiscales` block, which is the image's discovery
+metadata. `DOCS/RESULTS.md` §16 records the correction and what it invalidated.
 
 ## Repository layout
 
@@ -221,7 +228,7 @@ pwsh -File harness/build.ps1 -Configuration Release
 # 3. tests
 cd harness/build/Release
 ./test_upstream_voxel_size_metadata.exe   # upstream's suite, unmodified: 13/13
-./test_render_voxel_size.exe              # this project's: 27/27
+./test_render_voxel_size.exe              # this project's: 35/35
 
 # 4. the before/after demonstration over the real documents in research/raw_metadata
 ./probe_render_voxel_size.exe
@@ -255,9 +262,12 @@ i.e. the patch describes it exactly, and it applies to current upstream `main`.
 
 ## What is still open
 
-1. **The PR is not open.** A fork and branch are prepared
-   ([`PR_DRAFT.md`](DOCS/PR_DRAFT.md)); publication awaits the author's decision,
-   and two things must be written by the author first.
+1. **The PR is open: [#1831](https://github.com/ScrollPrize/villa/pull/1831).** It has
+   had one review round, which found two real defects in the first revision; both are
+   fixed and the reviewer's findings are recorded in
+   [`RESULTS.md` §16](DOCS/RESULTS.md). It is not merged, and the reply to the review
+   has not been posted yet. `PR_DRAFT.md` Part 2 still holds the placeholder for the
+   author's own comment.
 2. **The GUI path remains broken**: `SegmentationCommandHandler.cpp:2076-2078`
    suppresses `--voxel-size` for native-resolution remote volumes, so the CLI fix is
    not reachable from VC3D. Deliberate, separate follow-up.
