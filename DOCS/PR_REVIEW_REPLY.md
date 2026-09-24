@@ -128,11 +128,18 @@ completed **successfully**, 25/25 steps, none failed. That run:
 * reported `physical-size failures: 0` across the nm/µm/mm/m unit cases.
 
 **What has *not* run:** the VoxelScaleGuard workflow builds `villa` at the *pinned*
-commit and applies `patch/`. It does **not** build the 7-file PR branch itself. So:
-the patch's behaviour is CI-verified end to end; the seven-file branch has been
-verified locally (fork unit tests, harness suites, resolver negative controls) plus
-a merge dry-run against current upstream `main`. That distinction is stated in the
-reply rather than blurred.
+commit and applies `patch/`. It does **not** build the 7-file PR branch itself, and
+it does not compile the resolver at all — the resolver is part of the PR, not of the
+patch. So:
+
+* the **patch's** behaviour is CI-verified end to end (run `36028271482`, on
+  `c8ba551`);
+* the **resolver** changes, including the precedence correction, are verified
+  locally: the fork's own unit suite compiled and run here (18 cases / 90
+  assertions), the harness suites (37 / 249 and 18 / 90), and negative controls that
+  fail when the fall-through, the legacy schema, or the precedence is reverted.
+
+That distinction is stated in the reply rather than blurred.
 
 ## Resolver precedence: corrected after a first attempt got it wrong
 
