@@ -4,10 +4,12 @@ A verified diagnosis and a compiled, tested fix for a **silently wrong physical
 voxel size** in Vesuvius Challenge [`villa`](https://github.com/ScrollPrize/villa)'s
 renderer, `vc_render_tifxyz`.
 
-> **Status: the fix is written, compiled, run, and tested. The pull request is
-> prepared but NOT open.** A fork and a branch exist; the PR has not been opened and
-> nothing has been submitted for a prize, both pending the repository owner's
-> decision.
+> **Status: the fix is written, compiled, run, and tested. Pull request
+> [#1831](https://github.com/ScrollPrize/villa/pull/1831) is open, the September
+> 2026 Progress Prize submission has been sent, and upstream review is in progress.**
+> The licensing arrangement documented in [`NOTICE.md`](NOTICE.md) was described
+> to the organisers and publicly confirmed on Discord as not problematic for the
+> prize.
 
 **Reviewers, start here:**
 
@@ -20,11 +22,11 @@ renderer, `vc_render_tifxyz`.
 | What the evidence figures are, and how they were built | [`DOCS/evidence/README.md`](DOCS/evidence/README.md) |
 | What is **not** verified | [`DOCS/RESULTS.md` §7](DOCS/RESULTS.md) — kept deliberately, and mostly closed |
 | The reading order for everything | [`DOCS/INDEX.md`](DOCS/INDEX.md) |
-| The proposed PR text | [`DOCS/PR_DRAFT.md`](DOCS/PR_DRAFT.md) |
-| The prize submission text | [`DOCS/SUBMISSION_DRAFT.md`](DOCS/SUBMISSION_DRAFT.md) |
+| The PR text and review follow-up notes | [`DOCS/PR_DRAFT.md`](DOCS/PR_DRAFT.md) |
+| The Progress Prize submission text | [`DOCS/SUBMISSION_DRAFT.md`](DOCS/SUBMISSION_DRAFT.md) |
 | **What you may reuse, and under what terms** | [`NOTICE.md`](NOTICE.md) — the authoritative path-by-path map. This repository is **not** under one licence |
 | The third-party data and its required citations | [`DATA_ATTRIBUTION.md`](DATA_ATTRIBUTION.md) |
-| How the licence position was reached, and what stays uncertain | [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) |
+| How the licence position was reached, and what legal questions remain | [`DOCS/LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) |
 
 ---
 
@@ -165,9 +167,9 @@ DOCS/          all project documentation
   TEST_PLAN.md                what was tested, what is blocked, what would falsify this
   RESEARCH.md                 sources, exact commits, licences, assumptions that failed
   PRIZE_REQUIREMENTS.md       Progress Prize rules vs. this project
-  PROGRESS_PRIZE_QUESTION.md  the prepared question for the organisers; NOT sent
-  PR_DRAFT.md                 the pull request, ready to paste; NOT open
-  SUBMISSION_DRAFT.md         Progress Prize submission text; NOT sent
+  PROGRESS_PRIZE_QUESTION.md  the licensing question sent to the organisers
+  PR_DRAFT.md                 the pull request text and review follow-up notes
+  SUBMISSION_DRAFT.md         Progress Prize submission text
   PROGRESS_PRIZE_CHECKLIST.md what is prepared, and what only the author can attest
   LICENSING_PROPOSAL.md       how the licence position was reached, and what is uncertain
   evidence/
@@ -274,16 +276,11 @@ i.e. the patch describes it exactly, and it applies to current upstream `main`.
 3. **Coverage is two volumes, one crop, one slice each**, in one build
    configuration. That demonstrates the correction and the absence of a pixel
    regression; it is not a survey.
-4. **No prize submission has been made.**
-   [`PROGRESS_PRIZE_CHECKLIST.md`](DOCS/PROGRESS_PRIZE_CHECKLIST.md) holds what is
-   prepared and what only the author can attest.
-5. **One licence question is open and needs the organisers, not more work here.**
-   The repository's own licence is settled and applied (see below), but the prize
-   Terms require a *"permissive license"* to accept an award, and the patch is a
-   modification of GPL-3.0-or-later code. `NOTICE.md` §2.4 and
-   [`LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) §4 record exactly what is
-   uncertain; `DOCS/PROGRESS_PRIZE_QUESTION.md` is a prepared question for the
-   organisers, **not sent**.
+4. **The September 2026 Progress Prize submission has been made; the result is
+   pending.** The licensing arrangement was described to the organisers and
+   publicly confirmed on Discord as not problematic for the prize. The separate
+   legal uncertainties documented in `NOTICE.md` §2.4 and
+   [`LICENSING_PROPOSAL.md`](DOCS/LICENSING_PROPOSAL.md) §4 remain unchanged.
 
 ## Data and licences
 
