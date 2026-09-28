@@ -1,8 +1,10 @@
 # PR #1831 — reply to review
 
-**Draft. NOT POSTED.** hendrikschilling reviewed the PR on 2026-09-23 and raised two
-findings; both were correct and both are now fixed. The reply below is ready to
-paste, but posting it is the author's decision.
+**Historical draft; response posted.** hendrikschilling reviewed the PR on
+2026-09-23 and raised two findings; both were correct and both are now fixed. The
+author posted the final response on 2026-09-24:
+<https://github.com/ScrollPrize/villa/pull/1831#issuecomment-5818821769>.
+The text below is retained as the checked pre-posting draft.
 
 ---
 

@@ -1,6 +1,7 @@
 # LICENSING_PROPOSAL
 
-> **STATUS — APPROVED AND APPLIED on 2026-09-18, with one question still open.**
+> **STATUS — APPROVED AND APPLIED on 2026-09-18. Prize question answered on
+> 2026-09-20.**
 >
 > The author approved the split proposed here: **MIT** for this repository's
 > original work where that licence is genuinely applicable, **GPL-3.0-or-later**
@@ -20,7 +21,8 @@
 > * [`DATA_ATTRIBUTION.md`](../DATA_ATTRIBUTION.md) — the third-party data, its
 >   terms, and the citations its publishers require;
 > * [`patch/README.md`](../patch/README.md) — the patch's own GPL notice, its
->   modification dates, and its "proposed, not applied, not merged" status;
+>   modification dates, and the distinction between the historical three-file
+>   artefact and the open, seven-file PR;
 > * GPL headers on the four derived files listed in §2.2 below.
 >
 > **Where this document and `NOTICE.md` disagree, `NOTICE.md` governs.** This file
@@ -28,9 +30,10 @@
 > two claims that were wrong before them — not as the licence. It is not legal
 > advice.
 >
-> **One thing approved here remains open**: the question for the prize organisers
-> about the "permissive license" wording, prepared in
-> [`PROGRESS_PRIZE_QUESTION.md`](PROGRESS_PRIZE_QUESTION.md) and **not sent**.
+> The prize organisers were asked about the “permissive license” wording using the
+> exact MIT/GPL split documented here and answered publicly on Discord that it was
+> not a problem for the prize. The two separate legal-characterisation questions in
+> `NOTICE.md` §2.4 remain recorded and unchanged.
 
 Two readings inform this document, both done on 2026-09-18 from the local
 checkouts:
@@ -325,10 +328,11 @@ rather than assumed. **All five were done on 2026-09-18.**
 
 One thing the proposal did **not** anticipate and the applied change adds: a notice
 beside the patch itself, [`patch/README.md`](../patch/README.md), carrying the
-modification statement and the "proposed, not applied, not merged" status. It is a
-separate file rather than a comment at the top of the patch because CI compares the
-applied diff byte-for-byte against the patch artefact, so anything prepended to the
-patch would either break that check or make it compare something else.
+modification statement. That notice now also distinguishes the historical
+three-file artefact from the open, seven-file PR. It is a separate file rather than
+a comment at the top of the patch because CI compares the applied diff byte-for-byte
+against the patch artefact, so anything prepended to the patch would either break
+that check or make it compare something else.
 
 ### One decision that the inventory resolved in passing
 

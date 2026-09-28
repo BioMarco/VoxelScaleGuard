@@ -1,19 +1,21 @@
 # TEST_PLAN
 
 What was tested, how, and what remains planned. **Executed** means it ran and the
-transcript is in `RESULTS.md`. **Planned** means it is designed but blocked.
+transcript is in `RESULTS.md`. The original local L3 plan is retained below, but
+the binary-level gap was closed in public GitHub Actions.
 
 ---
 
 ## 1. Strategy
 
-Three layers, because the patch cannot be built here:
+Three layers. The patch cannot be built locally in this environment, but L3 was
+executed on a GitHub-hosted runner:
 
 | Layer | What it can prove | Built? |
 |---|---|---|
 | **L1 — Real upstream units, executed** | The schema gap, the value-validation gap, the fragment hazard, and the fixed priority chain | **Executed** |
 | **L2 — Pre-patch behaviour, executed** | That the defect exists in the shipped code, not merely in a reading of it | **Executed** |
-| **L3 — The patched binary** | That the patch compiles, and that `.zattrs` / TIFF tags really change | **Planned — blocked** (no Qt/OpenCV/vcpkg) |
+| **L3 — The patched binary** | That the patch compiles, and that `.zattrs` / TIFF tags really change | **Executed in CI** — baseline and patched binaries built and run on two public volumes |
 
 The point of L1 and L2 is that they are not simulations: they compile the pinned
 revision's own `.cpp` files. The control is that upstream's 13-case suite passes
@@ -116,7 +118,7 @@ stronger, and `RESULTS.md` §3.2 records it.
 
 ---
 
-## 4. L3 — planned, blocked
+## 4. L3 — executed in CI; local route remains blocked
 
 ### 4.1 Build the patched binary
 
@@ -127,9 +129,9 @@ cmake --preset windows-msvc
 cmake --build build\windows-msvc --target vc_render_tifxyz
 ```
 
-**Blocked by:** vcpkg absent, Qt/OpenCV/Ceres/CGAL absent, CMake 3.24 installed vs
-3.28 required. Multi-GB download and a long source build. **Requires
-authorisation; not attempted.**
+**Local route blocked by:** vcpkg absent, Qt/OpenCV/Ceres/CGAL absent, CMake 3.24
+installed vs 3.28 required. The equivalent build-and-render verification was
+completed in public CI; see `CI_VALIDATION.md` and `RESULTS.md` §9.
 
 Acceptance criteria once buildable:
 

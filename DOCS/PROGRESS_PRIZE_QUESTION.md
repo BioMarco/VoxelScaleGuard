@@ -1,8 +1,13 @@
 # PROGRESS_PRIZE_QUESTION
 
-**A question prepared for the Vesuvius Challenge organisers. It has NOT been sent.**
-No message has been sent to the organisers by any channel, and nothing here should be
-sent without the author's explicit decision.
+**Sent and answered.** The author posted this licensing question publicly in the
+Vesuvius Challenge Discord `General` channel on 2026-09-19. On 2026-09-20, Paul
+answered “yes, no problem” directly to the message describing the MIT original
+work, GPL-3.0-or-later upstream patch and the path-by-path `NOTICE.md` split.
+
+This resolves the prize-eligibility question recorded here. It does not purport to
+resolve the two separate legal-characterisation uncertainties preserved in
+`NOTICE.md` §2.4. The text below is retained as the question record.
 
 The question is real and narrow: the prize Terms and Conditions make a *permissive*
 licence a condition of **accepting** a Progress Prize, while the contribution's patch
@@ -50,12 +55,11 @@ reading it more carefully.
   in [`DATA_ATTRIBUTION.md`](../DATA_ATTRIBUTION.md) under its own CC BY-NC 4.0
   terms.
 
-## 3. The message, ready to send
+## 3. The message as sent
 
-**Channel:** the Vesuvius Challenge Discord (the prizes page directs general
-questions there), or `grandprize@scrollprize.org` — which the site presents as the
-Grand Prize submission address, so Discord is the more appropriate first route for a
-rules question. **Neither has been used.**
+**Channel used:** the Vesuvius Challenge Discord `General` channel on 2026-09-19.
+The email alternative below was not used. Paul answered the Discord message on
+2026-09-20.
 
 **Subject line, if email:** `Progress Prize: does a GPL-3.0-or-later patch meet the licence condition?`
 

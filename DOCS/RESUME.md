@@ -5,7 +5,11 @@ file plus `AGENTS.md` and continue without re-deriving anything.
 
 **Repository:** <https://github.com/BioMarco/VoxelScaleGuard>
 **Workspace:** `C:\Users\marco\Documents\DeepSeek\VoxelScaleGuard`
-**State at handoff:** `main` @ `9cfcaf9`, clean, in sync with `origin/main`
+**Status update (2026-09-28):** PR #1831 is open, one review round has been
+addressed and answered, the September Progress Prize submission has been sent, and
+the licensing arrangement was publicly confirmed as not problematic for the prize.
+The commit hash and commands below belong to the original handoff snapshot; verify
+the live repository rather than expecting those historical hashes.
 
 ---
 
@@ -303,9 +307,9 @@ Full list in `AGENTS.md` §7. The ones that will cost you an hour:
 | VC3D GUI predicate: pass the size whenever it is known, not only when rebased | `DOCS/FEASIBILITY.md` §8, `DOCS/PR_DRAFT.md` (exact edit included) |
 | Point `core/test/test_volume_live_s3.cpp` at a modern `metadata.json` volume as well as `PHerc0172` | `DOCS/TEST_PLAN.md` §4.5 — the test that would have caught this |
 | `vc_zarr_to_tiff.cpp:69-86` has the same schema gap (local-only, top-level key only) | `DOCS/FEASIBILITY.md` §8.3 |
-| Open the PR to `villa`; submit for a Progress Prize | `DOCS/PR_DRAFT.md`, `DOCS/SUBMISSION_DRAFT.md`, `DOCS/PROGRESS_PRIZE_CHECKLIST.md` §4.1. **Deadline re-confirmed [live] 2026-09-18: 11:59pm Pacific, 30 Sep 2026** — 12 days out. Earlier revisions of `RESUME.md`, `README.md`, `PRIZE_REQUIREMENTS.md` and `SUBMISSION_DRAFT.md` wrongly said it had passed; corrected in place and recorded in `DOCS/RESULTS.md` §8 |
+| PR and Progress Prize submission | **Done.** PR #1831 is open; the September 2026 form was submitted. `PR_DRAFT.md` and `SUBMISSION_DRAFT.md` are retained historical preparation records |
 | Decide the repository licence, and add the third-party Open Data attribution | **Done 2026-09-18.** `LICENSE` (MIT, original work only), `LICENSE-GPL-3.0.txt` (verbatim upstream GPL text), `NOTICE.md` (authoritative path-by-path map, including the two uncertainties that remain open), `DATA_ATTRIBUTION.md` (the data, both dataset citations, the transformations), GPL headers on the four derived files. `RESULTS.md` §14 |
-| Send, or not, the prepared question to the prize organisers | `DOCS/PROGRESS_PRIZE_QUESTION.md` — written in English, **not sent**. Only the author can decide |
+| Licensing question to the prize organisers | **Done.** Sent publicly on Discord and answered “yes, no problem”; `PROGRESS_PRIZE_QUESTION.md` retains the record |
 | Keep the patch artefact honest | `AGENTS.md` §4's regeneration command now names all three paths, and CI asserts the touched-file count. Both exist because the old command silently produced a 2/3 patch (`RESULTS.md` §12.1) |
 
 ## 10. Conventions

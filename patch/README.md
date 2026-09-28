@@ -13,7 +13,9 @@
 
 It applies to `villa` @ `757f70c0140a4cfbbbd44975ef09558444b96980` and to upstream
 `main` @ `b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18), where all three
-blobs are byte-identical to the pinned revision.
+blobs are byte-identical to the pinned revision. It no longer applies directly to
+`vc_render_tifxyz.cpp` on upstream `main` @ `f4570bfa` (2026-09-26); the open
+seven-file PR remains mergeable and is the current integration vehicle.
 
 ## Licence — GPL-3.0-or-later, **not** MIT
 
@@ -31,7 +33,7 @@ Accordingly:
   [`../LICENSE-GPL-3.0.txt`](../LICENSE-GPL-3.0.txt), which GPL-3.0 §4 requires for
   anyone receiving the covered material;
 * **statement of modification and date** (GPL-3.0 §5(a)): the three files above
-  were modified in this contribution between **2026-09-15 and 2026-09-18**. The
+  were modified in this contribution between **2026-09-15 and 2026-09-23**. The
   change is described in `../DOCS/ROOT_CAUSE_ANALYSIS.md` and
   `../DOCS/ARCHITECTURE.md`;
 * **statement of licence** (GPL-3.0 §5(b)): the modified files, and this diff
@@ -43,14 +45,14 @@ Accordingly:
 
 Nothing here relicenses upstream code, and no MIT claim is made over any of it.
 
-## Status: proposed, not applied, not merged
+## Status: PR open, not merged
 
-The patch is a **proposed** upstream contribution. It has **not** been sent as a
-pull request, is not applied to `villa`, and is not merged anywhere. Upstream at
-the pinned commit is unmodified; downstream, the change exists only as this diff.
-A prepared fork branch exists at
-<https://github.com/BioMarco/villa/tree/fix/render-voxel-size-from-open-volume>
-and no pull request has been opened from it.
+The patch is the three-file reproducibility artefact for the contribution. The
+current upstream proposal is
+[PR #1831](https://github.com/ScrollPrize/villa/pull/1831), which is open and not
+merged. The PR touches seven files because review also required shared-resolver
+changes and regression tests; the hunks for the three files above are identical to
+this artefact. Upstream at the pinned commit remains unmodified.
 
 ## Why this file exists rather than a comment inside the patch
 

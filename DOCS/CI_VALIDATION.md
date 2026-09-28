@@ -325,8 +325,9 @@ workflow does not drive end to end. Stated here rather than omitted.
 * **The "no metadata" warning branch**, as described in §8.
 * **Only two volumes and one crop per volume were rendered.** The public catalog
   has 46 scrolls; this is a demonstration that the fix works, not a survey.
-* No pull request has been opened against `ScrollPrize/villa`, and nothing has been
-  submitted for a prize.
+* **Upstream adoption remains open.** PR #1831 has been opened and reviewed but is
+  not merged. The September 2026 Progress Prize form has been submitted; its result
+  is pending.
 
 ---
 

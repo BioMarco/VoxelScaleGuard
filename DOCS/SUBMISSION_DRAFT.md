@@ -1,7 +1,8 @@
-# SUBMISSION_DRAFT
+# SUBMISSION_DRAFT — historical pre-submission text
 
-**Not submitted. No form has been filled in, and none will be without the author's
-authorisation.**
+**Current status (2026-09-28):** the September 2026 Progress Prize form has been
+submitted. The text below is retained as the pre-submission drafting record; it is
+not a new or replacement submission.
 
 Text for a Vesuvius Challenge **Progress Prize** entry. Written to be readable by
 someone who knows the scrolls but not this codebase. Every claim is either measured
@@ -258,8 +259,9 @@ Everything is public and needs no paid service.
 * **No claim about ink detection.** This fix corrects declared physical metadata. It
   does not improve, and is not claimed to improve, the readability of any scroll or
   the output of any ink model.
-* **The patch is not merged.** It is prepared as a pull request and has not been
-  opened, let alone accepted. No claim is made that anyone is using it.
+* **The patch is not merged.** At drafting time it had not yet been opened. It is
+  now PR #1831, open with one review round addressed; no claim is made that anyone
+  is using it or that upstream has accepted it.
 * **The development history contains two real defects** that only execution found:
   the first version of the patch did not compile, and the second wrote a wrong unit
   on one command-line path. Both are recorded, with the tests that now pin them.

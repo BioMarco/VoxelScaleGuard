@@ -13,6 +13,12 @@ Every claim below is marked with how it was established:
 * **[exec]** — produced by running code, with the command recorded in `RESULTS.md`.
 * **[live]** — observed against published data from the real catalog.
 
+> **Later verification:** the limitations in §9 describe the state when this
+> analysis was first written. They were subsequently closed by public CI: baseline
+> and patched binaries were compiled and run on `PHerc0009B` and `PHerc0172`, with
+> corrected physical metadata and identical decoded pixels. See
+> `CI_VALIDATION.md` and `RESULTS.md` §9. The four-volume survey limitation remains.
+
 ---
 
 ## 1. The symptom, as reported
@@ -360,6 +366,9 @@ because it changes GUI behaviour and public-looking behaviour that the argument
 above does not by itself authorise. See `FEASIBILITY.md`.
 
 ## 9. Limitations of this analysis
+
+The first two bullets below are retained as the original analysis boundary and are
+superseded by the later-verification note at the top of this document.
 
 * **The patched application binary was not compiled or run here.** Qt, OpenCV,
   Ceres, CGAL, TIFF and the rest are not installed, and the full

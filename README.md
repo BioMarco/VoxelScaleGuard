@@ -146,7 +146,9 @@ between the pinned revision and `main` at
 `b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18) [exec]. **`main` has since
 moved**, and two of the three files are no longer byte-identical there; the branch
 was re-checked against `main` at `59b454a8` (2026-09-23) and still merges cleanly
-into it, with no rebase required [exec]. The GUI change is **not** included.
+into it, with no rebase required [exec]. As of `main` at `f4570bfa` (2026-09-26),
+the standalone raw patch no longer applies directly to `vc_render_tifxyz.cpp`;
+the seven-file PR branch remains mergeable. The GUI change is **not** included.
 
 The unknown-size behaviour was corrected after review of the open PR — the first
 revision removed the whole `multiscales` block, which is the image's discovery
@@ -266,7 +268,8 @@ git apply         /path/to/patch/vc_render_tifxyz.patch
 ```
 
 Verified to apply: `git apply --check --reverse` succeeds against the patched tree,
-i.e. the patch describes it exactly, and it applies to current upstream `main`.
+i.e. the patch describes the pinned revision exactly. It must not be assumed to
+apply directly to a later upstream `main`; use PR #1831 for current integration.
 
 ## What is still open
 

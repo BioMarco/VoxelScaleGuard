@@ -1,7 +1,10 @@
 # PROGRESS PRIZE — submission checklist
 
-**Nothing has been submitted. No form has been filled in. This is a checklist, not a
-claim.**
+**Status update (2026-09-28):** the September 2026 form has been submitted, PR
+#1831 is open, the review response has been posted, and the organisers have
+confirmed publicly on Discord that the documented MIT/GPL licensing arrangement
+is not a problem for the prize. Pre-submission instructions below are retained as
+the historical checklist and are not actions still waiting to be performed.
 
 Two kinds of statement appear below and they must not be blurred:
 
@@ -17,10 +20,10 @@ Two kinds of statement appear below and they must not be blurred:
 | Stage | State |
 |---|---|
 | Contribution ready to propose to villa maintainers | **Yes** — patch, tests, evidence, PR text |
-| Pull request **open** against `ScrollPrize/villa` | **No** |
+| Pull request **open** against `ScrollPrize/villa` | **Yes — #1831** |
 | Pull request **accepted** / merged | **No** |
-| Progress Prize application **sent** | **No** |
-| Prize **won** | **No** |
+| Progress Prize application **sent** | **Yes — September 2026** |
+| Prize **won** | **Pending; no September result announced** |
 
 This matters for the submission, because a Progress Prize entry is judged on what
 exists at the moment it is sent. Anything phrased as "will be merged" or "is being
@@ -119,16 +122,16 @@ Everything below already exists. Nothing needs to be written from scratch.
 | Documentation and usage examples | `README.md`; `DOCS/INDEX.md` (reading order); `harness/` builds and runs in minutes |
 | Reproduction, no paid services | `.github/workflows/renderer-validation.yml` — public apt packages on a free runner, no private registry |
 | Standard formats | OME-Zarr `.zattrs` and TIFF resolution tags are exactly what the patch corrects; the outputs stay in those formats |
-| Open source, under the page's licence wording | **Split applied, question open.** `LICENSE` is MIT for the original work, `LICENSE-GPL-3.0.txt` and `NOTICE.md` cover the derived patch material, `DATA_ATTRIBUTION.md` covers the third-party data. Whether the organisers' *"permissive license"* wording accepts a GPL-3.0-or-later patch is asked in `PROGRESS_PRIZE_QUESTION.md` and **not sent** |
+| Open source, under the page's licence wording | **Split applied; prize question answered.** `LICENSE` is MIT for the original work, `LICENSE-GPL-3.0.txt` and `NOTICE.md` cover the derived patch material, and `DATA_ATTRIBUTION.md` covers the third-party data. The organisers were asked about this exact arrangement and answered publicly that it was not a problem for the prize |
 | Advantages over existing solutions | `DOCS/FEASIBILITY.md` §7 — the comparison with #1417 and the other lapsed attempts |
 | The artifact itself | `patch/vc_render_tifxyz.patch`; **PR [#1831](https://github.com/ScrollPrize/villa/pull/1831)**, open, one review round addressed, not merged |
 
-**Worth deciding before sending:** the PR is **open** and has had a review round that
+**Status recorded for the submission:** the PR is **open** and has had a review round that
 found two real defects, both since fixed and both recorded in `RESULTS.md` §16. That
 is a strength to state plainly rather than omit: a submission that says "open, one
 review round, both findings fixed with regression tests" is stronger than one a
-reviewer discovers by reading the PR history. The reply to the reviewer has not been
-posted yet — see the draft in `PR_REVIEW_REPLY.md`.
+reviewer discovers by reading the PR history. The reply was posted on 2026-09-24;
+`PR_REVIEW_REPLY.md` retains the checked draft and links to the final comment.
 
 ### 4.1 Field-by-field: what goes in each box
 
@@ -179,30 +182,24 @@ without them would not survive reproduction.
 
 ## 6. Suggested order
 
-Steps 1 and 5 need your explicit authorisation; steps 0 and the message in step 0b
-need only your decision, and nothing has been sent or opened.
+The numbered list below is the retained pre-submission procedure. Steps 0b, 1 and 4
+have since been completed; it must not be read as a current to-do list.
 
 0. ~~Decide the licence and attribution question.~~ **Done 2026-09-18**: the licence
    split is applied and the third-party attribution is in place. `NOTICE.md` is the
    authoritative map; `LICENSE` states what it does not cover; `DATA_ATTRIBUTION.md`
    carries the data's citations. Nothing further is required here.
-0b. **Decide whether to send the organisers' question** —
-   `PROGRESS_PRIZE_QUESTION.md` holds it in English, ready to paste into the
-   Vesuvius Challenge Discord. It is **not sent**, and it does not block submitting:
-   the form's Terms make the licence a condition of *accepting* a prize, not of
-   entry (`PRIZE_REQUIREMENTS.md` §2.5). Sending it before the deadline is worth
-   doing if you want the answer on record.
-1. Open the PR against villa (needs your comment and your checkbox tick — see
-   `PR_DRAFT.md` Part 2). Maintainer feedback before a prize submission is only an
-   advantage. **This is the item `README.md` lists as still open, and it has not been
-   authorised.**
+0b. ~~Decide whether to send the organisers' question.~~ **Done:** sent on Discord
+   2026-09-19 and answered “yes, no problem” on 2026-09-20.
+1. ~~Open the PR against villa.~~ **Done:** PR #1831 is open; one review round has
+   been addressed and the response posted.
 2. Note your Discord registration. It is **not** a Progress Prize requirement (that
    correction is in §2 above); the form only asks, optionally, for a display name.
 3. Re-read <https://scrollprize.org/prizes> for the current deadline before
    submitting; do not rely on the date in this file. The form is recreated per month
    and its title names the month, so open it from the page rather than from a saved
    link.
-4. Fill in the submission form using §4.1 field by field. There is no upload field:
+4. ~~Fill in the submission form using §4.1 field by field.~~ **Done.** There was no upload field:
    the contribution URL carries the evidence, so the repository must be readable and
    its links must resolve **before** the form is sent.
 5. Only then, if you want, consider the follow-up work that would strengthen a

@@ -7,6 +7,12 @@ useful**, as the brief asked.
 > Prize terms can change. Scroll Prize, Inc. reserves the right to modify them, and
 > the final citation for anything below is the live page, not this document.
 
+> **Project status update (2026-09-28):** the September 2026 submission has been
+> sent. The licensing arrangement was described to the organisers and publicly
+> confirmed on Discord as not problematic for the prize. Statements below saying
+> “not submitted” or “question open” record the pre-submission state in which this
+> requirements analysis was written.
+
 ---
 
 ## 1. The relevant prize: Progress Prizes
@@ -26,7 +32,7 @@ is an engineering contribution, so the applicable category is **Progress Prizes*
   permitted.
 
 **This project does not promise a prize.** Prize award is at the sole discretion
-of Scroll Prize, Inc., and no submission has been made.
+of Scroll Prize, Inc.; the September 2026 submission is awaiting a result.
 
 ### 1.1 Deadline
 
@@ -112,14 +118,17 @@ author's decision to send it — `PROGRESS_PRIZE_QUESTION.md`. Nothing has been 
 to the organisers, and this document does not assert that the submission is or is
 not eligible under that condition.
 
+**Subsequent resolution.** The question was posted publicly on Discord on
+2026-09-19, and Paul answered “yes, no problem” on 2026-09-20. The paragraph above
+is retained as the dated pre-submission record, not the current status.
+
 Because the condition attaches to *accepting* a prize rather than to submitting
 (§2.5), an open answer here does not by itself block an entry.
 
 ### 2.4 How submissions are made, and the form's actual fields
 
 Via the linked Google Form, not by email (the email route is for Grand
-Prize-class results). **No submission has been made and none will be without
-authorisation.**
+Prize-class results). The September 2026 form has since been submitted.
 
 The form was fetched and read on 2026-09-18. Its title confirms which month the
 entry belongs to, and it has **six required fields** — no more, and no upload:
@@ -184,14 +193,14 @@ for the wrong rubric.
 
 | Requirement | Status |
 |---|---|
-| Open source under a permissive licence, **if a prize is won** | **Split applied; the reading is an open question.** The original work is MIT and the derived patch is GPL-3.0-or-later by necessity (`NOTICE.md` maps it path by path; `LICENSE` states what it does not cover). What is unresolved is whether the organisers' *"permissive license"* wording accepts a GPL-3.0-or-later patch — asked in `PROGRESS_PRIZE_QUESTION.md`, **not sent**. It does **not** block submitting (§2.5) |
+| Open source under a permissive licence, **if a prize is won** | **Split applied; prize eligibility clarified.** The original work is MIT and the derived patch is GPL-3.0-or-later by necessity (`NOTICE.md` maps it path by path; `LICENSE` states what it does not cover). The organisers were asked about this exact arrangement and answered publicly that it was not a problem for the prize. The separate legal questions in `NOTICE.md` §2.4 remain unchanged |
 | Problem identification and solution, with a demonstration of its use | **Yes** — problem identified and demonstrated both at the metadata-resolution level (`RESULTS.md` §2) and from two real compiled binaries on real published volumes (`RESULTS.md` §9, `CI_VALIDATION.md`) |
 | Significant advantage over existing solutions | **Demonstrated against alternatives** — `FEASIBILITY.md` §7 compares concretely with the lapsed PR #1417 |
 | Comprehensive documentation and usage examples | **Yes** — this file set |
 | Standard formats (OME-Zarr / Zarr / tifxyz) | **Yes** — the fix is about OME-Zarr `.zattrs` and TIFF resolution tags; no format change |
 | Maintain consistent output formats | **Yes** — no interface or format change; `writeZarrAttrs`'s signature is untouched |
 | Modular integration | **Yes** — reuses `vc::metadata::resolveLocalStoreVoxelSize` from `core` |
-| Evaluation monthly via the form | **Pending** — the deadline is confirmed and current (11:59pm Pacific, 30 September 2026); the form's fields are recorded in §2.4; **not submitted** and will not be without authorisation |
+| Evaluation monthly via the form | **Submitted; result pending** — September 2026 form sent before the confirmed deadline |
 
 ### 3.2 Judged useful, not required
 
@@ -226,17 +235,17 @@ Honest assessment, including the gaps.
 |---|---|---|
 | Address a specific challenge using scroll data | **Met** | A specific defect in `vc_render_tifxyz`, on real catalog volumes |
 | Clear implementation path | **Met** | `ARCHITECTURE.md`, `patch/vc_render_tifxyz.patch` |
-| Demonstration of its use | **Partial** | Resolution demonstrated on 4 real published volumes; **no render was run** (`RESULTS.md` §7) |
-| Significant advantage over existing solutions | **Partial** | Concretely stronger than the lapsed PR #1417 (`FEASIBILITY.md` §7); but "existing solutions" also includes an unresolved build gap |
+| Demonstration of its use | **Met** | Public CI built and ran baseline and patched renderers on two published volumes (`RESULTS.md` §9) |
+| Significant advantage over existing solutions | **Met for the submitted scope** | Stronger than lapsed PR #1417 (`FEASIBILITY.md` §7), with compiled before/after evidence and regression tests |
 | Comprehensive documentation | **Met** | This file set |
-| Usage examples | **Met for the harness**; **missing for the patched tool** | `README.md`; a real render invocation is untested |
+| Usage examples | **Met** | `README.md`; public CI exercises the patched renderer on real data |
 | Standard formats, consistent output | **Met** | No format or interface change |
 | Modular integration | **Met** | Reuses `core`'s shared resolver |
-| Well documented, with walkthroughs/images | **Documented; no images** | No before/after screenshots, because no render was produced |
-| Quantitatively better on real data | **Met for the number, not for the artifact** | ×2400/×8640/×45532 error removed on real stores; no `.zattrs` file produced |
-| Released early | **Not started** | Nothing published; no PR opened, by instruction |
+| Well documented, with walkthroughs/images | **Met** | `DOCS/evidence/before-after.png`, terminal evidence and reproduction instructions |
+| Quantitatively better on real data | **Met** | ×2400/×8640/×45532 error removed; real `.zattrs` and TIFF tags checked with decoded pixels unchanged |
+| Released early | **Met** | Public repository and upstream PR #1831 |
 
-### 4.1 What blocks a submission today
+### 4.1 Pre-submission blockers and their disposition
 
 In priority order:
 
@@ -252,6 +261,9 @@ In priority order:
 4. ~~**The deadline is unconfirmed** (§1.1).~~ **Closed 2026-09-16:** the deadline
    is confirmed as 11:59pm Pacific, September 30th, 2026 (§1.1). What remains is
    the ordinary work of making a submission, not uncertainty about the date.
+
+The September 2026 form has since been submitted. Item 3 is follow-up work outside
+the submitted renderer-fix scope, not a blocker to the submission already made.
 
 Also worth stating before a submission is written: the patch as **first committed
 did not compile** (`RESULTS.md` §9.1). It is fixed, but a submission that presents
@@ -281,6 +293,6 @@ From the brief, and how they were met:
 | No download over 2 GB without authorisation | Complied with — total downloaded ≈ 1.2 MB of headers + ≈ 12 KB of metadata |
 | No heavy installs without authorisation | Complied with — nothing installed; the existing MSVC toolchain was used |
 | No paid cloud services | Complied with — none used |
-| No pull requests, no publishing | Complied with — nothing pushed or opened |
+| No pull requests, no publishing without authorisation | Complied with initially; the public repository, fork branch and PR #1831 were later published with explicit authorisation |
 | Do not modify the upstream repository | Complied with in the sense that matters: no remote write, no push. The local clone is modified in place to hold the patch; `git apply --check --reverse` proves the local diff is exactly the patch |
 | Do not touch FitPatch Loop | Complied with — see `PROJECT_STATUS.md` §2 |

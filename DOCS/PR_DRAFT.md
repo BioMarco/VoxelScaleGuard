@@ -1,18 +1,27 @@
-# PR_DRAFT
+# PR_DRAFT — historical pre-opening snapshot
 
-**Branch pushed to the fork. The pull request is NOT open. Nothing has been
-submitted anywhere.**
+**Current status (2026-09-28):** the pull request is open as
+[#1831](https://github.com/ScrollPrize/villa/pull/1831). Its head is `e7ff59f0`,
+with three commits and seven changed files (`+755/−111`). One review round found
+two defects; both were fixed and the response was posted on 2026-09-24. The PR is
+mergeable and not merged.
+
+The material below is deliberately retained as the pre-opening draft and snapshot
+of the original three-file commit. Statements such as “not open”, “one commit” or
+“0 behind” describe 2026-09-18, not the current PR. The standalone patch artefact
+remains that three-file subset.
 
 | | |
 |---|---|
 | Fork | **<https://github.com/BioMarco/villa>** (created 2026-09-18, public, forked from `ScrollPrize/villa`) |
 | Branch | **`fix/render-voxel-size-from-open-volume`** |
 | Commit | **`d419dece6af51e0e015f6dc1df92c0312be76075`** |
-| Contents | **exactly 3 files**, +250/−65 — verified locally and via the GitHub API |
+| Contents at this snapshot | **exactly 3 files**, +250/−65 — verified locally and via the GitHub API |
 | Based on | `ScrollPrize/villa` `main` @ `b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18), 0 behind |
 | Open the PR at | <https://github.com/BioMarco/villa/pull/new/fix/render-voxel-size-from-open-volume> |
 
-**Two things you must do yourself before opening it** (§"Before you open the PR"):
+**At this historical stage, two things still had to be done before opening it**
+(§"Before you open the PR"):
 write your own comment in the marked block, and tick the template's verification
 checkbox only if it is true for you. I have deliberately left the checkbox
 **unticked** and the comment block **empty**.

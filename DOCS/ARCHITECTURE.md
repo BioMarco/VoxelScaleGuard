@@ -211,8 +211,9 @@ metadata convention, any other `vc_*` tool, the VC3D GUI condition (documented i
 
 ## 8. The harness, and why it is separate
 
-The patch cannot be compiled here (no Qt/OpenCV/vcpkg), so the evidence had to be
-produced some other way. The harness follows two rules:
+The patch cannot be compiled locally here (no Qt/OpenCV/vcpkg). The harness
+therefore provides fast local coverage, while the patched binary was later built
+and run in public CI (`CI_VALIDATION.md`). The harness follows two rules:
 
 1. **Never re-implement what is being tested.** `setup.ps1` copies
    `VoxelSizeMetadata.cpp`, `RemoteUrl.cpp`, `Json.cpp` and upstream's own test

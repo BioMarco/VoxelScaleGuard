@@ -3,11 +3,14 @@
 **Project:** VoxelScale Guard
 **Repository:** <https://github.com/BioMarco/VoxelScaleGuard> (public)
 **Workspace:** `C:\Users\marco\Documents\DeepSeek\VoxelScaleGuard`
-**Status:** diagnosis verified and demonstrated on real data; patch written and
-logic-verified; **not compiled or run** — see §6
+**Status (updated 2026-09-28):** diagnosis verified; patch compiled and run in
+public CI on real data; PR #1831 open with one review round addressed; September
+2026 Progress Prize submission sent; prize result pending.
 **Upstream revision analysed:** `ScrollPrize/villa` @
 `757f70c0140a4cfbbbd44975ef09558444b96980` (`main`)
-**Last synced:** `main` @ `6de80df` (initial commit `4a77205`)
+**Last status audit:** 2026-09-28. The activity log below is chronological: an
+older “not done” entry records what was true at that time and is superseded by a
+later entry or by this status block.
 
 ---
 
@@ -35,18 +38,23 @@ about what this project did, not an assurance about their integrity.
 
 No second project has been created inside the old `Vesuvius` folder.
 
-## 3. Isolation rules observed
+## 3. Initial isolation rules observed
+
+This section records the constraints followed during the initial investigation,
+before the author later authorised publication and the upstream PR. Those later
+actions are recorded in the current status block and activity log.
 
 * Development happened exclusively under
   `C:\Users\marco\Documents\DeepSeek\VoxelScaleGuard`.
 * The previous project's folder `..\Vesuvius` was not touched.
-* The **remote** `villa` repository was not modified, pushed to, or opened as a
-  pull request. A local clone was made and modified in place to hold the patch;
-  nothing about `villa` left the machine.
-* No pull request was opened, and nothing was published — **with one authorised
-  exception:** this project's own repository,
+* During that phase, the **remote** `villa` repository was not modified, pushed to,
+  or opened as a pull request. A local clone was made and modified in place to hold
+  the patch. The fork branch and PR #1831 were published later with authorisation.
+* During that phase, no pull request was opened, and nothing was published — **with
+  one authorised exception:** this project's own repository,
   <https://github.com/BioMarco/VoxelScaleGuard>, was created and synced at the
-  user's explicit request. That is this project's own artefact, not upstream's.
+  user's explicit request. PR #1831 was subsequently opened with separate
+  authorisation.
 * Nothing was installed. No download exceeded 2 GB (actual: ~1.2 MB of
   header-only libraries plus ~12 KB of volume metadata).
 * No paid service was used. No GPU compute was used.
@@ -120,7 +128,7 @@ not compile.** See `RESULTS.md` §9.
 | **No repository licence is applied, and the licence reasoning was wrong** | **CLOSED 2026-09-18.** The wrong reasoning was found and corrected in five documents, and the licence is now applied: `LICENSE` (MIT, original work only), `LICENSE-GPL-3.0.txt` (verbatim upstream GPL text), `NOTICE.md` (the authoritative path-by-path map), `DATA_ATTRIBUTION.md` (third-party data), and GPL headers on the four derived files. Two residual uncertainties are recorded in `NOTICE.md` §2.4 rather than treated as settled. `RESULTS.md` §12.2 and §14 |
 | **Third-party Open Data attribution was missing from the repository's own licence material** | **CLOSED 2026-09-18.** `DATA_ATTRIBUTION.md` names the rights holders, gives source links and **both** dataset citations, itemises the transformations applied to the figure, and is linked from `README.md`, `NOTICE.md`, `DOCS/evidence/README.md` and `research/raw_metadata/PROVENANCE.md`. `RESULTS.md` §14.1 |
 | **The documented patch-regeneration command was wrong** | **FOUND AND FIXED 2026-09-18.** `AGENTS.md` §4 named one path where the patch covers three, so following it produced an 18,480-byte patch that reverse-applied cleanly while having dropped both Zarr hunks. Fixed, and CI now asserts the touched-file count. `RESULTS.md` §12.1 |
-| **No submission and no PR** | By instruction. The evidence needed for one now exists; the paperwork is the remaining work |
+| **No submission and no PR** | **CLOSED.** PR #1831 was opened on 2026-09-19 and the September 2026 Progress Prize form was submitted |
 
 **The patch is binary-verified as of 2026-09-16.** It compiles, runs on real
 published volumes, corrects the declared physical scale in both output formats, and
@@ -144,11 +152,11 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | `DOCS/ARCHITECTURE.md` | the fix's design, ordering argument, and rejected alternatives |
 | `DOCS/TEST_PLAN.md` | executed vs. blocked, and what would falsify each claim |
 | `DOCS/RESULTS.md` | everything executed, with exit codes; and §7, what was not |
-| `DOCS/PR_DRAFT.md` | pull request draft, **not submitted** |
-| `DOCS/SUBMISSION_DRAFT.md` | Progress Prize draft, including the form's four questions answered in the form's own order; **not submitted** |
+| `DOCS/PR_DRAFT.md` | historical pre-opening pull request draft; live PR is #1831 |
+| `DOCS/SUBMISSION_DRAFT.md` | historical draft of the submitted September 2026 Progress Prize text |
 | `DOCS/PROGRESS_PRIZE_CHECKLIST.md` | the submission, field by field, and what only the author can attest |
 | `DOCS/LICENSING_PROPOSAL.md` | How the licence position was reached; approved and applied 2026-09-18; `NOTICE.md` governs |
-| `DOCS/PROGRESS_PRIZE_QUESTION.md` | The prepared question for the organisers. **Not sent** |
+| `DOCS/PROGRESS_PRIZE_QUESTION.md` | The licensing question sent on Discord and the organisers' public answer |
 | `README.md` | landing page: description, layout, build and run, and the licence summary |
 | `AGENTS.md` | operating rules, verification requirements, attribution, environment traps |
 | `LICENSE` | MIT — this project's original work only, with what it does not cover |
@@ -236,3 +244,6 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | Organisers' question drafted in English and **not sent**: `DOCS/PROGRESS_PRIZE_QUESTION.md` |
 | Prize page re-read 2026-09-18: deadline, awards and Terms all unchanged; the "permissive license" wording discrepancy is still live and remains unanswered (`RESULTS.md` §14.5) |
 | Still not done, by instruction: no PR opened, no submission sent, no message to the organisers, no merge to `main` |
+| PR #1831 opened 2026-09-19; September Progress Prize form submitted; licensing arrangement described publicly on Discord and answered “yes, no problem” by an organiser |
+| Review response posted 2026-09-24 after both findings were fixed; PR remains open and mergeable, not merged |
+| Documentation-only consistency audit 2026-09-28: the three-file patch still matches the corresponding PR hunks and applies to pinned `757f70c`; raw application to current `main` @ `f4570bfa` now fails in the renderer, while the PR branch remains mergeable |

@@ -1283,7 +1283,7 @@ affect either.
 | `LICENSE-GPL-3.0.txt` | The GNU GPL v3 text, copied byte-for-byte from `villa/volume-cartographer/LICENSE` — 35,832 bytes, SHA-256 `95dd6ceb0e40950eb88fef3a6eb017802f13c6e87fefc72500ebcededd24c760`, **verified identical to the source**, not retyped [exec] |
 | `NOTICE.md` | The authoritative path-by-path map: §1 MIT, §2 GPL-3.0-or-later with the verbatim upstream programme notice and external notices (nlohmann/json, OpenABF, bvh, mpl-colormaps), §2.2 the statement of modification with dates, §2.3 the preserved upstream notices, §2.4 what is **not** determined, §3 the third-party data, §4 what is not redistributed |
 | `DATA_ATTRIBUTION.md` | The data's terms, the per-volume dataset assignment, **both** required citations, and an itemised description of the transformations applied to the figure |
-| `patch/README.md` | The patch's own GPL notice, its modification dates, and its "proposed, not applied, not merged" status |
+| `patch/README.md` | The patch's own GPL notice, its modification dates, and the distinction between the historical three-file artefact and the open, seven-file PR |
 | GPL headers on four files | `harness/src/vsguard/upstream_read_volume_voxel_size.hpp`, `render_voxel_size_resolution.hpp`, `render_voxel_size_resolution.cpp`, `harness/tests/test_render_voxel_size.cpp` |
 | `DOCS/PROGRESS_PRIZE_QUESTION.md` | The organisers' question, in English, ready to send. **Not sent** |
 
@@ -1358,8 +1358,10 @@ behaviour cannot be tested from here.
 
 ### 14.4 What remains open after this session
 
-1. **Whether the organisers' wording accepts the split.** Asked, not sent:
-   `PROGRESS_PRIZE_QUESTION.md`. Nothing here asserts either answer.
+1. **Prize-language question — subsequently closed.** At this session it was
+   drafted but not sent. It was posted publicly on Discord on 2026-09-19 and an
+   organiser answered “yes, no problem” on 2026-09-20. See
+   `PROGRESS_PRIZE_QUESTION.md`. This does not resolve item 2 below.
 2. **The two legal uncertainties** in `NOTICE.md` §2.4 — the aggregate question and
    the derivative-or-combined question. Documented precisely; **not** resolved, and
    not resolvable by adding a notice.
@@ -1377,8 +1379,9 @@ deadlines are still June 25th 2027, the Terms still say *"permissive license"*, 
 Grand Prize conditions still say *"open source license (e.g. MIT)"*, Discord
 registration is still a Grand Prize requirement rather than a Progress Prize one, and
 the submission form is still the same per-month form. The table is in
-`PROGRESS_PRIZE_QUESTION.md` §5. **The discrepancy is therefore still live and was
-not resolved by re-reading** — which is the reason the question exists.
+`PROGRESS_PRIZE_QUESTION.md` §5. **At the time of this re-read, the discrepancy was
+still live** — which is why the question was prepared. It was resolved for this
+submission by the organiser's public answer on 2026-09-20.
 
 ---
 
@@ -1389,8 +1392,11 @@ findings. Both were correct, and the first invalidates something this project ha
 documented as a deliberate improvement (§11.1 and `PR_DRAFT.md`). That is recorded
 here rather than quietly amended.
 
-The PR itself is unchanged in scope: the same three files, the same one commit
-before this round, no new PR, no rebase.
+At the start of this review round, the PR still contained the same three files and
+one commit, with no new PR or rebase. The corrections that followed expanded the
+open PR to three commits and seven files; the standalone patch remains the
+historical three-file artefact, and its three hunks match the corresponding current
+PR hunks.
 
 ### 16.1 Finding 1 — the unknown-size branch removed the OME-Zarr pyramid description
 
@@ -1652,7 +1658,8 @@ made before 2026-09-23 is superseded by this section; for everything else, run
 | Are the rendered pixels unchanged? | **Yes**, decoded-pixel hashes identical on both volumes (§9.5) |
 | Can the patched binary be built on this machine? | **No** locally (§8.4), which is why the build runs on GitHub Actions (§9) |
 | Did the review find real defects? | **Yes, two, both now fixed.** The unknown-size branch removed the OME-Zarr `multiscales` block (the image's discovery metadata), and the shared resolver stopped at the first existing metadata file and had dropped the legacy `scan.voxelsize` schema. §16 |
-| Is the repository's licensing settled? | **Yes as an arrangement, no as a question.** The split is applied (`LICENSE`, `LICENSE-GPL-3.0.txt`, `NOTICE.md`, `DATA_ATTRIBUTION.md`) and two legal uncertainties are documented in `NOTICE.md` §2.4. Whether the organisers accept it is asked and unanswered (§14.4) |
+| Is the repository's licensing settled? | **Yes for the prize arrangement; two legal questions remain documented.** The split is applied (`LICENSE`, `LICENSE-GPL-3.0.txt`, `NOTICE.md`, `DATA_ATTRIBUTION.md`), and the organisers publicly confirmed that this arrangement is not a problem for the prize. The two legal-characterisation uncertainties in `NOTICE.md` §2.4 remain unchanged |
 | Is the third-party attribution done? | **Yes** — `DATA_ATTRIBUTION.md`, reachable from the README, the figures' own README and the copied documents' provenance file (§14.1) |
-| Ready to submit as-is? | **The technical evidence is in place and the PR is open** (#1831). Remaining: the author's decision to send the organisers' question and to fill in the form |
+| Submission state | **Submitted for the September 2026 Progress Prize.** PR #1831 is open, one review round has been addressed, and the response was posted on 2026-09-24. Prize result pending |
+| Patch vs. current upstream | The three-file patch applies exactly to pinned `757f70c` and its hunks match the corresponding files in the seven-file PR. As of upstream `main` @ `f4570bfa` (2026-09-26), raw application fails in `vc_render_tifxyz.cpp`; the PR branch remains mergeable |
 | Progress Prize deadline | **11:59pm Pacific, 30 September 2026** — re-verified [live] 2026-09-18. Earlier revisions wrongly said it had passed; see §8.2 |
