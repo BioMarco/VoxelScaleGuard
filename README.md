@@ -129,6 +129,12 @@ compiled unmodified as a control. Transcripts in
 
 `patch/vc_render_tifxyz.patch` — **3 files, +358 / −102**:
 
+This standalone patch artefact covers the original three-file renderer/Zarr
+correction. The current upstream PR touches seven files because the review round
+also required changes to the shared voxel-size resolver and regression tests.
+Those additional changes are documented in
+[`RESULTS.md` §16](DOCS/RESULTS.md).
+
 | File | Why |
 |---|---|
 | `volume-cartographer/apps/src/vc_render_tifxyz.cpp` | the fix |
@@ -267,9 +273,9 @@ i.e. the patch describes it exactly, and it applies to current upstream `main`.
 1. **The PR is open: [#1831](https://github.com/ScrollPrize/villa/pull/1831).** It has
    had one review round, which found two real defects in the first revision; both are
    fixed and the reviewer's findings are recorded in
-   [`RESULTS.md` §16](DOCS/RESULTS.md). It is not merged, and the reply to the review
-   has not been posted yet. `PR_DRAFT.md` Part 2 still holds the placeholder for the
-   author's own comment.
+   [`RESULTS.md` §16](DOCS/RESULTS.md). The response documenting the corrections was
+   posted on 24 September 2026. The PR is not yet merged and is awaiting further
+   maintainer review.
 2. **The GUI path remains broken**: `SegmentationCommandHandler.cpp:2076-2078`
    suppresses `--voxel-size` for native-resolution remote volumes, so the CLI fix is
    not reachable from VC3D. Deliberate, separate follow-up.
