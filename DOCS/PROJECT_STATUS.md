@@ -3,12 +3,14 @@
 **Project:** VoxelScale Guard
 **Repository:** <https://github.com/BioMarco/VoxelScaleGuard> (public)
 **Workspace:** `C:\Users\marco\Documents\DeepSeek\VoxelScaleGuard`
-**Status (updated 2026-09-28):** diagnosis verified; patch compiled and run in
-public CI on real data; PR #1831 open with one review round addressed; September
-2026 Progress Prize submission sent; prize result pending.
+**Status (updated 2026-10-01):** diagnosis verified; patch compiled and run in
+public CI on real data; PR #1831 reviewed and merged into `ScrollPrize/villa`
+`main` on 2026-09-30 (merge commit
+`d08fa94d56c5e197f23408d1a39c78419146f311`); September 2026 Progress Prize
+submission sent; prize result pending.
 **Upstream revision analysed:** `ScrollPrize/villa` @
 `757f70c0140a4cfbbbd44975ef09558444b96980` (`main`)
-**Last status audit:** 2026-09-28. The activity log below is chronological: an
+**Last status audit:** 2026-10-01. The activity log below is chronological: an
 older “not done” entry records what was true at that time and is superseded by a
 later entry or by this status block.
 
@@ -128,7 +130,7 @@ not compile.** See `RESULTS.md` §9.
 | **No repository licence is applied, and the licence reasoning was wrong** | **CLOSED 2026-09-18.** The wrong reasoning was found and corrected in five documents, and the licence is now applied: `LICENSE` (MIT, original work only), `LICENSE-GPL-3.0.txt` (verbatim upstream GPL text), `NOTICE.md` (the authoritative path-by-path map), `DATA_ATTRIBUTION.md` (third-party data), and GPL headers on the four derived files. Two residual uncertainties are recorded in `NOTICE.md` §2.4 rather than treated as settled. `RESULTS.md` §12.2 and §14 |
 | **Third-party Open Data attribution was missing from the repository's own licence material** | **CLOSED 2026-09-18.** `DATA_ATTRIBUTION.md` names the rights holders, gives source links and **both** dataset citations, itemises the transformations applied to the figure, and is linked from `README.md`, `NOTICE.md`, `DOCS/evidence/README.md` and `research/raw_metadata/PROVENANCE.md`. `RESULTS.md` §14.1 |
 | **The documented patch-regeneration command was wrong** | **FOUND AND FIXED 2026-09-18.** `AGENTS.md` §4 named one path where the patch covers three, so following it produced an 18,480-byte patch that reverse-applied cleanly while having dropped both Zarr hunks. Fixed, and CI now asserts the touched-file count. `RESULTS.md` §12.1 |
-| **No submission and no PR** | **CLOSED.** PR #1831 was opened on 2026-09-19 and the September 2026 Progress Prize form was submitted |
+| **No submission and no PR** | **CLOSED.** PR #1831 was opened on 2026-09-19, the September 2026 Progress Prize form was submitted, and PR #1831 was merged upstream on 2026-09-30 |
 
 **The patch is binary-verified as of 2026-09-16.** It compiles, runs on real
 published volumes, corrects the declared physical scale in both output formats, and
@@ -245,5 +247,6 @@ Markdown files at the root. Reading order and an evidence map: `DOCS/INDEX.md`.
 | Prize page re-read 2026-09-18: deadline, awards and Terms all unchanged; the "permissive license" wording discrepancy is still live and remains unanswered (`RESULTS.md` §14.5) |
 | Still not done, by instruction: no PR opened, no submission sent, no message to the organisers, no merge to `main` |
 | PR #1831 opened 2026-09-19; September Progress Prize form submitted; licensing arrangement described publicly on Discord and answered “yes, no problem” by an organiser |
-| Review response posted 2026-09-24 after both findings were fixed; PR remains open and mergeable, not merged |
-| Documentation-only consistency audit 2026-09-28: the three-file patch still matches the corresponding PR hunks and applies to pinned `757f70c`; raw application to current `main` @ `f4570bfa` now fails in the renderer, while the PR branch remains mergeable |
+| Review response posted 2026-09-24 after both findings were fixed |
+| Maintainer merged current `main` into the contribution branch, upstream CI ran, and PR #1831 was merged into `ScrollPrize/villa` `main` on 2026-09-30; merge commit `d08fa94d56c5e197f23408d1a39c78419146f311` |
+| Documentation-only consistency audit 2026-09-28: the three-file patch still matches the corresponding PR hunks and applies to pinned `757f70c`; raw application to then-current `main` @ `f4570bfa` failed in the renderer, while the maintained PR branch remained mergeable. This was subsequently superseded by the successful upstream merge on 2026-09-30 |
