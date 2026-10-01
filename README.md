@@ -4,9 +4,11 @@ A verified diagnosis and a compiled, tested fix for a **silently wrong physical
 voxel size** in Vesuvius Challenge [`villa`](https://github.com/ScrollPrize/villa)'s
 renderer, `vc_render_tifxyz`.
 
-> **Status: the fix is written, compiled, run, and tested. Pull request
-> [#1831](https://github.com/ScrollPrize/villa/pull/1831) is open, the September
-> 2026 Progress Prize submission has been sent, and upstream review is in progress.**
+> **Status: the fix is written, compiled, run, tested, reviewed upstream, and
+> merged into [ScrollPrize/villa](https://github.com/ScrollPrize/villa) `main` via
+> [PR #1831](https://github.com/ScrollPrize/villa/pull/1831) on 30 September 2026
+> (merge commit `d08fa94d56c5e197f23408d1a39c78419146f311`). The September
+> 2026 Progress Prize submission has been sent; the prize result is pending.**
 > The licensing arrangement documented in [`NOTICE.md`](NOTICE.md) was described
 > to the organisers and publicly confirmed on Discord as not problematic for the
 > prize.
@@ -130,10 +132,11 @@ compiled unmodified as a control. Transcripts in
 `patch/vc_render_tifxyz.patch` — **3 files, +358 / −102**:
 
 This standalone patch artefact covers the original three-file renderer/Zarr
-correction. The current upstream PR touches seven files because the review round
-also required changes to the shared voxel-size resolver and regression tests.
-Those additional changes are documented in
-[`RESULTS.md` §16](DOCS/RESULTS.md).
+correction. The accepted upstream contribution touched seven files because the
+review round also required changes to the shared voxel-size resolver and regression
+tests. Those additional changes are documented in
+[`RESULTS.md` §16](DOCS/RESULTS.md), and the final result was merged upstream in
+[PR #1831](https://github.com/ScrollPrize/villa/pull/1831).
 
 | File | Why |
 |---|---|
@@ -141,14 +144,13 @@ Those additional changes are documented in
 | `volume-cartographer/core/src/Zarr.cpp` | when the voxel size is unknown, `writeZarrAttrs()` declares **no physical size** — no axis unit, no fabricated placeholder — while still writing the OME-Zarr `multiscales` block with relative pyramid scaling |
 | `volume-cartographer/core/include/vc/core/util/Zarr.hpp` | the documented contract for the above, and the new `buildMultiscales()` entry point |
 
-It applies cleanly to the pinned revision, and all three files are byte-identical
-between the pinned revision and `main` at
-`b1ef996e357de0b2f24fb30198c6d9c32611d4fb` (2026-09-18) [exec]. **`main` has since
-moved**, and two of the three files are no longer byte-identical there; the branch
-was re-checked against `main` at `59b454a8` (2026-09-23) and still merges cleanly
-into it, with no rebase required [exec]. As of `main` at `f4570bfa` (2026-09-26),
-the standalone raw patch no longer applies directly to `vc_render_tifxyz.cpp`;
-the seven-file PR branch remains mergeable. The GUI change is **not** included.
+It applies cleanly to the pinned revision. The standalone raw patch should not be
+assumed to apply directly to later upstream revisions because `main` moved during
+review. The maintained seven-file contribution was rebased/merged forward by the
+maintainer and was accepted into upstream `main` as
+[PR #1831](https://github.com/ScrollPrize/villa/pull/1831), merge commit
+`d08fa94d56c5e197f23408d1a39c78419146f311`, on 30 September 2026. The GUI change
+is **not** included.
 
 The unknown-size behaviour was corrected after review of the open PR — the first
 revision removed the whole `multiscales` block, which is the image's discovery
@@ -273,12 +275,11 @@ apply directly to a later upstream `main`; use PR #1831 for current integration.
 
 ## What is still open
 
-1. **The PR is open: [#1831](https://github.com/ScrollPrize/villa/pull/1831).** It has
-   had one review round, which found two real defects in the first revision; both are
-   fixed and the reviewer's findings are recorded in
-   [`RESULTS.md` §16](DOCS/RESULTS.md). The response documenting the corrections was
-   posted on 24 September 2026. The PR is not yet merged and is awaiting further
-   maintainer review.
+1. **Upstream integration is complete.** [PR #1831](https://github.com/ScrollPrize/villa/pull/1831)
+   was reviewed, corrected after two substantive findings, and merged into
+   `ScrollPrize/villa` `main` on 30 September 2026 as
+   `d08fa94d56c5e197f23408d1a39c78419146f311`. The review history is retained in
+   [`RESULTS.md` §16](DOCS/RESULTS.md).
 2. **The GUI path remains broken**: `SegmentationCommandHandler.cpp:2076-2078`
    suppresses `--voxel-size` for native-resolution remote volumes, so the CLI fix is
    not reachable from VC3D. Deliberate, separate follow-up.
